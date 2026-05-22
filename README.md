@@ -6,7 +6,7 @@ SKIPA의 특허 관리 기능과 핵심 비즈니스 로직을 담당하는 백�
 
 ## 📌 프로젝트 소개
 
-**SKIPA(SK IP Agent)**는 사내 특허의 가치 평가와 Life Cycle 관리를 지원하는 AI 기반 특허 관리 서비스입니다.
+SKIPA(SK IP Agent)는 사내 특허의 가치 평가와 Life Cycle 관리를 지원하는 AI 기반 특허 관리 서비스입니다.
 
 `skipa-backend`는 SKIPA 서비스에서 다음 역할을 담당합니다.
 
