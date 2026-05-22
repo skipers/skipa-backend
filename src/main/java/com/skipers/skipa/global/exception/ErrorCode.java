@@ -15,7 +15,7 @@ public enum ErrorCode {
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "서버 내부 오류가 발생했습니다."),
 
     // Auth
-    INVALID_LOGIN_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_LOGIN_REQUEST", "아이디 또는 비밀번호가 올바르지 않습니다."),
+    INVALID_LOGIN_REQUEST(HttpStatus.UNAUTHORIZED, "INVALID_LOGIN_REQUEST", "아이디 또는 비밀번호가 올바르지 않습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "INVALID_TOKEN", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "EXPIRED_TOKEN", "만료된 토큰입니다."),
 
