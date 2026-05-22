@@ -1,8 +1,10 @@
 # Compiled class file
 *.class
 
-# Log file
+# Log files
 *.log
+logs/
+*.log.*
 
 # BlueJ files
 *.ctxt
@@ -10,7 +12,7 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files #
+# Package files
 *.jar
 *.war
 *.nar
@@ -19,6 +21,80 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Keep Gradle Wrapper jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# Virtual machine crash logs
 hs_err_pid*
 replay_pid*
+
+# Build output
+/build/
+out/
+target/
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Maven
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+application-local.yml
+application-local.yaml
+application-dev.yml
+application-dev.yaml
+application-prod.yml
+application-prod.yaml
+application-secret.yml
+application-secret.yaml
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# H2 Database
+*.db
+*.mv.db
+*.trace.db
+*.lock.db
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# VS Code
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Test reports / coverage
+/test-output/
+coverage/
+jacoco.exec
+
+# Generated files
+generated/
