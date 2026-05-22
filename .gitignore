@@ -98,3 +98,6 @@ jacoco.exec
 
 # Generated files
 generated/
+
+# My Private Files
+SKIPA Database.png
