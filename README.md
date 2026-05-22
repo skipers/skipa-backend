@@ -136,7 +136,6 @@ src/main/java/com/skipers/skipa
 │
 ├── global
 │   ├── config
-│   │   ├── JpaAuditingConfig.java
 │   │   ├── WebConfig.java
 │   │   └── SecurityConfig.java
 │   │
@@ -156,129 +155,161 @@ src/main/java/com/skipers/skipa
 │
 ├── domain
 │   ├── auth
-│   │   ├── controller
+│   │   ├── api
 │   │   │   └── AuthController.java
-│   │   ├── service
+│   │   ├── application
 │   │   │   └── AuthService.java
-│   │   └── dto
-│   │       ├── LoginRequest.java
-│   │       ├── LoginResponse.java
-│   │       ├── TokenRefreshRequest.java
-│   │       └── MeResponse.java
+│   │   ├── dto
+│   │   │   ├── request
+│   │   │   │   ├── LoginRequest.java
+│   │   │   │   └── TokenRefreshRequest.java
+│   │   │   └── response
+│   │   │       ├── LoginResponse.java
+│   │   │       └── MeResponse.java
+│   │   └── exception
+│   │       └── AuthException.java
 │   │
 │   ├── user
-│   │   ├── controller
+│   │   ├── api
 │   │   │   └── UserController.java
-│   │   ├── service
+│   │   ├── application
 │   │   │   └── UserService.java
-│   │   ├── repository
+│   │   ├── dao
 │   │   │   └── UserRepository.java
-│   │   ├── entity
-│   │   │   └── User.java
+│   │   ├── domain
+│   │   │   ├── User.java
+│   │   │   └── UserRole.java
 │   │   ├── dto
-│   │   │   ├── UserCreateRequest.java
-│   │   │   ├── UserUpdateRequest.java
-│   │   │   └── UserResponse.java
-│   │   └── type
-│   │       └── UserRole.java
+│   │   │   ├── request
+│   │   │   │   ├── UserCreateRequest.java
+│   │   │   │   └── UserUpdateRequest.java
+│   │   │   └── response
+│   │   │       └── UserResponse.java
+│   │   └── exception
+│   │       ├── UserNotFoundException.java
+│   │       └── DuplicateEmailException.java
 │   │
 │   ├── department
-│   │   ├── controller
+│   │   ├── api
 │   │   │   └── DepartmentController.java
-│   │   ├── service
+│   │   ├── application
 │   │   │   └── DepartmentService.java
-│   │   ├── repository
+│   │   ├── dao
 │   │   │   └── DepartmentRepository.java
-│   │   ├── entity
+│   │   ├── domain
 │   │   │   └── Department.java
-│   │   └── dto
-│   │       ├── DepartmentCreateRequest.java
-│   │       ├── DepartmentUpdateRequest.java
-│   │       └── DepartmentResponse.java
+│   │   ├── dto
+│   │   │   ├── request
+│   │   │   │   ├── DepartmentCreateRequest.java
+│   │   │   │   └── DepartmentUpdateRequest.java
+│   │   │   └── response
+│   │   │       └── DepartmentResponse.java
+│   │   └── exception
+│   │       └── DepartmentNotFoundException.java
 │   │
 │   ├── patent
-│   │   ├── controller
+│   │   ├── api
 │   │   │   ├── PatentController.java
 │   │   │   ├── PatentDocumentController.java
 │   │   │   ├── PatentDepartmentController.java
 │   │   │   ├── PatentLegalStatusController.java
 │   │   │   └── PatentAnnuityController.java
-│   │   ├── service
+│   │   ├── application
 │   │   │   ├── PatentService.java
 │   │   │   ├── PatentDocumentService.java
 │   │   │   ├── PatentDepartmentService.java
 │   │   │   ├── PatentLegalStatusService.java
 │   │   │   └── PatentAnnuityService.java
-│   │   ├── repository
+│   │   ├── dao
 │   │   │   ├── PatentRepository.java
 │   │   │   ├── PatentDepartmentRepository.java
 │   │   │   ├── PatentLegalStatusRepository.java
 │   │   │   └── AnnuityHistoryRepository.java
-│   │   ├── entity
+│   │   ├── domain
 │   │   │   ├── Patent.java
 │   │   │   ├── PatentDepartment.java
 │   │   │   ├── PatentLegalStatus.java
-│   │   │   └── AnnuityHistory.java
+│   │   │   ├── AnnuityHistory.java
+│   │   │   ├── PatentLegalStatusType.java
+│   │   │   └── AnnuityStatus.java
 │   │   ├── dto
-│   │   │   ├── PatentCreateRequest.java
-│   │   │   ├── PatentUpdateRequest.java
-│   │   │   ├── PatentListResponse.java
-│   │   │   ├── PatentDetailResponse.java
-│   │   │   ├── PatentDocumentExtractResponse.java
-│   │   │   ├── PatentDepartmentAssignRequest.java
-│   │   │   ├── PatentLegalStatusCreateRequest.java
-│   │   │   ├── AnnuityCreateRequest.java
-│   │   │   └── AnnuityUpdateRequest.java
-│   │   └── type
-│   │       ├── PatentLegalStatusType.java
-│   │       └── AnnuityStatus.java
+│   │   │   ├── request
+│   │   │   │   ├── PatentCreateRequest.java
+│   │   │   │   ├── PatentUpdateRequest.java
+│   │   │   │   ├── PatentDepartmentAssignRequest.java
+│   │   │   │   ├── PatentLegalStatusCreateRequest.java
+│   │   │   │   ├── AnnuityCreateRequest.java
+│   │   │   │   └── AnnuityUpdateRequest.java
+│   │   │   └── response
+│   │   │       ├── PatentListResponse.java
+│   │   │       ├── PatentDetailResponse.java
+│   │   │       ├── PatentDocumentExtractResponse.java
+│   │   │       ├── PatentDepartmentResponse.java
+│   │   │       ├── PatentLegalStatusResponse.java
+│   │   │       └── AnnuityResponse.java
+│   │   └── exception
+│   │       ├── PatentNotFoundException.java
+│   │       ├── DuplicateApplicationNumberException.java
+│   │       ├── PatentDepartmentNotFoundException.java
+│   │       ├── PatentLegalStatusNotFoundException.java
+│   │       └── AnnuityHistoryNotFoundException.java
 │   │
 │   ├── report
-│   │   ├── controller
+│   │   ├── api
 │   │   │   └── ReportController.java
-│   │   ├── service
+│   │   ├── application
 │   │   │   └── ReportService.java
-│   │   ├── repository
+│   │   ├── dao
 │   │   │   └── ReportRepository.java
-│   │   ├── entity
-│   │   │   └── Report.java
+│   │   ├── domain
+│   │   │   ├── Report.java
+│   │   │   └── ReportStatus.java
 │   │   ├── dto
-│   │   │   ├── ReportCreateResponse.java
-│   │   │   ├── ReportResponse.java
-│   │   │   └── ReportStatusResponse.java
-│   │   └── type
-│   │       └── ReportStatus.java
+│   │   │   ├── request
+│   │   │   │   └── ReportCreateRequest.java
+│   │   │   └── response
+│   │   │       ├── ReportCreateResponse.java
+│   │   │       ├── ReportResponse.java
+│   │   │       └── ReportStatusResponse.java
+│   │   └── exception
+│   │       ├── ReportNotFoundException.java
+│   │       └── ReportGenerationFailedException.java
 │   │
 │   ├── decision
-│   │   ├── controller
+│   │   ├── api
 │   │   │   ├── DecisionController.java
 │   │   │   └── InboxController.java
-│   │   ├── service
+│   │   ├── application
 │   │   │   ├── DecisionService.java
 │   │   │   └── InboxService.java
-│   │   ├── repository
+│   │   ├── dao
 │   │   │   └── DecisionRepository.java
-│   │   ├── entity
-│   │   │   └── Decision.java
+│   │   ├── domain
+│   │   │   ├── Decision.java
+│   │   │   ├── DecisionStatus.java
+│   │   │   └── DecisionType.java
 │   │   ├── dto
-│   │   │   ├── DecisionCreateRequest.java
-│   │   │   ├── DecisionResponse.java
-│   │   │   ├── InboxResponse.java
-│   │   │   └── DecisionSubmitRequest.java
-│   │   └── type
-│   │       ├── DecisionStatus.java
-│   │       └── DecisionType.java
+│   │   │   ├── request
+│   │   │   │   ├── DecisionCreateRequest.java
+│   │   │   │   └── DecisionSubmitRequest.java
+│   │   │   └── response
+│   │   │       ├── DecisionResponse.java
+│   │   │       └── InboxResponse.java
+│   │   └── exception
+│   │       ├── DecisionNotFoundException.java
+│   │       └── DecisionAlreadySubmittedException.java
 │   │
 │   └── dashboard
-│       ├── controller
+│       ├── api
 │       │   └── DashboardController.java
-│       ├── service
+│       ├── application
 │       │   └── DashboardService.java
 │       └── dto
-│           ├── DashboardSummaryResponse.java
-│           ├── DashboardAssignmentResponse.java
-│           ├── DashboardDistributionResponse.java
-│           └── DashboardDepartmentResponse.java
+│           └── response
+│               ├── DashboardSummaryResponse.java
+│               ├── DashboardAssignmentResponse.java
+│               ├── DashboardDistributionResponse.java
+│               └── DashboardDepartmentResponse.java
 │
 └── infra
     ├── ai
