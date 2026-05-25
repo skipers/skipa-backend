@@ -50,12 +50,12 @@ SKIPA(SK IP Agent)는 사내 특허의 가치 평가와 Life Cycle 관리를 지
 
 ```text
 src/main/resources
-├── application.yml
-├── application-local.yml
-└── application-prod.yml
+├── application.yaml
+├── application-local.yaml
+└── application-prod.yaml
 ```
 
-### application.yml
+### application.yaml
 
 공통 설정을 관리합니다.
 
@@ -71,7 +71,7 @@ server:
   port: 8080
 ```
 
-### application-local.yml
+### application-local.yaml
 
 로컬 개발 환경에서는 실행 중인 H2 TCP 서버에 연결합니다.
 `users` 테이블이 비어 있으면 관리자 1명, 법무팀 4명, 사업부 5명의 샘플 계정을 한 번 생성하며, 이후 재시작에서는 기존 데이터를 유지합니다.
@@ -92,9 +92,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    properties:
-      hibernate:
-        format_sql: true
     show-sql: true
 
 app:
@@ -111,14 +108,14 @@ app:
 | `LEGAL` | `legal01`, `legal02`, `legal03`, `legal04` |
 | `BUSINESS` | `business01`, `business02`, `business03`, `business04`, `business05` |
 
-### application-prod.yml
+### application-prod.yaml
 
 배포 환경에서 사용하는 PostgreSQL 설정입니다.
 
 ```yaml
 spring:
   datasource:
-    url: ${DB_URL}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5432}/${DB_NAME}
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
@@ -135,7 +132,9 @@ spring:
 배포 환경에서는 아래 환경 변수를 설정해야 합니다.
 
 ```text
-DB_URL=jdbc:postgresql://<host>:5432/<database>
+DB_HOST=<host>
+DB_PORT=5432
+DB_NAME=<database>
 DB_USERNAME=<username>
 DB_PASSWORD=<password>
 ```
@@ -149,9 +148,16 @@ src/main/java/com/skipers/skipa
 ├── SkipaBackendApplication.java
 │
 ├── global
+│   ├── common
+│   │   └── entity
+│   │       └── BaseTimeEntity.java
+│   │
 │   ├── config
-│   │   ├── WebConfig.java
-│   │   └── SecurityConfig.java
+│   │   ├── JacksonConfig.java
+│   │   ├── JpaAuditingConfig.java
+│   │   ├── LocalDataInitializer.java
+│   │   ├── SecurityConfig.java
+│   │   └── WebConfig.java
 │   │
 │   ├── exception
 │   │   ├── BusinessException.java
@@ -163,9 +169,11 @@ src/main/java/com/skipers/skipa
 │   │   └── ErrorResponse.java
 │   │
 │   └── security
-│       ├── JwtProvider.java
+│       ├── CustomAuthenticationEntryPoint.java
+│       ├── CustomUserDetails.java
+│       ├── CustomUserDetailsService.java
 │       ├── JwtAuthenticationFilter.java
-│       └── CustomUserDetailsService.java
+│       └── JwtProvider.java
 │
 ├── domain
 │   ├── auth
@@ -379,25 +387,64 @@ src/main/java/com/skipers/skipa
 | Reports | `/patents/{patentId}/reports` | AI 평가 보고서 관리 |
 | Dashboard | `/dashboard` | Legal 팀 대시보드 |
 
+Swagger UI는 서버 실행 후 `http://localhost:8080/swagger-ui/index.html`에서 확인할 수 있습니다.
+OpenAPI JSON은 `http://localhost:8080/v3/api-docs`에서 제공됩니다.
+
 <br/>
 
 ## 🚀 Getting Started
 
 ### 1. 로컬 실행
 
-실행 환경에 맞는 profile을 반드시 지정해야 합니다. 로컬 개발 환경에서는 H2 TCP 서버를 먼저 실행하고 `local` profile을 사용합니다.
-초기 샘플 계정의 공통 비밀번호는 `.env`의 `LOCAL_SEED_PASSWORD`로 변경할 수 있습니다.
+로컬 애플리케이션은 `jdbc:h2:tcp://localhost/~/alphano`에 접속합니다. H2가 사용하는 파일 DB 이름은 `alphano`로 맞춰야 합니다.
 
-```bash
-SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
+#### 1-1. 환경 변수 준비
+
+루트 디렉터리에 `.env.example`을 참고하여 `.env` 파일을 생성합니다. `JWT_SECRET`은 Base64 인코딩된 32 byte 이상의 랜덤 키를 사용합니다.
+
+```properties
+JWT_SECRET=your-base64-encoded-secret
+SPRING_PROFILES_ACTIVE=local
+LOCAL_SEED_PASSWORD=1234
 ```
 
-Windows 환경에서는 아래 명령어를 사용할 수 있습니다.
+`JWT_SECRET`에는 로컬 개발용으로 생성한 랜덤 Base64 키를 입력합니다.
+
+#### 1-2. 로컬 실행 순서
+
+처음 한 번, 또는 로컬 DB 파일을 삭제한 뒤 다시 시작할 때 파일 DB를 생성합니다.
 
 ```bash
-$env:SPRING_PROFILES_ACTIVE="local"
-gradlew.bat bootRun
+./gradlew h2CreateLocalDb
 ```
+
+다음으로 H2 TCP 서버를 실행합니다. 이 터미널은 애플리케이션을 사용하는 동안 계속 열어 둡니다.
+
+```bash
+./gradlew h2Server
+```
+
+다른 터미널에서 Spring Boot 애플리케이션을 실행합니다. `local` profile은 앞서 작성한 `.env`에서 적용됩니다.
+
+```bash
+./gradlew bootRun
+```
+
+H2 웹 콘솔은 `http://localhost:8082`에서 접속할 수 있으며, JDBC URL은 `jdbc:h2:tcp://localhost/~/alphano`, 사용자명은 `sa`, 비밀번호는 빈 값입니다. 애플리케이션이 처음 비어 있는 `users` 테이블을 만나면 샘플 계정을 생성하고, 공통 비밀번호는 `.env`의 `LOCAL_SEED_PASSWORD`로 변경할 수 있습니다.
+
+#### 1-3. IntelliJ IDEA 실행 설정
+
+IntelliJ를 사용하는 경우에는 다음과 같이 세 개의 Run Configuration을 만들 수 있습니다.
+
+| Name | Type / Main class | Program arguments / Settings |
+|---|---|---|
+| `H2 Create DB` | Application / `org.h2.tools.Shell` | `-url jdbc:h2:file:~/alphano -user sa -password "" -sql "SELECT 1;"` |
+| `H2 Server (tcp)` | Application / `org.h2.tools.Server` | `-tcp -tcpPort 9092 -web -webPort 8082` |
+| `SkipaBackendApplication (local)` | Spring Boot / `com.skipers.skipa.SkipaBackendApplication` | Working directory: project root |
+
+애플리케이션은 project root의 `.env`를 직접 불러옵니다. IDE에서 별도로 active profile이나 환경 변수 파일을 등록할 필요는 없습니다.
+
+`H2 Create DB`는 DB가 아직 없을 때만 실행하면 되고, 평소 개발 실행 순서는 `H2 Server (tcp)` 실행 후 `SkipaBackendApplication (local)` 실행입니다. 다른 에디터나 IDE에서는 위 Gradle 명령을 터미널에서 실행하여 같은 환경을 사용할 수 있습니다.
 
 ### 2. 배포 환경 실행
 
