@@ -1,5 +1,6 @@
 package com.skipers.skipa.global.security;
 
+import com.skipers.skipa.domain.auth.exception.AuthException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     @Override
     protected void doFilterInternal(
@@ -34,7 +36,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = resolveToken(request);
 
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            authenticate(token);
+            try {
+                authenticate(token);
+            } catch (AuthException e) {
+                SecurityContextHolder.clearContext();
+                authenticationEntryPoint.commence(request, response,
+                        new org.springframework.security.core.AuthenticationException(e.getMessage()) {});
+                return;
+            }
         }
 
         filterChain.doFilter(request, response);
@@ -43,8 +52,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void authenticate(String token) {
         jwtProvider.validateAccessToken(token);
 
-        String userId = jwtProvider.getUserId(token);
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(userId);
+        Long userId = jwtProvider.getUserId(token);
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(String.valueOf(userId));
 
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(

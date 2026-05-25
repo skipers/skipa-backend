@@ -46,12 +46,12 @@ public class JwtProvider {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String createAccessToken(String userId, UserRole role) {
+    public String createAccessToken(Long userId, UserRole role) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + accessTokenExpiration);
 
         return Jwts.builder()
-                .subject(userId)
+                .subject(String.valueOf(userId))
                 .claim(ROLE_CLAIM, role.name())
                 .claim(CATEGORY_CLAIM, ACCESS_CATEGORY)
                 .issuedAt(now)
@@ -60,14 +60,14 @@ public class JwtProvider {
                 .compact();
     }
 
-    public RefreshTokenResult createRefreshToken(String userId) {
+    public RefreshTokenResult createRefreshToken(Long userId) {
         String jti = UUID.randomUUID().toString();
 
         Date now = new Date();
         Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
         String token = Jwts.builder()
-                .subject(userId)
+                .subject(String.valueOf(userId))
                 .id(jti)
                 .claim(CATEGORY_CLAIM, REFRESH_CATEGORY)
                 .issuedAt(now)
@@ -110,8 +110,8 @@ public class JwtProvider {
         }
     }
 
-    public String getUserId(String token) {
-        return parseToken(token).getSubject();
+    public Long getUserId(String token) {
+        return Long.parseLong(parseToken(token).getSubject());
     }
 
     public UserRole getRole(String token) {

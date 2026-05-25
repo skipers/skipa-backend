@@ -14,14 +14,19 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "users",
         uniqueConstraints = {
+                @UniqueConstraint(name = "uk_users_login_id", columnNames = "login_id"),
                 @UniqueConstraint(name = "uk_users_email", columnNames = "email")
         }
 )
 public class User extends BaseTimeEntity {
 
     @Id
-    @Column(name = "id", length = 50, nullable = false)
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "login_id", length = 50, nullable = false, unique = true)
+    private String loginId;
 
     @Column(name = "name", length = 100, nullable = false)
     private String name;
@@ -42,14 +47,14 @@ public class User extends BaseTimeEntity {
 
     @Builder
     private User(
-            String id,
+            String loginId,
             String name,
             String email,
             String password,
             UserRole role,
             Department department
     ) {
-        this.id = id;
+        this.loginId = loginId;
         this.name = name;
         this.email = email;
         this.password = password;

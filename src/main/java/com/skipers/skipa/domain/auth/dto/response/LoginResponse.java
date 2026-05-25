@@ -17,14 +17,14 @@ public record LoginResponse(
     }
 
     public record UserInfo(
-            String id,
+            String loginId,
             String role,
             Long departmentId
     ) {
 
         public static UserInfo from(User user) {
             return new UserInfo(
-                    user.getId(),
+                    user.getLoginId(),
                     user.getRole().name(),
                     user.getDepartment() != null ? user.getDepartment().getId() : null
             );

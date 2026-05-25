@@ -22,10 +22,10 @@ public class AuthService {
     private final JwtProvider jwtProvider;
 
     public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findById(request.id())
-                .orElseThrow(() -> new AuthException(ErrorCode.INVALID_LOGIN_REQUEST));
+        User user = userRepository.findByLoginId(request.loginId())
+                .orElse(null);
 
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+        if (user == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new AuthException(ErrorCode.INVALID_LOGIN_REQUEST);
         }
 
