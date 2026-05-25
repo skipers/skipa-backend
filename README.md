@@ -79,7 +79,7 @@ server:
 ```yaml
 spring:
   datasource:
-    url: jdbc:h2:tcp://localhost/~/alphano
+    url: jdbc:h2:tcp://localhost/~/skipa
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -396,7 +396,7 @@ OpenAPI JSON은 `http://localhost:8080/v3/api-docs`에서 제공됩니다.
 
 ### 1. 로컬 실행
 
-로컬 애플리케이션은 `jdbc:h2:tcp://localhost/~/alphano`에 접속합니다. H2가 사용하는 파일 DB 이름은 `alphano`로 맞춰야 합니다.
+로컬 애플리케이션은 `jdbc:h2:tcp://localhost/~/skipa`에 접속합니다. H2가 사용하는 파일 DB 이름은 `skipa`로 맞춰야 합니다.
 
 #### 1-1. 환경 변수 준비
 
@@ -430,7 +430,7 @@ LOCAL_SEED_PASSWORD=1234
 ./gradlew bootRun
 ```
 
-H2 웹 콘솔은 `http://localhost:8082`에서 접속할 수 있으며, JDBC URL은 `jdbc:h2:tcp://localhost/~/alphano`, 사용자명은 `sa`, 비밀번호는 빈 값입니다. 애플리케이션이 처음 비어 있는 `users` 테이블을 만나면 샘플 계정을 생성하고, 공통 비밀번호는 `.env`의 `LOCAL_SEED_PASSWORD`로 변경할 수 있습니다.
+H2 웹 콘솔은 `http://localhost:8082`에서 접속할 수 있으며, JDBC URL은 `jdbc:h2:tcp://localhost/~/skipa`, 사용자명은 `sa`, 비밀번호는 빈 값입니다. 애플리케이션이 처음 비어 있는 `users` 테이블을 만나면 샘플 계정을 생성하고, 공통 비밀번호는 `.env`의 `LOCAL_SEED_PASSWORD`로 변경할 수 있습니다.
 
 #### 1-3. IntelliJ IDEA 실행 설정
 
@@ -438,7 +438,7 @@ IntelliJ를 사용하는 경우에는 다음과 같이 세 개의 Run Configurat
 
 | Name | Type / Main class | Program arguments / Settings |
 |---|---|---|
-| `H2 Create DB` | Application / `org.h2.tools.Shell` | `-url jdbc:h2:file:~/alphano -user sa -password "" -sql "SELECT 1;"` |
+| `H2 Create DB` | Application / `org.h2.tools.Shell` | `-url jdbc:h2:file:~/skipa -user sa -password "" -sql "SELECT 1;"` |
 | `H2 Server (tcp)` | Application / `org.h2.tools.Server` | `-tcp -tcpPort 9092 -web -webPort 8082` |
 | `SkipaBackendApplication (local)` | Spring Boot / `com.skipers.skipa.SkipaBackendApplication` | Working directory: project root |
 

@@ -64,7 +64,7 @@ tasks.register('h2CreateLocalDb', JavaExec) {
 	description = 'Creates the local file-based H2 database used by the TCP server.'
 	classpath = sourceSets.main.runtimeClasspath
 	mainClass = 'org.h2.tools.Shell'
-	args '-url', 'jdbc:h2:file:~/alphano', '-user', 'sa', '-password', '', '-sql', 'SELECT 1;'
+	args '-url', 'jdbc:h2:file:~/skipa', '-user', 'sa', '-password', '', '-sql', 'SELECT 1;'
 }
 
 tasks.register('h2Server', JavaExec) {
