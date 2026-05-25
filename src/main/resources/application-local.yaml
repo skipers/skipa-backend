@@ -1,7 +1,7 @@
 spring:
   datasource:
     driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:skipa;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    url: jdbc:h2:tcp://localhost/~/alphano
     username: sa
     password:
 
@@ -20,3 +20,8 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
     org.springframework.security: debug
+
+app:
+  local:
+    seed:
+      password: ${LOCAL_SEED_PASSWORD:1234}

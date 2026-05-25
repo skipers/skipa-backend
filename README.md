@@ -43,7 +43,7 @@ SKIPA(SK IP Agent)는 사내 특허의 가치 평가와 Life Cycle 관리를 지
 
 | Profile | Database | Description |
 |---|---|---|
-| `local` | H2 Database | 로컬 개발 및 테스트용 |
+| `local` | H2 Database (TCP) | 로컬 개발용 |
 | `prod` | PostgreSQL | 배포 환경용 |
 
 ### Resource Structure
@@ -73,12 +73,13 @@ server:
 
 ### application-local.yml
 
-로컬 개발 환경에서 사용하는 H2 설정입니다.
+로컬 개발 환경에서는 실행 중인 H2 TCP 서버에 연결합니다.
+`users` 테이블이 비어 있으면 관리자 1명, 법무팀 4명, 사업부 5명의 샘플 계정을 한 번 생성하며, 이후 재시작에서는 기존 데이터를 유지합니다.
 
 ```yaml
 spring:
   datasource:
-    url: jdbc:h2:mem:skipa
+    url: jdbc:h2:tcp://localhost/~/alphano
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -95,7 +96,20 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+
+app:
+  local:
+    seed:
+      password: ${LOCAL_SEED_PASSWORD:1234}
 ```
+
+초기 샘플 계정의 공통 비밀번호는 `1234`입니다.
+
+| Role | Login ID |
+|---|---|
+| `ADMIN` | `admin` |
+| `LEGAL` | `legal01`, `legal02`, `legal03`, `legal04` |
+| `BUSINESS` | `business01`, `business02`, `business03`, `business04`, `business05` |
 
 ### application-prod.yml
 
@@ -371,7 +385,8 @@ src/main/java/com/skipers/skipa
 
 ### 1. 로컬 실행
 
-실행 환경에 맞는 profile을 반드시 지정해야 합니다. 로컬 개발 환경에서는 `local` profile을 사용합니다.
+실행 환경에 맞는 profile을 반드시 지정해야 합니다. 로컬 개발 환경에서는 H2 TCP 서버를 먼저 실행하고 `local` profile을 사용합니다.
+초기 샘플 계정의 공통 비밀번호는 `.env`의 `LOCAL_SEED_PASSWORD`로 변경할 수 있습니다.
 
 ```bash
 SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
