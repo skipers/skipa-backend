@@ -23,12 +23,12 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
     private static final String[] WHITE_LIST = {
-            "/auth/login",
-            "/auth/refresh",
-            "/h2-console/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
+            "/h2-console/**",
+            "/auth/login",
+            "/auth/refresh"
     };
 
     @Bean
