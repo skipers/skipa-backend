@@ -69,7 +69,7 @@ public class User extends BaseTimeEntity {
         this.department = department;
     }
 
-    public void changePassword(String password) {
+    public void updatePassword(String password) {
         this.password = password;
     }
 }
