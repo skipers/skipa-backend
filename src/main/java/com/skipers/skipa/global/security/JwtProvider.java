@@ -111,7 +111,11 @@ public class JwtProvider {
     }
 
     public Long getUserId(String token) {
-        return Long.parseLong(parseToken(token).getSubject());
+        try {
+            return Long.parseLong(parseToken(token).getSubject());
+        } catch (NumberFormatException | NullPointerException e) {
+            throw new AuthException(ErrorCode.INVALID_TOKEN);
+        }
     }
 
     public UserRole getRole(String token) {

@@ -25,11 +25,15 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        commence(response, ErrorCode.UNAUTHORIZED);
+    }
+
+    public void commence(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+        response.setStatus(errorCode.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(
-                objectMapper.writeValueAsString(ErrorResponse.of(ErrorCode.UNAUTHORIZED))
+                objectMapper.writeValueAsString(ErrorResponse.of(errorCode))
         );
     }
 }

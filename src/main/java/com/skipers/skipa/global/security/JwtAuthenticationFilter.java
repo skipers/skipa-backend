@@ -40,8 +40,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authenticate(token);
             } catch (AuthException e) {
                 SecurityContextHolder.clearContext();
-                authenticationEntryPoint.commence(request, response,
-                        new org.springframework.security.core.AuthenticationException(e.getMessage()) {});
+                authenticationEntryPoint.commence(response, e.getErrorCode());
                 return;
             }
         }
