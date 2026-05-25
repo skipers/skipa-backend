@@ -21,10 +21,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String LOGIN_PATH = "/auth/login";
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return LOGIN_PATH.equals(request.getServletPath());
+    }
 
     @Override
     protected void doFilterInternal(

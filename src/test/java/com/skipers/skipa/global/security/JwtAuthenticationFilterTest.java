@@ -79,6 +79,21 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
+    void loginRequestSkipsAuthenticationEvenWhenExpiredBearerTokenIsPresent() throws Exception {
+        JwtAuthenticationFilter filter = createFilter(new ObjectMapper());
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/login");
+        request.setServletPath("/auth/login");
+        request.addHeader("Authorization", "Bearer expired-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(jwtProvider, customUserDetailsService);
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
+    @Test
     void validAccessTokenAuthenticatesUserAndContinuesFilterChain() throws Exception {
         JwtAuthenticationFilter filter = createFilter(new ObjectMapper());
         MockHttpServletRequest request = new MockHttpServletRequest();
