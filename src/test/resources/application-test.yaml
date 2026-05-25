@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:skipa-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+jwt:
+  # Non-production key used only for application context and authentication tests.
+  secret: c2tpcGEtdGVzdC1qd3Qtc2VjcmV0LWtleS0zMi1ieXRlcy0xMjM0NTY=

@@ -17,20 +17,60 @@ repositories {
 	mavenCentral()
 }
 
+ext {
+	jjwtVersion = '0.13.0'
+	springdocVersion = '3.0.3'
+}
+
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-h2console'
+	// Spring Boot
+	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-	compileOnly 'org.projectlombok:lombok'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	// Database
 	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.postgresql:postgresql'
+
+	// JWT
+	implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+	runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+	runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+
+	// OpenAPI / Swagger
+	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+
 	testCompileOnly 'org.projectlombok:lombok'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	testAnnotationProcessor 'org.projectlombok:lombok'
+
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+tasks.register('h2CreateLocalDb', JavaExec) {
+	group = 'application'
+	description = 'Creates the local file-based H2 database used by the TCP server.'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'org.h2.tools.Shell'
+	args '-url', 'jdbc:h2:file:~/skipa', '-user', 'sa', '-password', '', '-sql', 'SELECT 1;'
+}
+
+tasks.register('h2Server', JavaExec) {
+	group = 'application'
+	description = 'Starts the local H2 TCP server and browser console.'
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'org.h2.tools.Server'
+	args '-tcp', '-tcpPort', '9092', '-web', '-webPort', '8082'
 }
