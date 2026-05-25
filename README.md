@@ -62,7 +62,7 @@ src/main/resources
 ```yaml
 spring:
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE}
 
   application:
     name: skipa-backend
@@ -371,15 +371,16 @@ src/main/java/com/skipers/skipa
 
 ### 1. 로컬 실행
 
-기본 profile은 `local`입니다.
+실행 환경에 맞는 profile을 반드시 지정해야 합니다. 로컬 개발 환경에서는 `local` profile을 사용합니다.
 
 ```bash
-./gradlew bootRun
+SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ```
 
 Windows 환경에서는 아래 명령어를 사용할 수 있습니다.
 
 ```bash
+$env:SPRING_PROFILES_ACTIVE="local"
 gradlew.bat bootRun
 ```
 
