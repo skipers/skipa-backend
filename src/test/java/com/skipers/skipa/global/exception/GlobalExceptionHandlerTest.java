@@ -46,6 +46,19 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void validationExceptionUsesDefaultMessageWhenNoFieldErrorExists() {
+        MethodArgumentNotValidException exception = mock(MethodArgumentNotValidException.class);
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(exception.getBindingResult()).thenReturn(bindingResult);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of());
+
+        ResponseEntity<ErrorResponse> response = handler.handleMethodArgumentNotValidException(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().getError().getMessage()).isEqualTo(ErrorCode.INVALID_REQUEST.getMessage());
+    }
+
+    @Test
     void unreadableRequestReturnsInvalidRequest() {
         ResponseEntity<ErrorResponse> response = handler.handleInvalidRequest(
                 mock(HttpMessageNotReadableException.class)

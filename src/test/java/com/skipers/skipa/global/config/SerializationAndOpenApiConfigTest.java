@@ -2,6 +2,7 @@ package com.skipers.skipa.global.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -30,5 +31,18 @@ class SerializationAndOpenApiConfigTest {
         assertThat(openAPI.getInfo().getTitle()).isEqualTo("SKIPA API");
         assertThat(openAPI.getInfo().getDescription()).isEqualTo("SKIPA backend API documentation");
         assertThat(openAPI.getInfo().getVersion()).isEqualTo("v1.0.0");
+    }
+
+    @Test
+    void openApiConfigProvidesBearerTokenAuthentication() {
+        OpenAPI openAPI = new OpenApiConfig().openAPI();
+        SecurityScheme bearerAuth = openAPI.getComponents().getSecuritySchemes().get("bearerAuth");
+
+        assertThat(bearerAuth.getType()).isEqualTo(SecurityScheme.Type.HTTP);
+        assertThat(bearerAuth.getScheme()).isEqualTo("bearer");
+        assertThat(bearerAuth.getBearerFormat()).isEqualTo("JWT");
+        assertThat(openAPI.getSecurity()).anySatisfy(requirement ->
+                assertThat(requirement).containsKey("bearerAuth")
+        );
     }
 }

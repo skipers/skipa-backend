@@ -136,6 +136,62 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void approvalRequiresAdminAndReturnsRequestAndDomainErrors() throws Exception {
+        Long userId = registerBusinessUser();
+        String legalToken = createActiveUserToken("legal-approver", "legal-approver@example.com", UserRole.LEGAL);
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": 999999
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", 999999L)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
     void departmentReadApisAllowAdminAndLegalButRejectBusinessAndUnauthenticatedUser() throws Exception {
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
         String legalToken = createActiveUserToken("legal-active", "legal-active@example.com", UserRole.LEGAL);
@@ -261,6 +317,61 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void departmentApisReturnDuplicateAndNotFoundErrors() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(post("/departments")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": " 통신 "
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("DUPLICATE_DEPARTMENT_NAME"));
+
+        mockMvc.perform(get("/departments/{departmentId}", 999999L)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
+
+        mockMvc.perform(put("/departments/{departmentId}", 999999L)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Unknown"
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
+
+        mockMvc.perform(delete("/departments/{departmentId}", 999999L)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
+    }
+
+    @Test
+    void departmentSearchUsesKeywordAndPagingAgainstDatabase() throws Exception {
+        departmentRepository.save(Department.builder().name("Legal Affairs").build());
+        departmentRepository.save(Department.builder().name("Legal Operations").build());
+        String legalToken = createActiveUserToken("legal-reader", "legal-reader@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(get("/departments")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("keyword", "legal")
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.totalItems").value(2))
+                .andExpect(jsonPath("$.data.totalPages").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
+    }
+
+    @Test
     void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -279,6 +390,67 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void registrationReturnsDuplicateAndValidationErrors() throws Exception {
+        registerBusinessUser();
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "business-new",
+                                  "password": "password",
+                                  "name": "Duplicate Login",
+                                  "email": "different@example.com",
+                                  "role": "BUSINESS"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("DUPLICATE_LOGIN_ID"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "different",
+                                  "password": "password",
+                                  "name": "Duplicate Email",
+                                  "email": "business-new@example.com",
+                                  "role": "BUSINESS"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("DUPLICATE_EMAIL"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "admin-signup",
+                                  "password": "password",
+                                  "name": "Admin Signup",
+                                  "email": "admin-signup@example.com",
+                                  "role": "ADMIN"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_ROLE"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "invalid-email",
+                                  "password": "password",
+                                  "name": "Invalid Email",
+                                  "email": "not-an-email",
+                                  "role": "BUSINESS"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void registrationRejectsFieldValuesLongerThanPersistenceLimits() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -291,6 +463,34 @@ class AuthApprovalFlowIntegrationTest {
                                   "role": "BUSINESS"
                                 }
                                 """.formatted("a".repeat(51))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "long-name",
+                                  "password": "password",
+                                  "name": "%s",
+                                  "email": "long-name@example.com",
+                                  "role": "BUSINESS"
+                                }
+                                """.formatted("n".repeat(101))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "long-email",
+                                  "password": "password",
+                                  "name": "Long Email",
+                                  "email": "%s@example.com",
+                                  "role": "BUSINESS"
+                                }
+                                """.formatted("e".repeat(190))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
     }
@@ -330,6 +530,40 @@ class AuthApprovalFlowIntegrationTest {
         assertThatThrownBy(() -> departmentRepository.saveAndFlush(
                 Department.builder().name("Legal").build()
         )).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void databaseConstraintRejectsDuplicateUserLoginId() {
+        assertThatThrownBy(() -> userRepository.saveAndFlush(User.createActive(
+                "admin",
+                "Other Admin",
+                "other-admin@example.com",
+                passwordEncoder.encode("password"),
+                UserRole.ADMIN,
+                null
+        ))).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void databaseConstraintRejectsDuplicateUserEmail() {
+        assertThatThrownBy(() -> userRepository.saveAndFlush(User.createActive(
+                "other-admin",
+                "Other Admin",
+                "admin@example.com",
+                passwordEncoder.encode("password"),
+                UserRole.ADMIN,
+                null
+        ))).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void persistenceAuditingPopulatesDepartmentTimestamps() {
+        Department saved = departmentRepository.saveAndFlush(Department.builder()
+                .name("Audited Department")
+                .build());
+
+        assertThat(saved.getCreatedAt()).isNotNull();
+        assertThat(saved.getUpdatedAt()).isNotNull();
     }
 
     @Test

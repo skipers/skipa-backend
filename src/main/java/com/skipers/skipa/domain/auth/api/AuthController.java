@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.response.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,7 @@ public class AuthController {
      * @param request 로그인 ID, 비밀번호, 이름, 이메일, 역할
      * @return 가입된 사용자 정보
      */
+    @SecurityRequirements
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(authService.register(request)));
@@ -41,6 +43,7 @@ public class AuthController {
      * @param request 로그인 ID, 비밀번호
      * @return access token, refresh token, 사용자 정보
      */
+    @SecurityRequirements
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));

@@ -83,6 +83,14 @@ class DepartmentServiceTest {
     }
 
     @Test
+    void createRejectsNullName() {
+        assertThatThrownBy(() -> departmentService.create(new DepartmentCreateRequest(null)))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        verify(departmentRepository, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void getReturnsDepartmentAndRejectsMissingId() {
         when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
         when(departmentRepository.findById(2L)).thenReturn(Optional.empty());

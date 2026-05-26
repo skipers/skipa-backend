@@ -53,6 +53,13 @@ class JwtProviderTest {
     }
 
     @Test
+    void accessTokenCannotBeUsedAsRefreshToken() {
+        String token = jwtProvider.createAccessToken(1L, UserRole.ADMIN);
+
+        assertErrorCode(() -> jwtProvider.validateRefreshToken(token), ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
     void expiredTokenIsReportedAsExpired() {
         ReflectionTestUtils.setField(jwtProvider, "accessTokenExpiration", -1L);
 
@@ -73,6 +80,25 @@ class JwtProviderTest {
                 .compact();
 
         assertErrorCode(() -> jwtProvider.getUserId(token), ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    void malformedTokenIsRejectedAsInvalid() {
+        assertErrorCode(() -> jwtProvider.parseToken("not-a-jwt"), ErrorCode.INVALID_TOKEN);
+    }
+
+    @Test
+    void tokenWithUnsupportedRoleClaimIsRejectedWhenRoleIsRead() {
+        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET));
+        String token = Jwts.builder()
+                .subject("1")
+                .claim("role", "MANAGER")
+                .claim("category", "access")
+                .expiration(new Date(System.currentTimeMillis() + 600000L))
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
+
+        assertErrorCode(() -> jwtProvider.getRole(token), ErrorCode.INVALID_TOKEN);
     }
 
     private void assertErrorCode(Runnable invocation, ErrorCode expected) {

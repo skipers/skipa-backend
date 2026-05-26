@@ -35,7 +35,7 @@ public class DepartmentController {
      *
      * @param request 생성 요청
      * @return 생성된 부서
-    */
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(@Valid @RequestBody DepartmentCreateRequest request) {
