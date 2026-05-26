@@ -8,7 +8,11 @@ import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.domain.department.exception.DepartmentNotFoundException;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
+import com.skipers.skipa.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +22,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DepartmentService {
+
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final DepartmentRepository departmentRepository;
 
@@ -75,16 +82,18 @@ public class DepartmentService {
         departmentRepository.deleteById(departmentId);
     }
 
-    public List<DepartmentResponse> search(String keyword) {
+    public PageResponse<DepartmentResponse> search(String keyword, Integer page, Integer size) {
         String normalizedKeyword = normalizeKeyword(keyword);
 
-        List<Department> departments = normalizedKeyword == null
-                ? departmentRepository.findAll()
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword);
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizeSize(size);
+        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id"));
 
-        return departments.stream()
-                .map(DepartmentResponse::from)
-                .toList();
+        Page<DepartmentResponse> result = normalizedKeyword == null
+                ? departmentRepository.findAll(pageRequest).map(DepartmentResponse::from)
+                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageRequest).map(DepartmentResponse::from);
+
+        return PageResponse.from(result);
     }
 
     private String normalizeName(String name) {
@@ -107,5 +116,25 @@ public class DepartmentService {
 
         String normalized = keyword.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null) {
+            return 0;
+        }
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return page;
+    }
+
+    private int normalizeSize(Integer size) {
+        if (size == null) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        if (size <= 0 || size > MAX_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return size;
     }
 }

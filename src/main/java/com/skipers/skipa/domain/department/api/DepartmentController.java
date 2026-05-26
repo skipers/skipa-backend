@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.department.dto.request.DepartmentCreateRequest;
 import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.global.response.ApiResponse;
+import com.skipers.skipa.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -95,7 +94,11 @@ public class DepartmentController {
      * @return 부서 목록
      */
     @GetMapping
-    public ApiResponse<List<DepartmentResponse>> search(@RequestParam(required = false) String keyword) {
-        return ApiResponse.ok(departmentService.search(keyword));
+    public ApiResponse<PageResponse<DepartmentResponse>> search(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
+    ) {
+        return ApiResponse.ok(departmentService.search(keyword, page, size));
     }
 }

@@ -7,8 +7,6 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
-import com.skipers.skipa.domain.patent.exception.DuplicateApplicationNumberException;
-import com.skipers.skipa.domain.patent.exception.PatentNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.global.exception.BusinessException;
@@ -21,6 +19,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service // 특허 유스케이스 서비스
 @RequiredArgsConstructor // 생성자 주입
@@ -39,7 +39,7 @@ public class PatentService {
         String applicationNumber = normalizeRequired(request.applicationNumber()); // 필수값 정규화
 
         if (patentRepository.existsByApplicationNumber(applicationNumber)) { // 출원번호 중복 방지
-            throw new DuplicateApplicationNumberException(); // 표준 비즈니스 예외
+            throw new BusinessException(ErrorCode.DUPLICATE_APPLICATION_NUMBER); // 표준 에러 코드로 중복 처리
         }
 
         Patent patent = patentRepository.save(Patent.builder() // 특허 엔티티 생성/저장
@@ -76,8 +76,7 @@ public class PatentService {
     }
 
     public PatentDetailResponse get(Long patentId) {
-        Patent patent = patentRepository.findById(patentId) // ID로 단건 조회
-                .orElseThrow(PatentNotFoundException::new);
+        Patent patent = getPatentOrThrow(patentId); // ID로 단건 조회(미존재 시 예외)
 
         return PatentDetailResponse.from(patent); // 응답 DTO 변환
     }
@@ -86,7 +85,7 @@ public class PatentService {
         int pageNumber = normalizePage(page); // page 기본값/검증
         int pageSize = normalizeSize(size); // size 기본값/검증
 
-        Specification<Patent> specification = PatentSpecifications.titleContainsIgnoreCase(normalizeKeyword(keyword)); // v1: 제목 검색만 지원
+        Specification<Patent> specification = PatentSpecifications.titleContainsIgnoreCase(normalizeOptional(keyword)); // v1: 제목 검색만 지원
         PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id")); // 기본 정렬(최신순)
 
         Page<PatentListResponse> result = patentRepository.findAll(specification, pageRequest) // 동적 검색 + 페이징
@@ -97,8 +96,7 @@ public class PatentService {
 
     @Transactional // 수정은 쓰기 트랜잭션
     public PatentDetailResponse update(Long patentId, PatentUpdateRequest request) {
-        Patent patent = patentRepository.findById(patentId) // 수정 대상 조회
-                .orElseThrow(PatentNotFoundException::new);
+        Patent patent = getPatentOrThrow(patentId); // 수정 대상 조회(미존재 시 예외)
 
         if (request.title() != null) { // PATCH: 전달된 필드만 반영
             String title = normalizeRequired(request.title()); // 공백/빈값 방지
@@ -106,6 +104,11 @@ public class PatentService {
         }
 
         return PatentDetailResponse.from(patent); // 변경 감지(Dirty Checking)로 반영
+    }
+
+    private Patent getPatentOrThrow(Long patentId) { // 특허 단건 조회 공통화
+        return patentRepository.findById(patentId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PATENT_NOT_FOUND));
     }
 
     private int normalizePage(Integer page) { // 페이지 번호 정규화
@@ -150,11 +153,7 @@ public class PatentService {
         return normalized.isEmpty() ? null : normalized;
     }
 
-    private String normalizeKeyword(String keyword) { // 검색어 정규화(공백만 있으면 null)
-        return normalizeOptional(keyword);
-    }
-
-    private String toJsonOrNull(Object value) { // JSON 문자열 저장용 변환(null이면 null)
+    private String toJsonOrNull(List<String> value) { // JSON 문자열 저장용 변환(null이면 null)
         if (value == null) {
             return null;
         }
