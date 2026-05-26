@@ -63,7 +63,7 @@ public class PatentService {
                 .filingCountry(normalizeOptional(request.filingCountry()))
                 .isJointApplication(request.isJointApplication())
                 .jointApplicant(normalizeOptional(request.jointApplicant()))
-                .initialDepartment(normalizeOptional(request.initialDepartment()))
+                .initialDepartment(null) // 최초 담당 부서는 Legal 배정 시점에만 스냅샷으로 기록(등록 단계에서는 미설정)
                 .keywords(normalizeOptional(request.keywords()))
                 .overview(normalizeOptional(request.overview()))
                 .coreContent(normalizeOptional(request.coreContent()))
