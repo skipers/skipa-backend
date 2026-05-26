@@ -12,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,6 +36,7 @@ public class DepartmentController {
      * @param request 생성 요청
      * @return 생성된 부서
     */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(@Valid @RequestBody DepartmentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(departmentService.create(request)));
@@ -46,6 +48,7 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 부서
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> get(@PathVariable Long departmentId) {
         return ApiResponse.ok(departmentService.get(departmentId));
@@ -57,6 +60,7 @@ public class DepartmentController {
      * @param name 부서명
      * @return 부서
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/by-name")
     public ApiResponse<DepartmentResponse> getByName(@RequestParam String name) {
         return ApiResponse.ok(departmentService.getByName(name));
@@ -69,6 +73,7 @@ public class DepartmentController {
      * @param request 수정 요청
      * @return 수정된 부서
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> update(
             @PathVariable Long departmentId,
@@ -83,6 +88,7 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 성공 응답
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {
         departmentService.delete(departmentId);
@@ -96,6 +102,7 @@ public class DepartmentController {
      * @param pageable page/size 정보
      * @return 부서 목록 페이지
      */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping
     public ApiResponse<PageResponse<DepartmentResponse>> search(
             @RequestParam(required = false) String keyword,
