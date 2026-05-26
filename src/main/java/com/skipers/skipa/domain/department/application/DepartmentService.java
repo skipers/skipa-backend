@@ -14,8 +14,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -44,13 +42,14 @@ public class DepartmentService {
         return DepartmentResponse.from(department);
     }
 
-    public DepartmentResponse getByName(String name) {
-        String normalizedName = normalizeName(name);
+    public Page<DepartmentResponse> getAll(String keyword, Pageable pageable) {
+        String normalizedKeyword = normalizeKeyword(keyword);
 
-        Department department = departmentRepository.findByNameIgnoreCase(normalizedName)
-                .orElseThrow(DepartmentNotFoundException::new);
+        Page<Department> page = normalizedKeyword == null
+                ? departmentRepository.findAll(pageable)
+                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageable);
 
-        return DepartmentResponse.from(department);
+        return page.map(DepartmentResponse::from);
     }
 
     @Transactional
@@ -75,28 +74,6 @@ public class DepartmentService {
         }
 
         departmentRepository.deleteById(departmentId);
-    }
-
-    public List<DepartmentResponse> search(String keyword) {
-        String normalizedKeyword = normalizeKeyword(keyword);
-
-        List<Department> departments = normalizedKeyword == null
-                ? departmentRepository.findAll()
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword);
-
-        return departments.stream()
-                .map(DepartmentResponse::from)
-                .toList();
-    }
-
-    public Page<DepartmentResponse> searchPage(String keyword, Pageable pageable) {
-        String normalizedKeyword = normalizeKeyword(keyword);
-
-        Page<Department> page = normalizedKeyword == null
-                ? departmentRepository.findAll(pageable)
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageable);
-
-        return page.map(DepartmentResponse::from);
     }
 
     private String normalizeName(String name) {

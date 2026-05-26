@@ -55,15 +55,19 @@ public class DepartmentController {
     }
 
     /**
-     * 부서를 부서명으로 조회한다.
+     * 부서 목록을 조회한다(page/size 기반).
      *
-     * @param name 부서명
-     * @return 부서
+     * @param keyword 부서명 검색 키워드(선택)
+     * @param pageable page/size 정보
+     * @return 부서 목록 페이지
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
-    @GetMapping("/by-name")
-    public ApiResponse<DepartmentResponse> getByName(@RequestParam String name) {
-        return ApiResponse.ok(departmentService.getByName(name));
+    @GetMapping
+    public ApiResponse<PageResponse<DepartmentResponse>> getAll(
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(page = 0, size = 20) Pageable pageable
+    ) {
+        return ApiResponse.ok(PageResponse.from(departmentService.getAll(keyword, pageable)));
     }
 
     /**
@@ -93,21 +97,5 @@ public class DepartmentController {
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {
         departmentService.delete(departmentId);
         return ApiResponse.ok(null);
-    }
-
-    /**
-     * 부서 목록/검색을 조회한다(page/size 기반).
-     *
-     * @param keyword 부서명 검색 키워드(선택)
-     * @param pageable page/size 정보
-     * @return 부서 목록 페이지
-     */
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
-    @GetMapping
-    public ApiResponse<PageResponse<DepartmentResponse>> search(
-            @RequestParam(required = false) String keyword,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
-    ) {
-        return ApiResponse.ok(PageResponse.from(departmentService.searchPage(keyword, pageable)));
     }
 }
