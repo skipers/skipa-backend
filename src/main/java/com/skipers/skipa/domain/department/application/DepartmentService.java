@@ -9,8 +9,6 @@ import com.skipers.skipa.domain.department.exception.DepartmentNotFoundException
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,16 +85,6 @@ public class DepartmentService {
         return departments.stream()
                 .map(DepartmentResponse::from)
                 .toList();
-    }
-
-    public Page<DepartmentResponse> searchPage(String keyword, Pageable pageable) {
-        String normalizedKeyword = normalizeKeyword(keyword);
-
-        Page<Department> page = normalizedKeyword == null
-                ? departmentRepository.findAll(pageable)
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageable);
-
-        return page.map(DepartmentResponse::from);
     }
 
     private String normalizeName(String name) {
