@@ -1,5 +1,6 @@
 package com.skipers.skipa.global.config;
 
+import com.skipers.skipa.global.security.CustomAccessDeniedHandler;
 import com.skipers.skipa.global.security.CustomAuthenticationEntryPoint;
 import com.skipers.skipa.global.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     private static final String[] WHITE_LIST = {
             "/swagger-ui/**",
@@ -49,11 +51,13 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
 
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

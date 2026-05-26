@@ -24,8 +24,8 @@ public class AuthController {
      * 회원가입 요청을 처리한다.
      * 가입 후 계정은 PENDING 상태로 저장되며, admin 승인 후 로그인이 가능하다.
      *
-     * @param request 로그인 ID, 비밀번호, 이름, 이메일, 역할, 부서 ID
-     * @return 가입된 사용자의 로그인 ID, 이름, 상태
+     * @param request 로그인 ID, 비밀번호, 이름, 이메일, 역할
+     * @return 가입된 사용자 정보
      */
     @PostMapping("/register")
     public ApiResponse<UserResponse> register(@Valid @RequestBody UserCreateRequest request) {

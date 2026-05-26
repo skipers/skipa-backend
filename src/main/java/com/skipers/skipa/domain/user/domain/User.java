@@ -87,6 +87,11 @@ public class User extends BaseTimeEntity {
                 .build();
     }
 
+    public void approve(Department department) {
+        this.status = UserStatus.ACTIVE;
+        this.department = department;
+    }
+
     public void update(String name, String email, UserRole role, Department department) {
         this.name = name;
         this.email = email;
