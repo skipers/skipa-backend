@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.department.dto.request.DepartmentCreateRequest;
 import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.domain.department.exception.DepartmentNotFoundException;
+import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public DepartmentResponse create(DepartmentCreateRequest request) {
@@ -71,6 +73,10 @@ public class DepartmentService {
     public void delete(Long departmentId) {
         if (!departmentRepository.existsById(departmentId)) {
             throw new DepartmentNotFoundException();
+        }
+
+        if (userRepository.existsByDepartmentId(departmentId)) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_IN_USE);
         }
 
         departmentRepository.deleteById(departmentId);

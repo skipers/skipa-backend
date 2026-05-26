@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.department.dto.request.DepartmentCreateRequest;
 import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.domain.department.exception.DepartmentNotFoundException;
+import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +35,9 @@ class DepartmentServiceTest {
 
     @Mock
     private DepartmentRepository departmentRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private DepartmentService departmentService;
@@ -161,10 +165,22 @@ class DepartmentServiceTest {
 
         departmentService.delete(1L);
 
+        verify(userRepository).existsByDepartmentId(1L);
         verify(departmentRepository).deleteById(1L);
         assertThatThrownBy(() -> departmentService.delete(2L))
                 .isInstanceOf(DepartmentNotFoundException.class);
+        verify(userRepository, never()).existsByDepartmentId(2L);
         verify(departmentRepository, never()).deleteById(2L);
+    }
+
+    @Test
+    void deleteRejectsDepartmentAssignedToUser() {
+        when(departmentRepository.existsById(1L)).thenReturn(true);
+        when(userRepository.existsByDepartmentId(1L)).thenReturn(true);
+
+        assertBusinessError(() -> departmentService.delete(1L), ErrorCode.DEPARTMENT_IN_USE);
+
+        verify(departmentRepository, never()).deleteById(1L);
     }
 
     private void assertBusinessError(Runnable invocation, ErrorCode errorCode) {

@@ -29,6 +29,7 @@ public enum ErrorCode {
     // Department
     DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "DEPARTMENT_NOT_FOUND", "부서를 찾을 수 없습니다."),
     DUPLICATE_DEPARTMENT_NAME(HttpStatus.CONFLICT, "DUPLICATE_DEPARTMENT_NAME", "이미 존재하는 부서명입니다."),
+    DEPARTMENT_IN_USE(HttpStatus.CONFLICT, "DEPARTMENT_IN_USE", "사용자가 소속된 부서는 삭제할 수 없습니다."),
 
     // Patent
     PATENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_NOT_FOUND", "특허를 찾을 수 없습니다."),

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -246,6 +247,20 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void assignedDepartmentCannotBeDeleted() throws Exception {
+        createActiveUserToken("assigned-business", "assigned-business@example.com", UserRole.BUSINESS);
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(delete("/departments/{departmentId}", department.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_IN_USE"));
+
+        assertThat(departmentRepository.existsById(department.getId())).isTrue();
+    }
+
+    @Test
     void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -264,10 +279,64 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
-    void malformedJsonReturnsInvalidRequestErrorResponse() throws Exception {
+    void registrationRejectsFieldValuesLongerThanPersistenceLimits() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
+                                {
+                                  "loginId": "%s",
+                                  "password": "password",
+                                  "name": "Too Long Login",
+                                  "email": "long-login@example.com",
+                                  "role": "BUSINESS"
+                                }
+                                """.formatted("a".repeat(51))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void departmentWriteRejectsNameLongerThanPersistenceLimit() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+        String longName = "d".repeat(101);
+
+        mockMvc.perform(post("/departments")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s"
+                                }
+                                """.formatted(longName)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(put("/departments/{departmentId}", department.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "%s"
+                                }
+                                """.formatted(longName)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void databaseConstraintRejectsExactDuplicateDepartmentName() {
+        departmentRepository.saveAndFlush(Department.builder().name("Legal").build());
+
+        assertThatThrownBy(() -> departmentRepository.saveAndFlush(
+                Department.builder().name("Legal").build()
+        )).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void malformedJsonReturnsInvalidRequestErrorResponse() throws Exception {
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                .content("""
                                 {
                                   "loginId": "malformed",
                                   "password": "password"
@@ -306,7 +375,7 @@ class AuthApprovalFlowIntegrationTest {
                                   "role": "BUSINESS"
                                 }
                                 """))
-                .andExpect(status().isOk())
+                .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.departmentId").value(nullValue()))
                 .andReturn();

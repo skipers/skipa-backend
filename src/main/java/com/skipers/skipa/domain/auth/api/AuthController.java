@@ -8,6 +8,8 @@ import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,8 +30,8 @@ public class AuthController {
      * @return 가입된 사용자 정보
      */
     @PostMapping("/register")
-    public ApiResponse<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ApiResponse.ok(authService.register(request));
+    public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(authService.register(request)));
     }
 
     /**
