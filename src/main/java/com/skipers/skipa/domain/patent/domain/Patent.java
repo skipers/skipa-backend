@@ -171,4 +171,8 @@ public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관�
         this.coreContent = coreContent;
     }
 
+    public void updateTitle(String title) { // 특허명 변경(PATCH 지원을 위한 최소 변경 메서드)
+        this.title = title;
+    }
+
 }
