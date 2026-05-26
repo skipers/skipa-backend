@@ -45,6 +45,10 @@ public class User extends BaseTimeEntity {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private UserStatus status;
+
     @Builder
     private User(
             String loginId,
@@ -60,6 +64,7 @@ public class User extends BaseTimeEntity {
         this.password = password;
         this.role = role;
         this.department = department;
+        this.status = UserStatus.PENDING;
     }
 
     public void update(String name, String email, UserRole role, Department department) {
