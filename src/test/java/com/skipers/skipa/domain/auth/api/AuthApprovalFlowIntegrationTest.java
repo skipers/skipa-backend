@@ -245,6 +245,55 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true));
     }
 
+    @Test
+    void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "unsupported-role",
+                                  "password": "password",
+                                  "name": "Unsupported Role",
+                                  "email": "unsupported-role@example.com",
+                                  "role": "MANAGER"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_ROLE"));
+    }
+
+    @Test
+    void malformedJsonReturnsInvalidRequestErrorResponse() throws Exception {
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "malformed",
+                                  "password": "password"
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void nonNumericApprovalUserIdReturnsInvalidRequestErrorResponse() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(patch("/admin/users/not-a-number/approve")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
     private Long registerBusinessUser() throws Exception {
         MvcResult result = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)

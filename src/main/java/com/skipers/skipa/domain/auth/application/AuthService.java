@@ -56,7 +56,13 @@ public class AuthService {
             throw new AuthException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        UserRole role = UserRole.from(request.role());
+        UserRole role;
+        try {
+            role = UserRole.from(request.role());
+        } catch (IllegalArgumentException e) {
+            throw new AuthException(ErrorCode.INVALID_ROLE);
+        }
+
         if (role == UserRole.ADMIN) {
             throw new AuthException(ErrorCode.INVALID_ROLE);
         }
