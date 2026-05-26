@@ -9,6 +9,8 @@ import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.domain.patent.exception.DuplicateApplicationNumberException;
 import com.skipers.skipa.domain.patent.exception.PatentNotFoundException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import com.skipers.skipa.global.response.PageResponse;
@@ -29,6 +31,7 @@ public class PatentService {
     private static final int MAX_PAGE_SIZE = 100; // 최대 페이지 크기(과도한 조회 방지)
 
     private final PatentRepository patentRepository; // 특허 저장소
+    private final ObjectMapper objectMapper; // JSON 직렬화(배열 → 문자열 저장)
 
     @Transactional // 등록은 쓰기 트랜잭션
     public PatentDetailResponse create(PatentCreateRequest request) {
@@ -59,12 +62,12 @@ public class PatentService {
                 .managementNumber(normalizeOptional(request.managementNumber()))
                 .businessField(normalizeOptional(request.businessField()))
                 .techField(normalizeOptional(request.techField()))
-                .relatedProducts(normalizeOptional(request.relatedProducts()))
+                .relatedProducts(toJsonOrNull(request.relatedProducts())) // List<String> → JSON 문자열로 저장
                 .filingCountry(normalizeOptional(request.filingCountry()))
                 .isJointApplication(request.isJointApplication())
                 .jointApplicant(normalizeOptional(request.jointApplicant()))
                 .initialDepartment(null) // 최초 담당 부서는 Legal 배정 시점에만 스냅샷으로 기록(등록 단계에서는 미설정)
-                .keywords(normalizeOptional(request.keywords()))
+                .keywords(toJsonOrNull(request.keywords())) // List<String> → JSON 문자열로 저장
                 .overview(normalizeOptional(request.overview()))
                 .coreContent(normalizeOptional(request.coreContent()))
                 .build());
@@ -149,5 +152,17 @@ public class PatentService {
 
     private String normalizeKeyword(String keyword) { // 검색어 정규화(공백만 있으면 null)
         return normalizeOptional(keyword);
+    }
+
+    private String toJsonOrNull(Object value) { // JSON 문자열 저장용 변환(null이면 null)
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            return objectMapper.writeValueAsString(value); // 안전한 JSON 직렬화
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST); // JSON 변환 실패는 요청 오류로 처리
+        }
     }
 }

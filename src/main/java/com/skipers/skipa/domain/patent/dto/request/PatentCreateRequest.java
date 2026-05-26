@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public record PatentCreateRequest(
 
@@ -80,8 +81,8 @@ public record PatentCreateRequest(
         @Schema(description = "관련기술 분야", example = "패키징") // 선택 입력값
         String techField,
 
-        @Schema(description = "관련제품(JSON 문자열)", example = "[\"제품A\",\"제품B\"]") // 선택 입력값
-        String relatedProducts,
+        @Schema(description = "관련제품", example = "[\"제품A\",\"제품B\"]") // 선택 입력값
+        List<String> relatedProducts,
 
         @Size(max = 100, message = "출원국가는 100자 이하여야 합니다.") // DB 컬럼 길이 기준 검증
         @Schema(description = "출원국가", example = "KR") // 선택 입력값
@@ -98,8 +99,8 @@ public record PatentCreateRequest(
         @Schema(description = "최초 담당 부서", example = "반도체") // 선택 입력값
         String initialDepartment,
 
-        @Schema(description = "키워드(JSON 문자열)", example = "[\"패키지\",\"반도체\"]") // 선택 입력값
-        String keywords,
+        @Schema(description = "키워드", example = "[\"패키지\",\"반도체\"]") // 선택 입력값
+        List<String> keywords,
 
         @Schema(description = "개요", example = "특허 개요") // 선택 입력값
         String overview,
