@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
+import com.skipers.skipa.domain.patent.dao.PatentSpecifications;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
@@ -18,8 +19,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Locale;
 
 @Service // 특허 유스케이스 서비스
 @RequiredArgsConstructor // 생성자 주입
@@ -84,7 +83,7 @@ public class PatentService {
         int pageNumber = normalizePage(page); // page 기본값/검증
         int pageSize = normalizeSize(size); // size 기본값/검증
 
-        Specification<Patent> specification = titleContains(normalizeKeyword(keyword)); // v1: 제목 검색만 지원
+        Specification<Patent> specification = PatentSpecifications.titleContainsIgnoreCase(normalizeKeyword(keyword)); // v1: 제목 검색만 지원
         PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id")); // 기본 정렬(최신순)
 
         Page<PatentListResponse> result = patentRepository.findAll(specification, pageRequest) // 동적 검색 + 페이징
@@ -104,15 +103,6 @@ public class PatentService {
         }
 
         return PatentDetailResponse.from(patent); // 변경 감지(Dirty Checking)로 반영
-    }
-
-    private Specification<Patent> titleContains(String keyword) { // 제목 검색 스펙(확장 가능)
-        if (keyword == null) {
-            return (root, query, cb) -> cb.conjunction(); // 검색어 없으면 전체 조회
-        }
-
-        String likeKeyword = "%" + keyword.toLowerCase(Locale.ROOT) + "%"; // 대소문자 무시 검색
-        return (root, query, cb) -> cb.like(cb.lower(root.get("title")), likeKeyword); // title like %keyword%
     }
 
     private int normalizePage(Integer page) { // 페이지 번호 정규화
