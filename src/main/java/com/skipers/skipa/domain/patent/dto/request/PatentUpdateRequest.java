@@ -1,14 +1,12 @@
 package com.skipers.skipa.domain.patent.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 
 import java.time.LocalDate;
 
 public record PatentUpdateRequest(
 
-        @NotBlank(message = "특허명은 필수입니다.") // 필수 입력값 검증
-        @Schema(description = "특허명", example = "반도체 패키지 구조(수정)") // Swagger 문서화
+        @Schema(description = "특허명(미전달 시 유지)", example = "반도체 패키지 구조(수정)") // PATCH: 값이 오면 변경, 없으면 유지
         String title,
 
         @Schema(description = "등록번호", example = "10-1234567") // 선택 입력값
@@ -86,4 +84,3 @@ public record PatentUpdateRequest(
         @Schema(description = "핵심 내용", example = "특허 핵심 내용") // 선택 입력값
         String coreContent
 ) {}
-
