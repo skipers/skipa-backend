@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
+import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.user.domain.UserStatus;
 import com.skipers.skipa.domain.user.dto.request.UserApproveRequest;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
@@ -30,8 +31,15 @@ public class AdminUserService {
             throw new BusinessException(ErrorCode.CONFLICT);
         }
 
-        Department department = departmentRepository.findById(request.departmentId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+        Department department = null;
+        if (user.getRole() == UserRole.BUSINESS) {
+            if (request.departmentId() == null) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST);
+            }
+
+            department = departmentRepository.findById(request.departmentId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+        }
 
         user.approve(department);
         return UserResponse.from(user);

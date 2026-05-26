@@ -136,6 +136,43 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void approvedLegalUserBecomesActiveWithoutDepartment() throws Exception {
+        MvcResult registrationResult = mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "legal-new",
+                                  "password": "password",
+                                  "name": "Legal User",
+                                  "email": "legal-new@example.com",
+                                  "role": "LEGAL"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
+                .andReturn();
+        Long userId = objectMapper.readTree(registrationResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .longValue();
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.departmentId").value(nullValue()));
+
+        User approvedUser = userRepository.findById(userId).orElseThrow();
+        assertThat(approvedUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(approvedUser.getDepartment()).isNull();
+
+        loginAndGetAccessToken("legal-new", "password");
+    }
+
+    @Test
     void approvalRequiresAdminAndReturnsRequestAndDomainErrors() throws Exception {
         Long userId = registerBusinessUser();
         String legalToken = createActiveUserToken("legal-approver", "legal-approver@example.com", UserRole.LEGAL);

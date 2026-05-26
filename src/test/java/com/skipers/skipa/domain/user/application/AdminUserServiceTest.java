@@ -70,6 +70,35 @@ class AdminUserServiceTest {
     }
 
     @Test
+    void approveActivatesLegalUserWithoutDepartment() {
+        User pendingLegalUser = User.builder()
+                .loginId("pending-legal")
+                .name("Pending Legal User")
+                .email("pending-legal@example.com")
+                .password("encoded-password")
+                .role(UserRole.LEGAL)
+                .build();
+        when(userRepository.findById(2L)).thenReturn(Optional.of(pendingLegalUser));
+
+        UserResponse response = adminUserService.approve(2L, new UserApproveRequest(null));
+
+        assertThat(pendingLegalUser.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(pendingLegalUser.getDepartment()).isNull();
+        assertThat(response.departmentId()).isNull();
+        verify(departmentRepository, never()).findById(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void approveRejectsBusinessUserWithoutDepartment() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(pendingUser));
+
+        assertErrorCode(() -> adminUserService.approve(1L, new UserApproveRequest(null)), ErrorCode.INVALID_REQUEST);
+
+        assertThat(pendingUser.getStatus()).isEqualTo(UserStatus.PENDING);
+        verify(departmentRepository, never()).findById(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void approveRejectsUnknownUser() {
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
