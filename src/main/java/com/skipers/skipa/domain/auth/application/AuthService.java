@@ -3,8 +3,6 @@ package com.skipers.skipa.domain.auth.application;
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
 import com.skipers.skipa.domain.auth.exception.AuthException;
-import com.skipers.skipa.domain.department.dao.DepartmentRepository;
-import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -24,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
 
@@ -64,16 +61,12 @@ public class AuthService {
             throw new AuthException(ErrorCode.INVALID_ROLE);
         }
 
-        Department department = departmentRepository.findById(request.departmentId())
-                .orElseThrow(() -> new AuthException(ErrorCode.DEPARTMENT_NOT_FOUND));
-
         User user = User.builder()
                 .loginId(request.loginId())
                 .password(passwordEncoder.encode(request.password()))
                 .name(request.name())
                 .email(request.email())
                 .role(role)
-                .department(department)
                 .build();
 
         userRepository.save(user);

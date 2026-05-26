@@ -3,7 +3,6 @@ package com.skipers.skipa.domain.user.dto.request;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 public record UserCreateRequest(
 
@@ -26,9 +25,5 @@ public record UserCreateRequest(
 
         @NotBlank(message = "역할은 필수입니다.")
         @Schema(description = "역할 (LEGAL 또는 BUSINESS)", example = "LEGAL")
-        String role,
-
-        @NotNull(message = "부서는 필수입니다.")
-        @Schema(description = "부서 ID", example = "1")
-        Long departmentId
+        String role
 ) {}
