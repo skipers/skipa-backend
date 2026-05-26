@@ -1,13 +1,13 @@
 package com.skipers.skipa.domain.auth.application;
 
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
+import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
 import com.skipers.skipa.domain.auth.exception.AuthException;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.user.domain.UserStatus;
-import com.skipers.skipa.domain.user.dto.request.UserCreateRequest;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.exception.ErrorCode;
 import com.skipers.skipa.global.security.JwtProvider;
@@ -48,7 +48,7 @@ public class AuthService {
     }
 
     @Transactional
-    public UserResponse register(UserCreateRequest request) {
+    public UserResponse register(RegisterRequest request) {
         if (userRepository.existsByLoginId(request.loginId())) {
             throw new AuthException(ErrorCode.DUPLICATE_LOGIN_ID);
         }

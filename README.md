@@ -184,6 +184,7 @@ src/main/java/com/skipers/skipa
 │   │   ├── dto
 │   │   │   ├── request
 │   │   │   │   ├── LoginRequest.java
+│   │   │   │   ├── RegisterRequest.java
 │   │   │   │   └── TokenRefreshRequest.java
 │   │   │   └── response
 │   │   │       ├── LoginResponse.java
@@ -203,7 +204,6 @@ src/main/java/com/skipers/skipa
 │   │   │   └── UserRole.java
 │   │   ├── dto
 │   │   │   ├── request
-│   │   │   │   ├── UserCreateRequest.java
 │   │   │   │   └── UserUpdateRequest.java
 │   │   │   └── response
 │   │   │       └── UserResponse.java

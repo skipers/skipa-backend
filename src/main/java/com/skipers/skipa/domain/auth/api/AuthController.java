@@ -2,8 +2,8 @@ package com.skipers.skipa.domain.auth.api;
 
 import com.skipers.skipa.domain.auth.application.AuthService;
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
+import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
-import com.skipers.skipa.domain.user.dto.request.UserCreateRequest;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -28,7 +28,7 @@ public class AuthController {
      * @return 가입된 사용자 정보
      */
     @PostMapping("/register")
-    public ApiResponse<UserResponse> register(@Valid @RequestBody UserCreateRequest request) {
+    public ApiResponse<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ApiResponse.ok(authService.register(request));
     }
 

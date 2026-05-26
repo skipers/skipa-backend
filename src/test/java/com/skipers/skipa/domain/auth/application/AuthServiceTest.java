@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.auth.exception.AuthException;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
+import com.skipers.skipa.domain.user.domain.UserStatus;
 import com.skipers.skipa.global.exception.ErrorCode;
 import com.skipers.skipa.global.security.JwtProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +51,7 @@ class AuthServiceTest {
                 .email("user@example.com")
                 .password("encoded-password")
                 .role(UserRole.BUSINESS)
+                .status(UserStatus.ACTIVE)
                 .build();
         ReflectionTestUtils.setField(user, "id", 1L);
     }
