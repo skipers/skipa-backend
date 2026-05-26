@@ -56,7 +56,8 @@ public class User extends BaseTimeEntity {
             String email,
             String password,
             UserRole role,
-            Department department
+            Department department,
+            UserStatus status
     ) {
         this.loginId = loginId;
         this.name = name;
@@ -64,7 +65,26 @@ public class User extends BaseTimeEntity {
         this.password = password;
         this.role = role;
         this.department = department;
-        this.status = UserStatus.PENDING;
+        this.status = status != null ? status : UserStatus.PENDING;
+    }
+
+    public static User createActive(
+            String loginId,
+            String name,
+            String email,
+            String password,
+            UserRole role,
+            Department department
+    ) {
+        return User.builder()
+                .loginId(loginId)
+                .name(name)
+                .email(email)
+                .password(password)
+                .role(role)
+                .department(department)
+                .status(UserStatus.ACTIVE)
+                .build();
     }
 
     public void update(String name, String email, UserRole role, Department department) {

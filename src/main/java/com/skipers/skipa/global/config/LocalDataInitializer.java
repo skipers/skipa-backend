@@ -36,16 +36,16 @@ public class LocalDataInitializer implements ApplicationRunner {
 
         String encodedPassword = passwordEncoder.encode(seedPassword);
         List<User> seedUsers = List.of(
-                buildUser("admin", "관리자", "admin@skipa.local", encodedPassword, UserRole.ADMIN),
-                buildUser("legal01", "법무 담당자 1", "legal_01@skipa.local", encodedPassword, UserRole.LEGAL),
-                buildUser("legal02", "법무 담당자 2", "legal_02@skipa.local", encodedPassword, UserRole.LEGAL),
-                buildUser("legal03", "법무 담당자 3", "legal_03@skipa.local", encodedPassword, UserRole.LEGAL),
-                buildUser("legal04", "법무 담당자 4", "legal_04@skipa.local", encodedPassword, UserRole.LEGAL),
-                buildUser("business01", "사업부 담당자 1", "business_01@skipa.local", encodedPassword, UserRole.BUSINESS),
-                buildUser("business02", "사업부 담당자 2", "business_02@skipa.local", encodedPassword, UserRole.BUSINESS),
-                buildUser("business03", "사업부 담당자 3", "business_03@skipa.local", encodedPassword, UserRole.BUSINESS),
-                buildUser("business04", "사업부 담당자 4", "business_04@skipa.local", encodedPassword, UserRole.BUSINESS),
-                buildUser("business05", "사업부 담당자 5", "business_05@skipa.local", encodedPassword, UserRole.BUSINESS)
+                buildUser("admin", "관리자", "admin@sk.com", encodedPassword, UserRole.ADMIN),
+                buildUser("legal01", "법무 담당자 1", "legal01@sk.com", encodedPassword, UserRole.LEGAL),
+                buildUser("legal02", "법무 담당자 2", "legal02@sk.com", encodedPassword, UserRole.LEGAL),
+                buildUser("legal03", "법무 담당자 3", "legal03@sk.com", encodedPassword, UserRole.LEGAL),
+                buildUser("legal04", "법무 담당자 4", "legal04@sk.com", encodedPassword, UserRole.LEGAL),
+                buildUser("business01", "사업부 담당자 1", "business01@sk.com", encodedPassword, UserRole.BUSINESS),
+                buildUser("business02", "사업부 담당자 2", "business02@sk.com", encodedPassword, UserRole.BUSINESS),
+                buildUser("business03", "사업부 담당자 3", "business03@sk.com", encodedPassword, UserRole.BUSINESS),
+                buildUser("business04", "사업부 담당자 4", "business04@sk.com", encodedPassword, UserRole.BUSINESS),
+                buildUser("business05", "사업부 담당자 5", "business05@sk.com", encodedPassword, UserRole.BUSINESS)
         );
 
         userRepository.saveAll(seedUsers);

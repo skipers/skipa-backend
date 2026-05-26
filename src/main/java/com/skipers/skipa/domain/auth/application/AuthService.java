@@ -28,6 +28,28 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
 
+    public LoginResponse login(LoginRequest request) {
+        User user = userRepository.findByLoginId(request.loginId())
+                .orElse(null);
+
+        if (user == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new AuthException(ErrorCode.INVALID_LOGIN_REQUEST);
+        }
+
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new AuthException(ErrorCode.PENDING_USER);
+        }
+
+        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
+        JwtProvider.RefreshTokenResult refreshTokenResult = jwtProvider.createRefreshToken(user.getId());
+
+        return LoginResponse.of(
+                accessToken,
+                refreshTokenResult.token(),
+                user
+        );
+    }
+
     @Transactional
     public UserResponse register(UserCreateRequest request) {
         if (userRepository.existsByLoginId(request.loginId())) {
@@ -57,27 +79,5 @@ public class AuthService {
         userRepository.save(user);
 
         return UserResponse.from(user);
-    }
-
-    public LoginResponse login(LoginRequest request) {
-        User user = userRepository.findByLoginId(request.loginId())
-                .orElse(null);
-
-        if (user == null || !passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new AuthException(ErrorCode.INVALID_LOGIN_REQUEST);
-        }
-
-        if (user.getStatus() == UserStatus.PENDING) {
-            throw new AuthException(ErrorCode.PENDING_USER);
-        }
-
-        String accessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
-        JwtProvider.RefreshTokenResult refreshTokenResult = jwtProvider.createRefreshToken(user.getId());
-
-        return LoginResponse.of(
-                accessToken,
-                refreshTokenResult.token(),
-                user
-        );
     }
 }

@@ -8,11 +8,11 @@ import jakarta.validation.constraints.NotNull;
 public record UserCreateRequest(
 
         @NotBlank(message = "로그인 ID는 필수입니다.")
-        @Schema(description = "로그인 ID", example = "user01")
+        @Schema(description = "로그인 ID", example = "legal01")
         String loginId,
 
         @NotBlank(message = "비밀번호는 필수입니다.")
-        @Schema(description = "비밀번호", example = "password123")
+        @Schema(description = "비밀번호", example = "1234")
         String password,
 
         @NotBlank(message = "이름은 필수입니다.")
@@ -21,7 +21,7 @@ public record UserCreateRequest(
 
         @NotBlank(message = "이메일은 필수입니다.")
         @Email(message = "이메일 형식이 올바르지 않습니다.")
-        @Schema(description = "이메일", example = "user01@sk.com")
+        @Schema(description = "이메일", example = "legal01@sk.com")
         String email,
 
         @NotBlank(message = "역할은 필수입니다.")
