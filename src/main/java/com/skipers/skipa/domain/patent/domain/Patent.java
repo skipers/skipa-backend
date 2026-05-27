@@ -1,13 +1,7 @@
 package com.skipers.skipa.domain.patent.domain;
 
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,7 +28,7 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "title", length = 500, nullable = false) // 특허명
     private String title;
 
-    @Column(name = "application_number", length = 20, nullable = false) // 출원번호(유니크)
+    @Column(name = "application_number", length = 20, nullable = false, unique = true) // 출원번호(유니크)
     private String applicationNumber;
 
     @Column(name = "registration_number", length = 20) // 등록번호
