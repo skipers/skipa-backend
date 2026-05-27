@@ -9,9 +9,11 @@ import com.skipers.skipa.domain.department.exception.DepartmentNotFoundException
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
+import com.skipers.skipa.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DepartmentService {
+
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
@@ -47,11 +52,15 @@ public class DepartmentService {
     public Page<DepartmentResponse> getAll(String keyword, Pageable pageable) {
         String normalizedKeyword = normalizeKeyword(keyword);
 
-        Page<Department> page = normalizedKeyword == null
-                ? departmentRepository.findAll(pageable)
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageable);
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizeSize(size);
+        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id"));
 
-        return page.map(DepartmentResponse::from);
+        Page<DepartmentResponse> result = normalizedKeyword == null
+                ? departmentRepository.findAll(pageRequest).map(DepartmentResponse::from)
+                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageRequest).map(DepartmentResponse::from);
+
+        return PageResponse.from(result);
     }
 
     @Transactional
@@ -81,7 +90,7 @@ public class DepartmentService {
 
         departmentRepository.deleteById(departmentId);
     }
-
+  
     private String normalizeName(String name) {
         if (name == null) {
             throw new IllegalArgumentException("부서명은 필수입니다.");
@@ -102,5 +111,25 @@ public class DepartmentService {
 
         String normalized = keyword.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null) {
+            return 0;
+        }
+        if (page < 0) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return page;
+    }
+
+    private int normalizeSize(Integer size) {
+        if (size == null) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        if (size <= 0 || size > MAX_PAGE_SIZE) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+        return size;
     }
 }
