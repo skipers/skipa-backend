@@ -18,33 +18,32 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
-@Entity // 특허 담당 부서(patent_departments) 엔티티
-@Getter // 조회 전용(getter) 제공
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 기본 생성자
-@Table(name = "patent_departments") // 특허-부서 매핑 테이블
-public class PatentDepartment extends BaseTimeEntity { // createdAt/updatedAt 자동 관리
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "patent_departments")
+public class PatentDepartment extends BaseTimeEntity {
 
-    @Id // PK
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // auto increment
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id") // 매핑 ID
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY) // 특허(N) : (1) 매핑
-    @JoinColumn(name = "patent_id", nullable = false) // 특허 FK
+    @JoinColumn(name = "patent_id", nullable = false)
     private Patent patent;
 
     @ManyToOne(fetch = FetchType.LAZY) // 부서(N) : (1) 매핑
-    @JoinColumn(name = "department_id", nullable = false) // 부서 FK
+    @JoinColumn(name = "department_id", nullable = false)
     private Department department;
 
     @Column(name = "assigned_at", nullable = false) // 배정일시
     private Instant assignedAt;
 
-    @Builder // 생성 시 필요한 값만 선택적으로 세팅
+    @Builder
     private PatentDepartment(Patent patent, Department department, Instant assignedAt) {
         this.patent = patent;
         this.department = department;
         this.assignedAt = assignedAt;
     }
 }
-

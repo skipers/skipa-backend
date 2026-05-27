@@ -9,8 +9,12 @@ import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,37 +24,79 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController // 특허 기본 API(등록/조회/목록/수정)
-@RequiredArgsConstructor // 생성자 주입
-@RequestMapping("/patents") // 특허 도메인 기본 경로
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/patents")
 public class PatentController {
 
-    private final PatentService patentService; // 특허 유스케이스 서비스
+    private final PatentService patentService;
 
-    @PostMapping // 특허 등록
-    public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) { // 요청 검증(@Valid)
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(request))); // 201 + 생성 결과 반환
+    /**
+     * 특허를 생성한다.
+     *
+     * @param request 생성 요청
+     * @return 생성된 특허
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PostMapping
+    public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(request)));
     }
 
-    @GetMapping("/{patentId}") // 특허 단건 조회
-    public ApiResponse<PatentDetailResponse> get(@PathVariable Long patentId) { // path 변수로 조회 대상 지정
-        return ApiResponse.ok(patentService.get(patentId)); // 단건 응답 반환
+    /**
+     * 특허를 ID로 조회한다.
+     *
+     * @param patentId 특허 ID
+     * @return 특허
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @GetMapping("/{patentId}")
+    public ApiResponse<PatentDetailResponse> get(@PathVariable Long patentId) {
+        return ApiResponse.ok(patentService.get(patentId));
     }
 
-    @GetMapping // 특허 목록/검색(페이징)
-    public ApiResponse<PageResponse<PatentListResponse>> search(
-            @RequestParam(required = false) String keyword, // v1: 제목 검색 키워드(선택)
-            @RequestParam(required = false) Integer page, // 페이지 번호(0부터, 선택)
-            @RequestParam(required = false) Integer size // 페이지 크기(선택)
+    /**
+     * 특허 목록을 조회한다(page/size 기반).
+     *
+     * @param keyword 특허명 검색 키워드(선택)
+     * @param pageable page/size 정보
+     * @return 특허 목록 페이지
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @GetMapping
+    public ApiResponse<PageResponse<PatentListResponse>> getAll(
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(patentService.search(keyword, page, size)); // 페이지 응답 반환
+        return ApiResponse.ok(PageResponse.from(patentService.getAll(keyword, pageable)));
     }
 
-    @PutMapping("/{patentId}") // 특허 수정(PUT)
+    /**
+     * 특허를 수정한다.
+     *
+     * @param patentId 특허 ID
+     * @param request 수정 요청
+     * @return 수정된 특허
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PutMapping("/{patentId}")
     public ApiResponse<PatentDetailResponse> update(
-            @PathVariable Long patentId, // 수정 대상 ID
-            @Valid @RequestBody PatentUpdateRequest request // PUT 요청 DTO
+            @PathVariable Long patentId,
+            @Valid @RequestBody PatentUpdateRequest request
     ) {
-        return ApiResponse.ok(patentService.update(patentId, request)); // 수정 결과 반환
+        return ApiResponse.ok(patentService.update(patentId, request));
+    }
+
+    /**
+     * 특허를 삭제한다.
+     *
+     * @param patentId 특허 ID
+     * @return 성공 응답
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @DeleteMapping("/{patentId}")
+    public ApiResponse<Void> delete(@PathVariable Long patentId) {
+        patentService.delete(patentId);
+        return ApiResponse.ok();
     }
 }

@@ -11,10 +11,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DepartmentTest {
 
     @Test
-    void updateNameChangesDepartmentName() {
+    void updateChangesDepartmentName() {
         Department department = Department.builder().name("Old").build();
 
-        department.updateName("New");
+        department.update("New");
 
         assertThat(department.getName()).isEqualTo("New");
     }

@@ -11,6 +11,11 @@ spring:
   jackson:
     time-zone: Asia/Seoul
 
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+
   jpa:
     open-in-view: false
     properties:

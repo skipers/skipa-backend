@@ -8,6 +8,8 @@ import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -69,7 +71,7 @@ public class DepartmentController {
     }
 
     /**
-     * 부서를 수정한다(현재는 부서명만 변경).
+     * 부서를 수정한다.
      *
      * @param departmentId 부서 ID
      * @param request 수정 요청
@@ -94,6 +96,6 @@ public class DepartmentController {
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {
         departmentService.delete(departmentId);
-        return ApiResponse.ok(null);
+        return ApiResponse.ok();
     }
 }

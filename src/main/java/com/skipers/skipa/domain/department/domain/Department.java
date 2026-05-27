@@ -31,7 +31,7 @@ public class Department extends BaseTimeEntity {
         this.name = name;
     }
 
-    public void updateName(String name) {
+    public void update(String name) {
         this.name = name;
     }
 }

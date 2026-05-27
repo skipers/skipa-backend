@@ -8,7 +8,7 @@ import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.user.domain.UserStatus;
 import com.skipers.skipa.domain.user.dto.request.UserApproveRequest;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
-import com.skipers.skipa.global.exception.BusinessException;
+import com.skipers.skipa.domain.user.exception.UserException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -139,7 +139,7 @@ class AdminUserServiceTest {
 
     private void assertErrorCode(Runnable invocation, ErrorCode errorCode) {
         assertThatThrownBy(invocation::run)
-                .isInstanceOfSatisfying(BusinessException.class,
+                .isInstanceOfSatisfying(UserException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(errorCode));
     }
 }

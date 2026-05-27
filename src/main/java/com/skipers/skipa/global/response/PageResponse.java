@@ -10,19 +10,19 @@ import org.springframework.data.domain.Page;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PageResponse<T> {
 
-    private List<T> items; // 현재 페이지의 아이템 목록
+    private List<T> items;
 
-    private int page; // 현재 페이지 번호(0부터 시작)
+    private int page;
 
-    private int size; // 페이지 크기
+    private int size;
 
-    private long totalItems; // 전체 아이템 수
+    private long totalItems;
 
-    private int totalPages; // 전체 페이지 수
+    private int totalPages;
 
-    private boolean hasNext; // 다음 페이지 존재 여부
+    private boolean hasNext;
 
-    private boolean hasPrevious; // 이전 페이지 존재 여부
+    private boolean hasPrevious;
 
     private PageResponse(
             List<T> items,
@@ -54,4 +54,3 @@ public class PageResponse<T> {
         );
     }
 }
-
