@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -130,6 +131,23 @@ class JwtAuthenticationFilterTest {
         assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
                 .containsExactly("ROLE_BUSINESS");
+    }
+
+    @Test
+    void existingAuthenticationContinuesWithoutAuthenticatingBearerTokenAgain() throws Exception {
+        JwtAuthenticationFilter filter = createFilter(new ObjectMapper());
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer access-token");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken("existing-user", null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(jwtProvider, customUserDetailsService);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(authentication);
     }
 
     private JwtAuthenticationFilter createFilter(ObjectMapper objectMapper) {

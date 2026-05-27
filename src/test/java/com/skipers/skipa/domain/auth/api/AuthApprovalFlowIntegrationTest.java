@@ -4,6 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
+import com.skipers.skipa.domain.patent.dao.PatentRepository;
+import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentDepartment;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -20,6 +24,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
+
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,6 +56,12 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private PatentRepository patentRepository;
+
+    @Autowired
+    private PatentDepartmentRepository patentDepartmentRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -409,6 +421,201 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void patentApisAllowAdminAndLegalManagementAndReturnDecodedLists() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+        String legalToken = createActiveUserToken("legal-patent", "legal-patent@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-patent", "business-patent@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/patents/{patentId}", 1L)
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/patents")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Business Patent",
+                                  "applicationNumber": "BUSINESS-1"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/patents/{patentId}", 1L)
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Business Update",
+                                  "applicationNumber": "BUSINESS-2"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/patents/{patentId}", 1L)
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        MvcResult createResult = mockMvc.perform(post("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "  Chip Patent  ",
+                                  "applicationNumber": " APP-1 ",
+                                  "relatedProducts": [" Product "],
+                                  "initialDepartment": " Initial Legal ",
+                                  "keywords": [" Keyword "]
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.title").value("  Chip Patent  "))
+                .andExpect(jsonPath("$.data.applicationNumber").value(" APP-1 "))
+                .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
+                .andExpect(jsonPath("$.data.initialDepartment").value(" Initial Legal "))
+                .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "))
+                .andReturn();
+
+        Long patentId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .longValue();
+
+        mockMvc.perform(get("/patents/{patentId}", patentId)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
+                .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("keyword", " chip ")
+                        .param("page", "0")
+                        .param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].title").value("  Chip Patent  "));
+
+        mockMvc.perform(put("/patents/{patentId}", patentId)
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Updated Patent",
+                                  "applicationNumber": "APP-UPDATED",
+                                  "relatedProducts": ["Updated Product"],
+                                  "initialDepartment": "Updated Legal",
+                                  "keywords": ["Updated Keyword"]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Updated Patent"))
+                .andExpect(jsonPath("$.data.relatedProducts[0]").value("Updated Product"))
+                .andExpect(jsonPath("$.data.initialDepartment").value("Updated Legal"));
+
+        mockMvc.perform(delete("/patents/{patentId}", patentId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        assertThat(patentRepository.existsById(patentId)).isFalse();
+    }
+
+    @Test
+    void patentApisReturnValidationDuplicateAndNotFoundErrors() throws Exception {
+        String legalToken = createActiveUserToken("legal-errors", "legal-errors@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(post("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": " ",
+                                  "applicationNumber": "APP-INVALID"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        Long patentId = createPatent(legalToken, "Existing Patent", "APP-EXISTING");
+
+        mockMvc.perform(post("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Duplicate Patent",
+                                  "applicationNumber": "APP-EXISTING"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("DUPLICATE_APPLICATION_NUMBER"));
+
+        mockMvc.perform(put("/patents/{patentId}", patentId)
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": " ",
+                                  "applicationNumber": "APP-EXISTING"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/patents/{patentId}", 999999L)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(put("/patents/{patentId}", 999999L)
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Missing Patent",
+                                  "applicationNumber": "APP-MISSING"
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(delete("/patents/{patentId}", 999999L)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+    }
+
+    @Test
+    void deletingPatentRemovesAssignmentsButPreservesDepartment() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Assigned Patent")
+                .applicationNumber("APP-ASSIGNED")
+                .build());
+        PatentDepartment assignment = patentDepartmentRepository.save(PatentDepartment.builder()
+                .patent(patent)
+                .department(department)
+                .assignedAt(Instant.parse("2026-05-27T00:00:00Z"))
+                .build());
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(delete("/patents/{patentId}", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        assertThat(patentDepartmentRepository.existsById(assignment.getId())).isFalse();
+        assertThat(departmentRepository.existsById(department.getId())).isTrue();
+        assertThat(patentRepository.existsById(patent.getId())).isFalse();
+    }
+
+    @Test
     void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -594,6 +801,19 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void databaseConstraintRejectsDuplicatePatentApplicationNumber() {
+        patentRepository.saveAndFlush(Patent.builder()
+                .title("Patent")
+                .applicationNumber("APP-UNIQUE")
+                .build());
+
+        assertThatThrownBy(() -> patentRepository.saveAndFlush(Patent.builder()
+                .title("Duplicate Patent")
+                .applicationNumber("APP-UNIQUE")
+                .build())).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
     void persistenceAuditingPopulatesDepartmentTimestamps() {
         Department saved = departmentRepository.saveAndFlush(Department.builder()
                 .name("Audited Department")
@@ -649,6 +869,25 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.departmentId").value(nullValue()))
+                .andReturn();
+
+        return objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .longValue();
+    }
+
+    private Long createPatent(String token, String title, String applicationNumber) throws Exception {
+        MvcResult result = mockMvc.perform(post("/patents")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "%s",
+                                  "applicationNumber": "%s"
+                                }
+                                """.formatted(title, applicationNumber)))
+                .andExpect(status().isCreated())
                 .andReturn();
 
         return objectMapper.readTree(result.getResponse().getContentAsString())
