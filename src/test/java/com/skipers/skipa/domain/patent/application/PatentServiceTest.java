@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.patent.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
@@ -30,8 +31,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -66,6 +68,30 @@ class PatentServiceTest {
         assertThat(response.initialDepartment()).isEqualTo(" Initial Department ");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
+    }
+
+    @Test
+    void createRejectsDuplicateApplicationNumber() {
+        when(patentRepository.existsByApplicationNumber("APP-1")).thenReturn(true);
+
+        assertPatentError(
+                () -> patentService.create(createRequest("Patent", "APP-1")),
+                ErrorCode.DUPLICATE_APPLICATION_NUMBER
+        );
+
+        verify(patentRepository, never()).save(any());
+    }
+
+    @Test
+    void createRejectsValuesThatCannotBeSerializedAsJson() throws Exception {
+        doThrow(new JsonProcessingException("cannot serialize") {
+        }).when(objectMapper).writeValueAsString(any());
+
+        assertThatThrownBy(() -> patentService.create(createRequest("Patent", "APP-1")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+
+        verify(patentRepository, never()).save(any());
     }
 
     @Test
@@ -154,6 +180,20 @@ class PatentServiceTest {
 
         assertThat(patent.getTitle()).isEqualTo("Old Title");
         assertThat(patent.getApplicationNumber()).isEqualTo("OLD-APP");
+    }
+
+    @Test
+    void updateWithUnchangedApplicationNumberDoesNotCheckDuplicate() {
+        Patent patent = Patent.builder()
+                .title("Old Title")
+                .applicationNumber("APP-1")
+                .build();
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        PatentDetailResponse response = patentService.update(1L, updateRequest("Updated Title", "APP-1"));
+
+        assertThat(response.title()).isEqualTo("Updated Title");
+        verify(patentRepository, never()).existsByApplicationNumber(any());
     }
 
     @Test

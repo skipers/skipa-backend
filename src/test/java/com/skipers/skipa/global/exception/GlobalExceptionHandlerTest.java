@@ -2,12 +2,14 @@ package com.skipers.skipa.global.exception;
 
 import com.skipers.skipa.global.response.ErrorResponse;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -70,6 +72,32 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         assertThat(response.getBody().getError().getCode()).isEqualTo("INVALID_REQUEST");
         assertThat(response.getBody().getError().getMessage()).isEqualTo("요청 본문(JSON) 형식이 올바르지 않습니다.");
+    }
+
+    @Test
+    void typeMismatchReturnsInvalidRequest() {
+        MethodArgumentTypeMismatchException exception = mock(MethodArgumentTypeMismatchException.class);
+        when(exception.getName()).thenReturn("patentId");
+        when(exception.getValue()).thenReturn("not-a-number");
+
+        ResponseEntity<ErrorResponse> response = handler.handleMethodArgumentTypeMismatchException(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().getError().getCode()).isEqualTo("INVALID_REQUEST");
+        assertThat(response.getBody().getError().getMessage()).isEqualTo("요청 파라미터 타입이 올바르지 않습니다.");
+    }
+
+    @Test
+    void dataIntegrityViolationReturnsResolvedErrorCode() {
+        DataIntegrityViolationErrorResolver resolver = mock(DataIntegrityViolationErrorResolver.class);
+        GlobalExceptionHandler handler = new GlobalExceptionHandler(resolver);
+        DataIntegrityViolationException exception = new DataIntegrityViolationException("duplicate application number");
+        when(resolver.resolve(exception)).thenReturn(ErrorCode.DUPLICATE_APPLICATION_NUMBER);
+
+        ResponseEntity<ErrorResponse> response = handler.handleDataIntegrityViolationException(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody().getError().getCode()).isEqualTo("DUPLICATE_APPLICATION_NUMBER");
     }
 
     @Test
