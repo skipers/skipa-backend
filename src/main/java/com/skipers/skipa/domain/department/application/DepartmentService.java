@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.department.dto.request.DepartmentCreateRequest;
 import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.domain.department.exception.DepartmentNotFoundException;
+import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import com.skipers.skipa.global.response.PageResponse;
@@ -16,8 +17,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -27,6 +26,7 @@ public class DepartmentService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final DepartmentRepository departmentRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public DepartmentResponse create(DepartmentCreateRequest request) {
@@ -49,13 +49,18 @@ public class DepartmentService {
         return DepartmentResponse.from(department);
     }
 
-    public DepartmentResponse getByName(String name) {
-        String normalizedName = normalizeName(name);
+    public Page<DepartmentResponse> getAll(String keyword, Pageable pageable) {
+        String normalizedKeyword = normalizeKeyword(keyword);
 
-        Department department = departmentRepository.findByNameIgnoreCase(normalizedName)
-                .orElseThrow(DepartmentNotFoundException::new);
+        int pageNumber = normalizePage(page);
+        int pageSize = normalizeSize(size);
+        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id"));
 
-        return DepartmentResponse.from(department);
+        Page<DepartmentResponse> result = normalizedKeyword == null
+                ? departmentRepository.findAll(pageRequest).map(DepartmentResponse::from)
+                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageRequest).map(DepartmentResponse::from);
+
+        return PageResponse.from(result);
     }
 
     @Transactional
@@ -79,23 +84,13 @@ public class DepartmentService {
             throw new DepartmentNotFoundException();
         }
 
+        if (userRepository.existsByDepartmentId(departmentId)) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_IN_USE);
+        }
+
         departmentRepository.deleteById(departmentId);
     }
-
-    public PageResponse<DepartmentResponse> search(String keyword, Integer page, Integer size) {
-        String normalizedKeyword = normalizeKeyword(keyword);
-
-        int pageNumber = normalizePage(page);
-        int pageSize = normalizeSize(size);
-        PageRequest pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "id"));
-
-        Page<DepartmentResponse> result = normalizedKeyword == null
-                ? departmentRepository.findAll(pageRequest).map(DepartmentResponse::from)
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, pageRequest).map(DepartmentResponse::from);
-
-        return PageResponse.from(result);
-    }
-
+  
     private String normalizeName(String name) {
         if (name == null) {
             throw new IllegalArgumentException("부서명은 필수입니다.");

@@ -10,7 +10,12 @@ import lombok.NoArgsConstructor;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "departments")
+@Table(
+        name = "departments",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_departments_name", columnNames = "name")
+        }
+)
 public class Department extends BaseTimeEntity {
 
     @Id
@@ -18,7 +23,7 @@ public class Department extends BaseTimeEntity {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "name", length = 100, nullable = false)
+    @Column(name = "name", length = 100, nullable = false, unique = true)
     private String name;
 
     @Builder

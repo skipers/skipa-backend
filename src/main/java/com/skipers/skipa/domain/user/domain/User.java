@@ -45,6 +45,10 @@ public class User extends BaseTimeEntity {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private UserStatus status;
+
     @Builder
     private User(
             String loginId,
@@ -52,13 +56,39 @@ public class User extends BaseTimeEntity {
             String email,
             String password,
             UserRole role,
-            Department department
+            Department department,
+            UserStatus status
     ) {
         this.loginId = loginId;
         this.name = name;
         this.email = email;
         this.password = password;
         this.role = role;
+        this.department = department;
+        this.status = status != null ? status : UserStatus.PENDING;
+    }
+
+    public static User createActive(
+            String loginId,
+            String name,
+            String email,
+            String password,
+            UserRole role,
+            Department department
+    ) {
+        return User.builder()
+                .loginId(loginId)
+                .name(name)
+                .email(email)
+                .password(password)
+                .role(role)
+                .department(department)
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    public void approve(Department department) {
+        this.status = UserStatus.ACTIVE;
         this.department = department;
     }
 

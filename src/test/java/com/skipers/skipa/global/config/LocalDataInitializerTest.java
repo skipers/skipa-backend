@@ -1,5 +1,7 @@
 package com.skipers.skipa.global.config;
 
+import com.skipers.skipa.domain.department.dao.DepartmentRepository;
+import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -15,6 +17,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,24 +29,41 @@ class LocalDataInitializerTest {
     private UserRepository userRepository;
 
     @Mock
+    private DepartmentRepository departmentRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     private LocalDataInitializer initializer;
 
     @BeforeEach
     void setUp() {
-        initializer = new LocalDataInitializer(userRepository, passwordEncoder);
+        initializer = new LocalDataInitializer(userRepository, departmentRepository, passwordEncoder);
         ReflectionTestUtils.setField(initializer, "seedPassword", "1234");
     }
 
     @Test
-    void createsTenEncodedSampleUsersWhenLocalDatabaseHasNoUsers() {
+    void createsDepartmentsAndTenEncodedSampleUsersWhenLocalDatabaseHasNoUsers() {
         when(userRepository.count()).thenReturn(0L);
         when(passwordEncoder.encode("1234")).thenReturn("encoded-password");
 
+        Department semiconductor = Department.builder().name("반도체").build();
+        Department telecom = Department.builder().name("통신").build();
+        Department manufacturing = Department.builder().name("제조").build();
+        when(departmentRepository.saveAll(anyList())).thenReturn(List.of(semiconductor, telecom, manufacturing));
+
         initializer.run(new DefaultApplicationArguments());
 
-        verify(userRepository).saveAll(org.mockito.ArgumentMatchers.argThat(users -> {
+        verify(departmentRepository).saveAll(argThat(departments -> {
+            List<Department> result = new java.util.ArrayList<>();
+            departments.forEach(result::add);
+            assertThat(result).hasSize(3);
+            assertThat(result).extracting(Department::getName)
+                    .contains("반도체", "통신", "제조");
+            return true;
+        }));
+
+        verify(userRepository).saveAll(argThat(users -> {
             List<User> result = new java.util.ArrayList<>();
             users.forEach(result::add);
             assertThat(result).hasSize(10);
@@ -58,12 +78,13 @@ class LocalDataInitializerTest {
     }
 
     @Test
-    void doesNotCreateSeedUserWhenLocalDatabaseAlreadyHasUsers() {
+    void doesNotCreateSeedDataWhenLocalDatabaseAlreadyHasUsers() {
         when(userRepository.count()).thenReturn(1L);
 
         initializer.run(new DefaultApplicationArguments());
 
-        verify(passwordEncoder, never()).encode(org.mockito.ArgumentMatchers.anyString());
-        verify(userRepository, never()).saveAll(org.mockito.ArgumentMatchers.anyList());
+        verify(passwordEncoder, never()).encode(anyString());
+        verify(departmentRepository, never()).saveAll(anyList());
+        verify(userRepository, never()).saveAll(anyList());
     }
 }

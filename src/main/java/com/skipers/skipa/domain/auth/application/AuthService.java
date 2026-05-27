@@ -1,10 +1,14 @@
 package com.skipers.skipa.domain.auth.application;
 
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
+import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
 import com.skipers.skipa.domain.auth.exception.AuthException;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
+import com.skipers.skipa.domain.user.domain.UserRole;
+import com.skipers.skipa.domain.user.domain.UserStatus;
+import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.exception.ErrorCode;
 import com.skipers.skipa.global.security.JwtProvider;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,10 @@ public class AuthService {
             throw new AuthException(ErrorCode.INVALID_LOGIN_REQUEST);
         }
 
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new AuthException(ErrorCode.PENDING_USER);
+        }
+
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
         JwtProvider.RefreshTokenResult refreshTokenResult = jwtProvider.createRefreshToken(user.getId());
 
@@ -37,5 +45,38 @@ public class AuthService {
                 refreshTokenResult.token(),
                 user
         );
+    }
+
+    @Transactional
+    public UserResponse register(RegisterRequest request) {
+        if (userRepository.existsByLoginId(request.loginId())) {
+            throw new AuthException(ErrorCode.DUPLICATE_LOGIN_ID);
+        }
+        if (userRepository.existsByEmail(request.email())) {
+            throw new AuthException(ErrorCode.DUPLICATE_EMAIL);
+        }
+
+        UserRole role;
+        try {
+            role = UserRole.from(request.role());
+        } catch (IllegalArgumentException e) {
+            throw new AuthException(ErrorCode.INVALID_ROLE);
+        }
+
+        if (role == UserRole.ADMIN) {
+            throw new AuthException(ErrorCode.INVALID_ROLE);
+        }
+
+        User user = User.builder()
+                .loginId(request.loginId())
+                .password(passwordEncoder.encode(request.password()))
+                .name(request.name())
+                .email(request.email())
+                .role(role)
+                .build();
+
+        userRepository.save(user);
+
+        return UserResponse.from(user);
     }
 }
