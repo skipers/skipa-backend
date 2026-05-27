@@ -8,8 +8,6 @@ import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -90,17 +88,17 @@ public class DepartmentController {
     }
 
     /**
-     * 부서 목록/검색을 조회한다(page/size 기반).
+     * 부서 목록/검색을 조회한다.
      *
      * @param keyword 부서명 검색 키워드(선택)
-     * @param pageable page/size 정보
-     * @return 부서 목록 페이지
+     * @return 부서 목록
      */
     @GetMapping
     public ApiResponse<PageResponse<DepartmentResponse>> search(
             @RequestParam(required = false) String keyword,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
     ) {
-        return ApiResponse.ok(PageResponse.from(departmentService.searchPage(keyword, pageable)));
+        return ApiResponse.ok(departmentService.search(keyword, page, size));
     }
 }
