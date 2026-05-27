@@ -1,5 +1,7 @@
 package com.skipers.skipa.domain.patent.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -8,8 +10,6 @@ import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -63,20 +63,20 @@ public class PatentService {
                 .filingCountry(request.filingCountry())
                 .isJointApplication(request.isJointApplication())
                 .jointApplicant(request.jointApplicant())
-                .initialDepartment(null)
+                .initialDepartment(request.initialDepartment())
                 .keywords(toJsonOrNull(request.keywords()))
                 .overview(request.overview())
                 .coreContent(request.coreContent())
                 .build());
 
-        return PatentDetailResponse.from(patent);
+        return toDetailResponse(patent);
     }
 
     public PatentDetailResponse get(Long patentId) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
-        return PatentDetailResponse.from(patent);
+        return toDetailResponse(patent);
     }
 
     public Page<PatentListResponse> getAll(String keyword, Pageable pageable) {
@@ -135,7 +135,7 @@ public class PatentService {
                 request.coreContent()
         );
 
-        return PatentDetailResponse.from(patent);
+        return toDetailResponse(patent);
     }
 
     @Transactional
@@ -167,5 +167,25 @@ public class PatentService {
         } catch (JsonProcessingException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
+    }
+
+    private List<String> fromJsonOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            return objectMapper.readerForListOf(String.class).readValue(value);
+        } catch (JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    private PatentDetailResponse toDetailResponse(Patent patent) {
+        return PatentDetailResponse.from(
+                patent,
+                fromJsonOrNull(patent.getRelatedProducts()),
+                fromJsonOrNull(patent.getKeywords())
+        );
     }
 }

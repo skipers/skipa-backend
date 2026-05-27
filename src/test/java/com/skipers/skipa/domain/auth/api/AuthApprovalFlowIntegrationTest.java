@@ -362,7 +362,7 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": " 통신 "
+                                  "name": "통신"
                                 }
                                 """))
                 .andExpect(status().isConflict())

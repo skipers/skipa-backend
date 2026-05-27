@@ -8,7 +8,7 @@ import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.user.domain.UserStatus;
 import com.skipers.skipa.domain.user.dto.request.UserApproveRequest;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
-import com.skipers.skipa.global.exception.BusinessException;
+import com.skipers.skipa.domain.user.exception.UserException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,20 +25,20 @@ public class AdminUserService {
     @Transactional
     public UserResponse approve(Long userId, UserApproveRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new UserException(ErrorCode.USER_NOT_FOUND));
 
         if (user.getStatus() == UserStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.CONFLICT);
+            throw new UserException(ErrorCode.CONFLICT);
         }
 
         Department department = null;
         if (user.getRole() == UserRole.BUSINESS) {
             if (request.departmentId() == null) {
-                throw new BusinessException(ErrorCode.INVALID_REQUEST);
+                throw new UserException(ErrorCode.INVALID_REQUEST);
             }
 
             department = departmentRepository.findById(request.departmentId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND));
+                    .orElseThrow(() -> new UserException(ErrorCode.DEPARTMENT_NOT_FOUND));
         }
 
         user.approve(department);

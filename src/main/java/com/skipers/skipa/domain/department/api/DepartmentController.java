@@ -96,6 +96,6 @@ public class DepartmentController {
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {
         departmentService.delete(departmentId);
-        return ApiResponse.ok(null);
+        return ApiResponse.ok();
     }
 }

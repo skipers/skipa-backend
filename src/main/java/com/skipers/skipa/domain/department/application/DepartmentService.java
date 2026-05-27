@@ -88,7 +88,7 @@ public class DepartmentService {
 
         departmentRepository.deleteById(departmentId);
     }
-  
+
     private String normalizeKeyword(String keyword) {
         if (keyword == null) {
             return null;
@@ -97,5 +97,4 @@ public class DepartmentService {
         String normalized = keyword.trim();
         return normalized.isEmpty() ? null : normalized;
     }
-
 }

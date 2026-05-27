@@ -8,12 +8,14 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -42,8 +44,8 @@ class PatentServiceTest {
     @Mock
     private PatentDepartmentRepository patentDepartmentRepository;
 
-    @Mock
-    private ObjectMapper objectMapper;
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private PatentService patentService;
@@ -58,8 +60,12 @@ class PatentServiceTest {
         verify(patentRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
                 saved.getTitle().equals("  Patent Title  ")
                         && saved.getApplicationNumber().equals(" 10-1234 ")
+                        && saved.getInitialDepartment().equals(" Initial Department ")
         ));
         assertThat(response.title()).isEqualTo("  Patent Title  ");
+        assertThat(response.initialDepartment()).isEqualTo(" Initial Department ");
+        assertThat(response.relatedProducts()).containsExactly("Product");
+        assertThat(response.keywords()).containsExactly("Keyword");
     }
 
     @Test
@@ -67,6 +73,20 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertPatentError(() -> patentService.get(1L), ErrorCode.PATENT_NOT_FOUND);
+    }
+
+    @Test
+    void getReturnsInternalErrorWhenStoredListJsonIsInvalid() {
+        Patent patent = Patent.builder()
+                .title("Patent")
+                .applicationNumber("APP-1")
+                .relatedProducts("not-json")
+                .build();
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        assertThatThrownBy(() -> patentService.get(1L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_ERROR));
     }
 
     @Test
@@ -111,6 +131,9 @@ class PatentServiceTest {
         assertThat(response.registrationNumber()).isEqualTo("REG-1");
         assertThat(response.applicationDate()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(response.applicant()).isEqualTo("Applicant");
+        assertThat(response.initialDepartment()).isEqualTo("Initial Department");
+        assertThat(response.relatedProducts()).containsExactly("Product");
+        assertThat(response.keywords()).containsExactly("Keyword");
         assertThat(response.overview()).isEqualTo("Overview");
         verify(patentRepository).existsByApplicationNumber(" NEW-APP ");
     }
@@ -163,9 +186,33 @@ class PatentServiceTest {
 
     private PatentCreateRequest createRequest(String title, String applicationNumber) {
         return new PatentCreateRequest(
-                title, applicationNumber, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null
+                title,
+                applicationNumber,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                List.of("Product"),
+                null,
+                null,
+                null,
+                " Initial Department ",
+                List.of("Keyword"),
+                null,
+                null
         );
     }
 
@@ -190,12 +237,12 @@ class PatentServiceTest {
                 "management",
                 "business",
                 "tech",
-                null,
+                List.of("Product"),
                 "KR",
                 true,
                 "Joint Applicant",
                 "Initial Department",
-                null,
+                List.of("Keyword"),
                 "Overview",
                 "Core Content"
         );

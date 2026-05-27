@@ -15,19 +15,19 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-@Entity // 특허 기본 정보(patents) 엔티티
-@Getter // 조회 전용(getter) 제공
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA 기본 생성자
-@Table( // 테이블/유니크 제약 정의
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
         name = "patents",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_patents_application_number", columnNames = "application_number")
         }
 )
-public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관리
+public class Patent extends BaseTimeEntity {
 
-    @Id // PK
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // auto increment
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id") // 특허 ID
     private Long id;
 
@@ -76,7 +76,7 @@ public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관�
     @Column(name = "citation_count") // 피인용 수
     private Integer citationCount;
 
-    @Column(name = "original_pdf_key", length = 500) // 원문 파일 키(S3 등)
+    @Column(name = "original_pdf_key", length = 500) // 원문 파일 키
     private String originalPdfKey;
 
     @Column(name = "management_number", length = 50) // 관리번호
@@ -88,7 +88,7 @@ public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관�
     @Column(name = "tech_field", length = 200) // 관련기술 분야
     private String techField;
 
-    @Column(name = "related_products") // 관련제품(JSON 문자열) - DB 타입(JSON/TEXT)은 환경별로 정한다
+    @Column(name = "related_products") // 관련제품
     private String relatedProducts;
 
     @Column(name = "filing_country", length = 100) // 출원국가
@@ -100,10 +100,10 @@ public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관�
     @Column(name = "joint_applicant", length = 200) // 공동출원인명
     private String jointApplicant;
 
-    @Column(name = "initial_department", length = 200) // 최초 담당 부서명(초기값 기록용)
+    @Column(name = "initial_department", length = 200) // 최초 담당 부서명
     private String initialDepartment;
 
-    @Column(name = "keywords") // 키워드(JSON 문자열) - DB 타입(JSON/TEXT)은 환경별로 정한다
+    @Column(name = "keywords") // 키워드
     private String keywords;
 
     @Column(name = "overview", columnDefinition = "text") // 개요
@@ -112,8 +112,8 @@ public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관�
     @Column(name = "core_content", columnDefinition = "text") // 핵심 내용
     private String coreContent;
 
-    @Builder // 생성 시 필요한 값만 선택적으로 세팅
-    private Patent( // 생성자는 builder로만 사용
+    @Builder
+    private Patent(
             String title,
             String applicationNumber,
             String registrationNumber,

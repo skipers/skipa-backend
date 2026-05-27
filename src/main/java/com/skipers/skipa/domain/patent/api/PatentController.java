@@ -97,6 +97,6 @@ public class PatentController {
     @DeleteMapping("/{patentId}")
     public ApiResponse<Void> delete(@PathVariable Long patentId) {
         patentService.delete(patentId);
-        return ApiResponse.ok(null);
+        return ApiResponse.ok();
     }
 }
