@@ -9,7 +9,7 @@ import java.util.List;
 public record PatentUpdateRequest(
 
         @Size(max = 500, message = "특허명은 500자 이하여야 합니다.") // DB 컬럼 길이 기준 검증
-        @Schema(description = "특허명(미전달 시 유지)", example = "반도체 패키지 구조(수정)") // PATCH: 값이 오면 변경, 없으면 유지
+        @Schema(description = "특허명(미전달 시 유지)", example = "반도체 패키지 구조(수정)") // 값이 오면 변경, 없으면 유지
         String title,
 
         @Size(max = 20, message = "등록번호는 20자 이하여야 합니다.") // DB 컬럼 길이 기준 검증
