@@ -171,8 +171,62 @@ public class Patent extends BaseTimeEntity { // createdAt/updatedAt 자동 관�
         this.coreContent = coreContent;
     }
 
-    public void updateTitle(String title) { // 특허명 변경(PATCH 지원을 위한 최소 변경 메서드)
+    public void update(
+            String title,
+            String applicationNumber,
+            String registrationNumber,
+            String publicationNumber,
+            String announcementNumber,
+            LocalDate applicationDate,
+            LocalDate registrationDate,
+            LocalDate publicationDate,
+            LocalDate announcementDate,
+            String ipcCode,
+            String cpcCode,
+            String applicant,
+            String inventor,
+            LocalDate expiryDate,
+            Integer citationCount,
+            String originalPdfKey,
+            String managementNumber,
+            String businessField,
+            String techField,
+            String relatedProducts,
+            String filingCountry,
+            Boolean isJointApplication,
+            String jointApplicant,
+            String initialDepartment,
+            String keywords,
+            String overview,
+            String coreContent
+    ) {
         this.title = title;
+        this.applicationNumber = applicationNumber;
+        this.registrationNumber = registrationNumber;
+        this.publicationNumber = publicationNumber;
+        this.announcementNumber = announcementNumber;
+        this.applicationDate = applicationDate;
+        this.registrationDate = registrationDate;
+        this.publicationDate = publicationDate;
+        this.announcementDate = announcementDate;
+        this.ipcCode = ipcCode;
+        this.cpcCode = cpcCode;
+        this.applicant = applicant;
+        this.inventor = inventor;
+        this.expiryDate = expiryDate;
+        this.citationCount = citationCount;
+        this.originalPdfKey = originalPdfKey;
+        this.managementNumber = managementNumber;
+        this.businessField = businessField;
+        this.techField = techField;
+        this.relatedProducts = relatedProducts;
+        this.filingCountry = filingCountry;
+        this.isJointApplication = isJointApplication;
+        this.jointApplicant = jointApplicant;
+        this.initialDepartment = initialDepartment;
+        this.keywords = keywords;
+        this.overview = overview;
+        this.coreContent = coreContent;
     }
 
 }
