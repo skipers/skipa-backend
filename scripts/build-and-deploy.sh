@@ -60,8 +60,8 @@ docker buildx build \
 
 echo "▶ Applying Kubernetes manifests..."
 
-kubectl apply -f infra/k8s/backend-service.yml -n "${NAMESPACE}"
-kubectl apply -f infra/k8s/backend-deployment.yml -n "${NAMESPACE}"
+kubectl apply -f infra/k8s/backend/backend-service.yml -n "${NAMESPACE}"
+kubectl apply -f infra/k8s/backend/backend-deployment.yml -n "${NAMESPACE}"
 
 # =========================
 # Update deployment image
