@@ -1,9 +1,18 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisRepositoriesAutoConfiguration
+      - org.springframework.boot.data.redis.autoconfigure.DataRedisReactiveAutoConfiguration
+
   datasource:
     driver-class-name: org.h2.Driver
     url: jdbc:h2:mem:skipa-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
     username: sa
     password:
+
+  flyway:
+    enabled: false
 
   jpa:
     hibernate:
