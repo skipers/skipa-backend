@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'infra/k8s/backend/backend-deployment.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-update-manifest:
@@ -19,10 +17,11 @@ jobs:
       REGISTRY: amdp-registry.skala-ai.com
       PROJECT: skala3-finalproj-class2-team8
       IMAGE_NAME: skipa-backend
-      DEPLOYMENT_FILE: infra/k8s/backend/backend-deployment.yml
+      INFRA_REPO: skipers/skipa-infra
+      DEPLOYMENT_FILE: k8s/backend/deployment.yml
 
     steps:
-      - name: Checkout repository
+      - name: Checkout backend repository
         uses: actions/checkout@v4
 
       - name: Set image variables
@@ -64,13 +63,20 @@ jobs:
             ${{ env.IMAGE }}
             ${{ env.LATEST_IMAGE }}
 
+      - name: Checkout infra repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPO }}
+          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          path: skipa-infra
+
       - name: Update backend deployment image tag
         run: |
           python - <<'PY'
           import os
           from pathlib import Path
 
-          deployment_file = Path(os.environ["DEPLOYMENT_FILE"])
+          deployment_file = Path("skipa-infra") / os.environ["DEPLOYMENT_FILE"]
           image = os.environ["IMAGE"]
 
           content = deployment_file.read_text()
@@ -90,11 +96,13 @@ jobs:
           if not changed:
               raise RuntimeError("Could not find backend image line in deployment manifest.")
 
-          deployment_file.write_text("\\n".join(updated) + "\\n")
+          deployment_file.write_text("\n".join(updated) + "\n")
           PY
 
-      - name: Commit and push manifest update
+      - name: Commit and push manifest update to infra repository
         run: |
+          cd skipa-infra
+
           if git diff --quiet; then
             echo "No manifest changes to commit."
             exit 0
@@ -104,5 +112,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add "${DEPLOYMENT_FILE}"
-          git commit -m "chore: update backend image tag [skip ci]"
+          git commit -m "chore: update backend image tag to ${IMAGE_TAG} [skip ci]"
           git push
