@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patent.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
+import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
@@ -29,6 +30,7 @@ public class PatentService {
 
     private final PatentRepository patentRepository;
     private final PatentDepartmentRepository patentDepartmentRepository;
+    private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -145,6 +147,7 @@ public class PatentService {
         }
 
         patentDepartmentRepository.deleteAllByPatentId(patentId);
+        patentLegalStatusRepository.deleteAllByPatentId(patentId); // 권리 상태 이력
         patentRepository.deleteById(patentId);
     }
 

@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patent.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
+import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
@@ -45,6 +46,9 @@ class PatentServiceTest {
 
     @Mock
     private PatentDepartmentRepository patentDepartmentRepository;
+
+    @Mock
+    private PatentLegalStatusRepository patentLegalStatusRepository;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -209,8 +213,9 @@ class PatentServiceTest {
 
         patentService.delete(1L);
 
-        InOrder deletionOrder = inOrder(patentDepartmentRepository, patentRepository);
+        InOrder deletionOrder = inOrder(patentDepartmentRepository, patentLegalStatusRepository, patentRepository);
         deletionOrder.verify(patentDepartmentRepository).deleteAllByPatentId(1L);
+        deletionOrder.verify(patentLegalStatusRepository).deleteAllByPatentId(1L);
         deletionOrder.verify(patentRepository).deleteById(1L);
     }
 
@@ -221,6 +226,7 @@ class PatentServiceTest {
         assertPatentError(() -> patentService.delete(1L), ErrorCode.PATENT_NOT_FOUND);
 
         verify(patentDepartmentRepository, never()).deleteAllByPatentId(1L);
+        verify(patentLegalStatusRepository, never()).deleteAllByPatentId(1L);
         verify(patentRepository, never()).deleteById(1L);
     }
 
