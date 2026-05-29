@@ -4,9 +4,11 @@ import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentLegalStatusCreateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentLegalStatusResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,9 +31,16 @@ public class PatentLegalStatusService {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
+        PatentLegalStatusType status;
+        try {
+            status = PatentLegalStatusType.valueOf(request.status());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        }
+
         PatentLegalStatus legalStatus = patentLegalStatusRepository.save(PatentLegalStatus.builder()
                 .patent(patent)
-                .status(request.status())
+                .status(status)
                 .changedAt(request.changedAt())
                 .build());
 
@@ -52,4 +61,3 @@ public class PatentLegalStatusService {
         return patentLegalStatusRepository.findByPatentId(patentId, sortedPageable).map(PatentLegalStatusResponse::from);
     }
 }
-
