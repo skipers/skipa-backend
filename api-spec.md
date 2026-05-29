@@ -150,7 +150,6 @@ json
 | --- | --- | --- | --- | --- |
 | 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 연차료 납부 이력 전체 조회 | `LEGAL`, `BUSINESS` |
 | 납부 이력 등록 | `POST` | `/patents/{patentId}/annuities` | 납부 이력 수동 등록 | `LEGAL` |
-| 납부 이력 수정 | `PUT` | `/patents/{patentId}/annuities/{annuityId}` | 납부 이력 수정 | `LEGAL` |
 
 ---
 
