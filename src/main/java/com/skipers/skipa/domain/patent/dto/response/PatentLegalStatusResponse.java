@@ -18,11 +18,10 @@ public record PatentLegalStatusResponse(
         return new PatentLegalStatusResponse(
                 patentLegalStatus.getId(),
                 patentLegalStatus.getPatent().getId(),
-                patentLegalStatus.getStatus(),
+                patentLegalStatus.getStatus().name(),
                 patentLegalStatus.getChangedAt(),
                 patentLegalStatus.getCreatedAt(),
                 patentLegalStatus.getUpdatedAt()
         );
     }
 }
-

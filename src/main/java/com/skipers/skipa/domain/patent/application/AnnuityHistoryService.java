@@ -1,12 +1,12 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
+import com.skipers.skipa.domain.patent.dao.AnnuityHistoryRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
+import com.skipers.skipa.domain.patent.domain.AnnuityHistory;
+import com.skipers.skipa.domain.patent.domain.AnnuityStatus;
 import com.skipers.skipa.domain.patent.domain.Patent;
-import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
-import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
-import com.skipers.skipa.domain.patent.dto.request.PatentLegalStatusCreateRequest;
-import com.skipers.skipa.domain.patent.dto.response.PatentLegalStatusResponse;
+import com.skipers.skipa.domain.patent.dto.request.AnnuityCreateRequest;
+import com.skipers.skipa.domain.patent.dto.response.AnnuityResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -21,33 +21,36 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class PatentLegalStatusService {
+public class AnnuityHistoryService {
 
-    private final PatentLegalStatusRepository patentLegalStatusRepository;
+    private final AnnuityHistoryRepository annuityHistoryRepository;
     private final PatentRepository patentRepository;
 
     @Transactional
-    public PatentLegalStatusResponse create(Long patentId, PatentLegalStatusCreateRequest request) {
+    public AnnuityResponse create(Long patentId, AnnuityCreateRequest request) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
-        PatentLegalStatusType status;
+        AnnuityStatus status;
         try {
-            status = PatentLegalStatusType.valueOf(request.status());
+            status = AnnuityStatus.valueOf(request.status());
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
-        PatentLegalStatus legalStatus = patentLegalStatusRepository.save(PatentLegalStatus.builder()
+        AnnuityHistory annuityHistory = annuityHistoryRepository.save(AnnuityHistory.builder()
                 .patent(patent)
+                .annuityYear(request.annuityYear())
+                .dueDate(request.dueDate())
+                .paidDate(request.paidDate())
                 .status(status)
-                .changedAt(request.changedAt())
+                .amount(request.amount())
                 .build());
 
-        return PatentLegalStatusResponse.from(legalStatus);
+        return AnnuityResponse.from(annuityHistory);
     }
 
-    public Page<PatentLegalStatusResponse> getAll(Long patentId, Pageable pageable) {
+    public Page<AnnuityResponse> getAll(Long patentId, Pageable pageable) {
         if (!patentRepository.existsById(patentId)) {
             throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
         }
@@ -58,6 +61,6 @@ public class PatentLegalStatusService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return patentLegalStatusRepository.findByPatentId(patentId, sortedPageable).map(PatentLegalStatusResponse::from);
+        return annuityHistoryRepository.findByPatentId(patentId, sortedPageable).map(AnnuityResponse::from);
     }
 }
