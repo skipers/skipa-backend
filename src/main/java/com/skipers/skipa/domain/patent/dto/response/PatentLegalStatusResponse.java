@@ -1,6 +1,6 @@
-package com.skipers.skipa.domain.patent_legal_status.dto.response;
+package com.skipers.skipa.domain.patent.dto.response;
 
-import com.skipers.skipa.domain.patent_legal_status.domain.PatentLegalStatus;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 
 import java.time.Instant;
 import java.time.LocalDate;

@@ -1,12 +1,12 @@
-package com.skipers.skipa.domain.patent_legal_status.application;
+package com.skipers.skipa.domain.patent.application;
 
+import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
+import com.skipers.skipa.domain.patent.dto.request.PatentLegalStatusCreateRequest;
+import com.skipers.skipa.domain.patent.dto.response.PatentLegalStatusResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
-import com.skipers.skipa.domain.patent_legal_status.dao.PatentLegalStatusRepository;
-import com.skipers.skipa.domain.patent_legal_status.domain.PatentLegalStatus;
-import com.skipers.skipa.domain.patent_legal_status.dto.request.PatentLegalStatusCreateRequest;
-import com.skipers.skipa.domain.patent_legal_status.dto.response.PatentLegalStatusResponse;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,13 +29,13 @@ public class PatentLegalStatusService {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
-        PatentLegalStatus patentLegalStatus = patentLegalStatusRepository.save(PatentLegalStatus.builder()
+        PatentLegalStatus legalStatus = patentLegalStatusRepository.save(PatentLegalStatus.builder()
                 .patent(patent)
                 .status(request.status())
                 .changedAt(request.changedAt())
                 .build());
 
-        return PatentLegalStatusResponse.from(patentLegalStatus);
+        return PatentLegalStatusResponse.from(legalStatus);
     }
 
     public Page<PatentLegalStatusResponse> getAll(Long patentId, Pageable pageable) {
@@ -52,3 +52,4 @@ public class PatentLegalStatusService {
         return patentLegalStatusRepository.findByPatentId(patentId, sortedPageable).map(PatentLegalStatusResponse::from);
     }
 }
+

@@ -1,8 +1,8 @@
-package com.skipers.skipa.domain.patent_legal_status.api;
+package com.skipers.skipa.domain.patent.api;
 
-import com.skipers.skipa.domain.patent_legal_status.application.PatentLegalStatusService;
-import com.skipers.skipa.domain.patent_legal_status.dto.request.PatentLegalStatusCreateRequest;
-import com.skipers.skipa.domain.patent_legal_status.dto.response.PatentLegalStatusResponse;
+import com.skipers.skipa.domain.patent.application.PatentLegalStatusService;
+import com.skipers.skipa.domain.patent.dto.request.PatentLegalStatusCreateRequest;
+import com.skipers.skipa.domain.patent.dto.response.PatentLegalStatusResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import jakarta.validation.Valid;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/patents/{patentId}/legal-status")
+@RequestMapping("/patents/{patentId}/legal-status") // 권리 상태 이력
 public class PatentLegalStatusController {
 
     private final PatentLegalStatusService patentLegalStatusService;

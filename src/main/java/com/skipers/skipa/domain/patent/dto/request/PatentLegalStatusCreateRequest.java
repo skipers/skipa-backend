@@ -1,4 +1,4 @@
-package com.skipers.skipa.domain.patent_legal_status.dto.request;
+package com.skipers.skipa.domain.patent.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -18,3 +18,4 @@ public record PatentLegalStatusCreateRequest(
         @Schema(description = "상태 변경일자", example = "2026-05-29")
         LocalDate changedAt
 ) {}
+

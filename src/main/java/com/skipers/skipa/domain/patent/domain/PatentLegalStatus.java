@@ -1,6 +1,5 @@
-package com.skipers.skipa.domain.patent_legal_status.domain;
+package com.skipers.skipa.domain.patent.domain;
 
-import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,7 +32,7 @@ public class PatentLegalStatus extends BaseTimeEntity {
     @JoinColumn(name = "patent_id", nullable = false)
     private Patent patent;
 
-    @Column(name = "status", nullable = false) // 권리 상태(ENUM은 DTO 단계에서 검증)
+    @Column(name = "status", nullable = false) // 권리 상태
     private String status;
 
     @Column(name = "changed_at") // 상태 변경일자
