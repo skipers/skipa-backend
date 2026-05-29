@@ -26,13 +26,6 @@ public class PatentLegalStatusController {
 
     private final PatentLegalStatusService patentLegalStatusService;
 
-    /**
-     * 권리 상태 이력을 추가한다.
-     *
-     * @param patentId 특허 ID
-     * @param request 등록 요청
-     * @return 생성된 권리 상태 이력
-     */
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentLegalStatusResponse>> create(
@@ -42,13 +35,6 @@ public class PatentLegalStatusController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentLegalStatusService.create(patentId, request)));
     }
 
-    /**
-     * 권리 상태 이력 목록을 조회한다(page/size 기반).
-     *
-     * @param patentId 특허 ID
-     * @param pageable page/size 정보
-     * @return 권리 상태 이력 목록 페이지
-     */
     @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentLegalStatusResponse>> getAll(
@@ -58,4 +44,3 @@ public class PatentLegalStatusController {
         return ApiResponse.ok(PageResponse.from(patentLegalStatusService.getAll(patentId, pageable)));
     }
 }
-
