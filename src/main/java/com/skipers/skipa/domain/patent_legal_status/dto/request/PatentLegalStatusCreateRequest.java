@@ -9,10 +9,6 @@ import java.time.LocalDate;
 
 public record PatentLegalStatusCreateRequest(
 
-        @NotNull(message = "특허 ID는 필수입니다.")
-        @Schema(description = "특허 ID", example = "1")
-        Long patentId,
-
         @NotBlank(message = "권리 상태는 필수입니다.")
         @Pattern(regexp = "^(공개|등록|거절|포기|소멸|무효|취하)$", message = "권리 상태는 공개/등록/거절/포기/소멸/무효/취하 중 하나여야 합니다.")
         @Schema(description = "권리 상태", example = "공개")

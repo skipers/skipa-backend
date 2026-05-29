@@ -25,8 +25,8 @@ public class PatentLegalStatusService {
     private final PatentRepository patentRepository;
 
     @Transactional
-    public PatentLegalStatusResponse create(PatentLegalStatusCreateRequest request) {
-        Patent patent = patentRepository.findById(request.patentId())
+    public PatentLegalStatusResponse create(Long patentId, PatentLegalStatusCreateRequest request) {
+        Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         PatentLegalStatus patentLegalStatus = patentLegalStatusRepository.save(PatentLegalStatus.builder()
@@ -52,4 +52,3 @@ public class PatentLegalStatusService {
         return patentLegalStatusRepository.findByPatentId(patentId, sortedPageable).map(PatentLegalStatusResponse::from);
     }
 }
-
