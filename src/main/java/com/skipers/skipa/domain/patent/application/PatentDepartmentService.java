@@ -10,6 +10,7 @@ import com.skipers.skipa.domain.patent.domain.PatentDepartment;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentAssignRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDepartmentResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -45,6 +46,53 @@ public class PatentDepartmentService {
                 .build());
 
         return PatentDepartmentResponse.from(patentDepartment);
+    }
+
+    @Transactional
+    public PatentDepartmentResponse change(Long patentId, Long deptId, PatentDepartmentAssignRequest request) {
+        if (!patentRepository.existsById(patentId)) {
+            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+        }
+
+        PatentDepartment current = patentDepartmentRepository.findFirstByPatentIdOrderByAssignedAtDesc(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_DEPARTMENT_NOT_FOUND));
+
+        if (!current.getDepartment().getId().equals(deptId)) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        Long newDepartmentId = request.departmentId();
+        if (current.getDepartment().getId().equals(newDepartmentId)) {
+            return PatentDepartmentResponse.from(current);
+        }
+
+        Patent patent = current.getPatent();
+        Department department = departmentRepository.findById(newDepartmentId)
+                .orElseThrow(() -> new DepartmentException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        PatentDepartment changed = patentDepartmentRepository.save(PatentDepartment.builder()
+                .patent(patent)
+                .department(department)
+                .assignedAt(Instant.now())
+                .build());
+
+        return PatentDepartmentResponse.from(changed);
+    }
+
+    @Transactional
+    public void unassign(Long patentId, Long deptId) {
+        if (!patentRepository.existsById(patentId)) {
+            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+        }
+
+        PatentDepartment current = patentDepartmentRepository.findFirstByPatentIdOrderByAssignedAtDesc(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_DEPARTMENT_NOT_FOUND));
+
+        if (!current.getDepartment().getId().equals(deptId)) {
+            throw new BusinessException(ErrorCode.CONFLICT);
+        }
+
+        patentDepartmentRepository.delete(current);
     }
 
     public PatentDepartmentResponse getCurrent(Long patentId) {

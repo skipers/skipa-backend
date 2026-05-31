@@ -12,9 +12,11 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +35,33 @@ public class PatentDepartmentController {
             @Valid @RequestBody PatentDepartmentAssignRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentDepartmentService.assign(patentId, request)));
+    }
+
+    @PreAuthorize("hasRole('LEGAL')")
+    @PutMapping("/{deptId}")
+    public ResponseEntity<ApiResponse<PatentDepartmentResponse>> change(
+            @PathVariable Long patentId,
+            @PathVariable Long deptId,
+            @Valid @RequestBody PatentDepartmentAssignRequest request
+    ) {
+        PatentDepartmentResponse current = patentDepartmentService.getCurrent(patentId);
+        PatentDepartmentResponse changed = patentDepartmentService.change(patentId, deptId, request);
+
+        if (changed.id().equals(current.id())) {
+            return ResponseEntity.ok(ApiResponse.ok(changed));
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(changed));
+    }
+
+    @PreAuthorize("hasRole('LEGAL')")
+    @DeleteMapping("/{deptId}")
+    public ApiResponse<Void> unassign(
+            @PathVariable Long patentId,
+            @PathVariable Long deptId
+    ) {
+        patentDepartmentService.unassign(patentId, deptId);
+        return ApiResponse.ok();
     }
 
     @PreAuthorize("hasRole('LEGAL')")
