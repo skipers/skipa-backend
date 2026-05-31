@@ -44,10 +44,9 @@ public class PatentDepartmentController {
             @PathVariable Long deptId,
             @Valid @RequestBody PatentDepartmentAssignRequest request
     ) {
-        PatentDepartmentResponse current = patentDepartmentService.getCurrent(patentId);
         PatentDepartmentResponse changed = patentDepartmentService.change(patentId, deptId, request);
 
-        if (changed.id().equals(current.id())) {
+        if (request.departmentId().equals(deptId)) {
             return ResponseEntity.ok(ApiResponse.ok(changed));
         }
 
@@ -73,9 +72,4 @@ public class PatentDepartmentController {
         return ApiResponse.ok(PageResponse.from(patentDepartmentService.getAll(patentId, pageable)));
     }
 
-    @PreAuthorize("hasRole('LEGAL')")
-    @GetMapping("/current")
-    public ApiResponse<PatentDepartmentResponse> getCurrent(@PathVariable Long patentId) {
-        return ApiResponse.ok(patentDepartmentService.getCurrent(patentId));
-    }
 }
