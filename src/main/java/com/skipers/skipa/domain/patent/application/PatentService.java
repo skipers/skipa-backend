@@ -7,7 +7,7 @@ import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
-import com.skipers.skipa.domain.patent.dao.AnnuityHistoryRepository;
+import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
@@ -35,7 +35,7 @@ public class PatentService {
     private final PatentRepository patentRepository;
     private final DepartmentRepository departmentRepository;
     private final PatentLegalStatusRepository patentLegalStatusRepository;
-    private final AnnuityHistoryRepository annuityHistoryRepository;
+    private final PatentAnnuityRepository patentAnnuityRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -164,7 +164,7 @@ public class PatentService {
         }
 
         patentLegalStatusRepository.deleteAllByPatentId(patentId); // 권리 상태 이력
-        annuityHistoryRepository.deleteAllByPatentId(patentId); // 연차료 납부 이력
+        patentAnnuityRepository.deleteAllByPatentId(patentId); // 연차료 납부 이력
         patentRepository.deleteById(patentId);
     }
 

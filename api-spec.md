@@ -144,7 +144,7 @@ json
 
 ---
 
-### 6. 연차료 납부 이력 (Annuity History)
+### 6. 특허 연차료 (Patent Annuities)
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |

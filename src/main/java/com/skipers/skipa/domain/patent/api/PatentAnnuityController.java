@@ -1,8 +1,8 @@
 package com.skipers.skipa.domain.patent.api;
 
-import com.skipers.skipa.domain.patent.application.AnnuityHistoryService;
-import com.skipers.skipa.domain.patent.dto.request.AnnuityCreateRequest;
-import com.skipers.skipa.domain.patent.dto.response.AnnuityResponse;
+import com.skipers.skipa.domain.patent.application.PatentAnnuityService;
+import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
+import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import jakarta.validation.Valid;
@@ -24,23 +24,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/patents/{patentId}/annuities") // 연차료 납부 이력
 public class PatentAnnuityController {
 
-    private final AnnuityHistoryService annuityHistoryService;
+    private final PatentAnnuityService patentAnnuityService;
 
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
-    public ResponseEntity<ApiResponse<AnnuityResponse>> create(
+    public ResponseEntity<ApiResponse<PatentAnnuityResponse>> create(
             @PathVariable Long patentId,
-            @Valid @RequestBody AnnuityCreateRequest request
+            @Valid @RequestBody PatentAnnuityCreateRequest request
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(annuityHistoryService.create(patentId, request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentAnnuityService.create(patentId, request)));
     }
 
     @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
     @GetMapping
-    public ApiResponse<PageResponse<AnnuityResponse>> getAll(
+    public ApiResponse<PageResponse<PatentAnnuityResponse>> getAll(
             @PathVariable Long patentId,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(PageResponse.from(annuityHistoryService.getAll(patentId, pageable)));
+        return ApiResponse.ok(PageResponse.from(patentAnnuityService.getAll(patentId, pageable)));
     }
 }

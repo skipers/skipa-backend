@@ -1,12 +1,12 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.skipers.skipa.domain.patent.dao.AnnuityHistoryRepository;
+import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
-import com.skipers.skipa.domain.patent.domain.AnnuityHistory;
-import com.skipers.skipa.domain.patent.domain.AnnuityStatus;
+import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
+import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.patent.domain.Patent;
-import com.skipers.skipa.domain.patent.dto.request.AnnuityCreateRequest;
-import com.skipers.skipa.domain.patent.dto.response.AnnuityResponse;
+import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
+import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -21,24 +21,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AnnuityHistoryService {
+public class PatentAnnuityService {
 
-    private final AnnuityHistoryRepository annuityHistoryRepository;
+    private final PatentAnnuityRepository patentAnnuityRepository;
     private final PatentRepository patentRepository;
 
     @Transactional
-    public AnnuityResponse create(Long patentId, AnnuityCreateRequest request) {
+    public PatentAnnuityResponse create(Long patentId, PatentAnnuityCreateRequest request) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
-        AnnuityStatus status;
+        PatentAnnuityStatus status;
         try {
-            status = AnnuityStatus.valueOf(request.status());
+            status = PatentAnnuityStatus.valueOf(request.status());
         } catch (IllegalArgumentException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST);
         }
 
-        AnnuityHistory annuityHistory = annuityHistoryRepository.save(AnnuityHistory.builder()
+        PatentAnnuity patentAnnuity = patentAnnuityRepository.save(PatentAnnuity.builder()
                 .patent(patent)
                 .annuityYear(request.annuityYear())
                 .dueDate(request.dueDate())
@@ -47,10 +47,10 @@ public class AnnuityHistoryService {
                 .amount(request.amount())
                 .build());
 
-        return AnnuityResponse.from(annuityHistory);
+        return PatentAnnuityResponse.from(patentAnnuity);
     }
 
-    public Page<AnnuityResponse> getAll(Long patentId, Pageable pageable) {
+    public Page<PatentAnnuityResponse> getAll(Long patentId, Pageable pageable) {
         if (!patentRepository.existsById(patentId)) {
             throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
         }
@@ -61,6 +61,6 @@ public class AnnuityHistoryService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return annuityHistoryRepository.findByPatentId(patentId, sortedPageable).map(AnnuityResponse::from);
+        return patentAnnuityRepository.findByPatentId(patentId, sortedPageable).map(PatentAnnuityResponse::from);
     }
 }

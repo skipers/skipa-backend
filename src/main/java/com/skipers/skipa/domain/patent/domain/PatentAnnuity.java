@@ -22,8 +22,8 @@ import java.time.LocalDate;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "annuity_history")
-public class AnnuityHistory extends BaseTimeEntity {
+@Table(name = "patent_annuities")
+public class PatentAnnuity extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,13 +45,13 @@ public class AnnuityHistory extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20) // 납부 상태(납부/미납/포기)
-    private AnnuityStatus status;
+    private PatentAnnuityStatus status;
 
     @Column(name = "amount") // 납부 금액
     private Integer amount;
 
     @Builder
-    private AnnuityHistory(Patent patent, Integer annuityYear, LocalDate dueDate, LocalDate paidDate, AnnuityStatus status, Integer amount) {
+    private PatentAnnuity(Patent patent, Integer annuityYear, LocalDate dueDate, LocalDate paidDate, PatentAnnuityStatus status, Integer amount) {
         this.patent = patent;
         this.annuityYear = annuityYear;
         this.dueDate = dueDate;
