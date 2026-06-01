@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.patent.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
 import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
@@ -33,6 +34,7 @@ public class PatentService {
     private final PatentDepartmentRepository patentDepartmentRepository;
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final AnnuityHistoryRepository annuityHistoryRepository;
+    private final OpinionSubmissionRepository opinionSubmissionRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -151,6 +153,7 @@ public class PatentService {
         patentDepartmentRepository.deleteAllByPatentId(patentId);
         patentLegalStatusRepository.deleteAllByPatentId(patentId); // 권리 상태 이력
         annuityHistoryRepository.deleteAllByPatentId(patentId); // 연차료 납부 이력
+        opinionSubmissionRepository.deleteAllByPatentId(patentId); // 사업부 의견 제출
         patentRepository.deleteById(patentId);
     }
 

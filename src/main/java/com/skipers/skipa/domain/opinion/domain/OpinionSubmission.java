@@ -70,4 +70,11 @@ public class OpinionSubmission extends BaseTimeEntity {
         this.status = status != null ? status : OpinionSubmissionStatus.대기;
         this.submittedAt = submittedAt;
     }
+
+    public void submit(BusinessOpinion opinion, String comment, Instant submittedAt) {
+        this.opinion = opinion;
+        this.comment = comment;
+        this.status = OpinionSubmissionStatus.제출완료;
+        this.submittedAt = submittedAt;
+    }
 }
