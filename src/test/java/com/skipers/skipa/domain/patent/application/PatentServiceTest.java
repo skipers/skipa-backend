@@ -47,13 +47,13 @@ class PatentServiceTest {
     private PatentRepository patentRepository;
 
     @Mock
-    private PatentDepartmentRepository patentDepartmentRepository;
+    private DepartmentRepository departmentRepository;
 
     @Mock
     private PatentLegalStatusRepository patentLegalStatusRepository;
 
     @Mock
-    private AnnuityHistoryRepository annuityHistoryRepository;
+    private PatentAnnuityRepository patentAnnuityRepository;
 
     @Mock
     private OpinionSubmissionRepository opinionSubmissionRepository;
@@ -235,7 +235,6 @@ class PatentServiceTest {
 
         assertPatentError(() -> patentService.delete(1L), ErrorCode.PATENT_NOT_FOUND);
 
-        verify(patentDepartmentRepository, never()).deleteAllByPatentId(1L);
         verify(patentLegalStatusRepository, never()).deleteAllByPatentId(1L);
         verify(annuityHistoryRepository, never()).deleteAllByPatentId(1L);
         verify(opinionSubmissionRepository, never()).deleteAllByPatentId(1L);

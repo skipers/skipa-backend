@@ -82,18 +82,21 @@ class PatentTest {
 
     @Test
     void responseFactoriesMapPatentValuesAndDecodedLists() {
+        Department currentDepartment = Department.builder().name("Legal").build();
         Patent patent = Patent.builder()
                 .title("Patent")
                 .applicationNumber("APP-1")
                 .applicant("Applicant")
                 .inventor("Inventor")
                 .initialDepartment("Legal")
+                .currentDepartment(currentDepartment)
                 .build();
         Instant createdAt = Instant.parse("2026-05-01T00:00:00Z");
         Instant updatedAt = Instant.parse("2026-05-02T00:00:00Z");
         ReflectionTestUtils.setField(patent, "id", 1L);
         ReflectionTestUtils.setField(patent, "createdAt", createdAt);
         ReflectionTestUtils.setField(patent, "updatedAt", updatedAt);
+        ReflectionTestUtils.setField(currentDepartment, "id", 10L);
 
         PatentDetailResponse detailResponse = PatentDetailResponse.from(
                 patent,
@@ -106,6 +109,8 @@ class PatentTest {
         assertThat(detailResponse.relatedProducts()).containsExactly("Product");
         assertThat(detailResponse.keywords()).containsExactly("Keyword");
         assertThat(detailResponse.initialDepartment()).isEqualTo("Legal");
+        assertThat(detailResponse.currentDepartmentId()).isEqualTo(10L);
+        assertThat(detailResponse.currentDepartmentName()).isEqualTo("Legal");
         assertThat(detailResponse.createdAt()).isEqualTo(createdAt);
         assertThat(listResponse.title()).isEqualTo("Patent");
         assertThat(listResponse.applicationNumber()).isEqualTo("APP-1");
@@ -113,19 +118,13 @@ class PatentTest {
     }
 
     @Test
-    void patentDepartmentBuilderStoresAssignmentValues() {
-        Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
-        Department department = Department.builder().name("Legal").build();
-        Instant assignedAt = Instant.parse("2026-05-01T00:00:00Z");
+    void changeCurrentDepartmentUpdatesCurrentDepartment() {
+        Department before = Department.builder().name("Before").build();
+        Department after = Department.builder().name("After").build();
+        Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").currentDepartment(before).build();
 
-        PatentDepartment assignment = PatentDepartment.builder()
-                .patent(patent)
-                .department(department)
-                .assignedAt(assignedAt)
-                .build();
+        patent.changeCurrentDepartment(after);
 
-        assertThat(assignment.getPatent()).isSameAs(patent);
-        assertThat(assignment.getDepartment()).isSameAs(department);
-        assertThat(assignment.getAssignedAt()).isEqualTo(assignedAt);
+        assertThat(patent.getCurrentDepartment()).isSameAs(after);
     }
 }

@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.patent.domain;
 
+import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -97,6 +98,10 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "initial_department", length = 200) // 최초 담당 부서명
     private String initialDepartment;
 
+    @ManyToOne(fetch = FetchType.LAZY) // 현재 담당 부서(선택)
+    @JoinColumn(name = "current_department_id")
+    private Department currentDepartment;
+
     @Column(name = "keywords") // 키워드
     private String keywords;
 
@@ -132,6 +137,7 @@ public class Patent extends BaseTimeEntity {
             Boolean isJointApplication,
             String jointApplicant,
             String initialDepartment,
+            Department currentDepartment,
             String keywords,
             String overview,
             String coreContent
@@ -160,6 +166,7 @@ public class Patent extends BaseTimeEntity {
         this.isJointApplication = isJointApplication;
         this.jointApplicant = jointApplicant;
         this.initialDepartment = initialDepartment;
+        this.currentDepartment = currentDepartment;
         this.keywords = keywords;
         this.overview = overview;
         this.coreContent = coreContent;
@@ -221,6 +228,10 @@ public class Patent extends BaseTimeEntity {
         this.keywords = keywords;
         this.overview = overview;
         this.coreContent = coreContent;
+    }
+
+    public void changeCurrentDepartment(Department department) {
+        this.currentDepartment = department;
     }
 
 }

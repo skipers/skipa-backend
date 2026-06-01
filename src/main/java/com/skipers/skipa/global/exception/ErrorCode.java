@@ -37,7 +37,7 @@ public enum ErrorCode {
     PATENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DOCUMENT_NOT_FOUND", "특허 문서를 찾을 수 없습니다."),
     PATENT_DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DEPARTMENT_NOT_FOUND", "특허 담당 부서 정보를 찾을 수 없습니다."),
     PATENT_LEGAL_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_LEGAL_STATUS_NOT_FOUND", "특허 권리 상태 이력을 찾을 수 없습니다."),
-    ANNUITY_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "ANNUITY_HISTORY_NOT_FOUND", "연차료 납부 이력을 찾을 수 없습니다."),
+    PATENT_ANNUITY_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_ANNUITY_NOT_FOUND", "특허 연차료를 찾을 수 없습니다."),
 
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "보고서를 찾을 수 없습니다."),

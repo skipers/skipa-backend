@@ -246,35 +246,35 @@ src/main/java/com/skipers/skipa
 │   │   │   ├── PatentRepository.java
 │   │   │   ├── PatentDepartmentRepository.java
 │   │   │   ├── PatentLegalStatusRepository.java
-│   │   │   └── AnnuityHistoryRepository.java
+│   │   │   └── PatentAnnuityRepository.java
 │   │   ├── domain
 │   │   │   ├── Patent.java
 │   │   │   ├── PatentDepartment.java
 │   │   │   ├── PatentLegalStatus.java
-│   │   │   ├── AnnuityHistory.java
+│   │   │   ├── PatentAnnuity.java
 │   │   │   ├── PatentLegalStatusType.java
-│   │   │   └── AnnuityStatus.java
+│   │   │   └── PatentAnnuityStatus.java
 │   │   ├── dto
 │   │   │   ├── request
 │   │   │   │   ├── PatentCreateRequest.java
 │   │   │   │   ├── PatentUpdateRequest.java
 │   │   │   │   ├── PatentDepartmentAssignRequest.java
 │   │   │   │   ├── PatentLegalStatusCreateRequest.java
-│   │   │   │   ├── AnnuityCreateRequest.java
-│   │   │   │   └── AnnuityUpdateRequest.java
+│   │   │   │   ├── PatentAnnuityCreateRequest.java
+│   │   │   │   └── PatentAnnuityUpdateRequest.java
 │   │   │   └── response
 │   │   │       ├── PatentListResponse.java
 │   │   │       ├── PatentDetailResponse.java
 │   │   │       ├── PatentDocumentExtractResponse.java
 │   │   │       ├── PatentDepartmentResponse.java
 │   │   │       ├── PatentLegalStatusResponse.java
-│   │   │       └── AnnuityResponse.java
+│   │   │       └── PatentAnnuityResponse.java
 │   │   └── exception
 │   │       ├── PatentNotFoundException.java
 │   │       ├── DuplicateApplicationNumberException.java
 │   │       ├── PatentDepartmentNotFoundException.java
 │   │       ├── PatentLegalStatusNotFoundException.java
-│   │       └── AnnuityHistoryNotFoundException.java
+│   │       └── PatentAnnuityNotFoundException.java
 │   │
 │   ├── report
 │   │   ├── api
@@ -381,7 +381,7 @@ src/main/java/com/skipers/skipa
 | Patent Documents | `/patents/{patentId}/documents` | 특허 문서 관리 |
 | Patent Departments | `/patents/{patentId}/departments` | 특허 담당 부서 관리 |
 | Patent Legal Status | `/patents/{patentId}/legal-status` | 권리 상태 이력 관리 |
-| Annuity History | `/patents/{patentId}/annuities` | 연차료 납부 이력 관리 |
+| Patent Annuities | `/patents/{patentId}/annuities` | 특허 연차료 관리 |
 | Decisions | `/decisions` | Legal 팀 결정 현황 모니터링 |
 | Assigned Patents | `/assigned-patents` | 사업부 담당 특허 |
 | Reports | `/patents/{patentId}/reports` | AI 평가 보고서 관리 |

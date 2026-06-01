@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDate;
 
-public record AnnuityCreateRequest(
+public record PatentAnnuityCreateRequest(
 
         @NotNull(message = "연차는 필수입니다.")
         @Schema(description = "연차", example = "1")
