@@ -7,7 +7,6 @@ import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
 import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
 import com.skipers.skipa.domain.opinion.domain.OpinionSubmissionStatus;
-import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.user.dao.UserRepository;
@@ -59,9 +58,6 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private PatentRepository patentRepository;
-
-    @Autowired
-    private PatentDepartmentRepository patentDepartmentRepository;
 
     @Autowired
     private OpinionSubmissionRepository opinionSubmissionRepository;
