@@ -10,7 +10,8 @@ import java.util.Map;
 public class DataIntegrityViolationErrorResolver {
 
     private static final Map<String, ErrorCode> ERROR_CODE_BY_CONSTRAINT = Map.of(
-            "uk_patents_application_number", ErrorCode.DUPLICATE_APPLICATION_NUMBER
+            "uk_patents_application_number", ErrorCode.DUPLICATE_APPLICATION_NUMBER,
+            "uk_reviews_patent_department", ErrorCode.DUPLICATE_REVIEW_REQUEST
     );
 
     public ErrorCode resolve(DataIntegrityViolationException exception) {

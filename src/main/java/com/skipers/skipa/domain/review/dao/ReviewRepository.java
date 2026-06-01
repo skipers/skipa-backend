@@ -13,6 +13,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     Optional<Review> findByPatentIdAndDepartmentId(Long patentId, Long departmentId);
 
+    boolean existsByPatentIdAndDepartmentId(Long patentId, Long departmentId);
+
     boolean existsByPatentId(Long patentId);
 
     void deleteAllByPatentId(Long patentId);
