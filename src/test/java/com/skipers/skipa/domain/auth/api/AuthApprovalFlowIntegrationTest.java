@@ -5,8 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
+import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -28,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -66,12 +70,16 @@ class AuthApprovalFlowIntegrationTest {
     private ReviewRepository reviewRepository;
 
     @Autowired
+    private ReviewCycleRepository reviewCycleRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtProvider jwtProvider;
 
     private Department department;
+    private ReviewCycle reviewCycle;
 
     @BeforeEach
     void setUp() {
@@ -81,6 +89,12 @@ class AuthApprovalFlowIntegrationTest {
 
         department = departmentRepository.save(Department.builder()
                 .name("통신")
+                .build());
+        reviewCycle = reviewCycleRepository.save(ReviewCycle.builder()
+                .name("2026년 2분기 정기 재평가")
+                .type(ReviewCycleType.QUARTERLY)
+                .startDate(LocalDate.now().minusDays(1))
+                .endDate(LocalDate.now().plusDays(1))
                 .build());
 
         userRepository.save(User.createActive(
@@ -622,6 +636,7 @@ class AuthApprovalFlowIntegrationTest {
         Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(reviewCycle)
                 .build());
         String businessToken = createActiveUserToken("business-opinion", "business-opinion@example.com", UserRole.BUSINESS);
         String legalToken = createActiveUserToken("legal-opinion", "legal-opinion@example.com", UserRole.LEGAL);
@@ -695,6 +710,7 @@ class AuthApprovalFlowIntegrationTest {
         Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(otherDepartment)
+                .reviewCycle(reviewCycle)
                 .build());
         String businessToken = createActiveUserToken("business-other", "business-other@example.com", UserRole.BUSINESS);
 
@@ -712,6 +728,7 @@ class AuthApprovalFlowIntegrationTest {
         Review ownReview = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(reviewCycle)
                 .build());
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
@@ -754,14 +771,17 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.applicationNumber").value("APP-REVIEW-REQUEST"))
                 .andExpect(jsonPath("$.data.departmentId").value(department.getId()))
                 .andExpect(jsonPath("$.data.departmentName").value("통신"))
+                .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
+                .andExpect(jsonPath("$.data.reviewCycleName").value("2026년 2분기 정기 재평가"))
                 .andExpect(jsonPath("$.data.opinion").value(nullValue()))
                 .andExpect(jsonPath("$.data.status").value("미제출"))
-                .andExpect(jsonPath("$.data.submittedAt").value(nullValue()));
+                .andExpect(jsonPath("$.data.submittedAt").value(nullValue()))
+                .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getEndDate().toString()));
 
-        assertThat(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(
+        assertThat(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
+                reviewCycle.getId(),
                 patent.getId(),
-                department.getId(),
-                ReviewStatus.미제출
+                department.getId()
         )).isTrue();
     }
 
@@ -793,6 +813,7 @@ class AuthApprovalFlowIntegrationTest {
         reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(reviewCycle)
                 .build());
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
@@ -809,9 +830,16 @@ class AuthApprovalFlowIntegrationTest {
                 .applicationNumber("APP-REVIEW-REPEATED")
                 .currentDepartment(department)
                 .build());
+        ReviewCycle previousCycle = reviewCycleRepository.save(ReviewCycle.builder()
+                .name("2026년 1분기 정기 재평가")
+                .type(ReviewCycleType.QUARTERLY)
+                .startDate(LocalDate.now().minusMonths(3))
+                .endDate(LocalDate.now().minusMonths(1))
+                .build());
         Review submittedReview = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(previousCycle)
                 .build());
         submittedReview.submit(BusinessOpinion.유지, "기존 의견", Instant.now());
         String legalToken = createActiveUserToken("legal-review-repeat", "legal-review-repeat@example.com", UserRole.LEGAL);
@@ -884,10 +912,12 @@ class AuthApprovalFlowIntegrationTest {
         Review firstReview = reviewRepository.save(Review.builder()
                 .patent(firstPatent)
                 .department(department)
+                .reviewCycle(reviewCycle)
                 .build());
         Review secondReview = reviewRepository.save(Review.builder()
                 .patent(secondPatent)
                 .department(otherDepartment)
+                .reviewCycle(reviewCycle)
                 .build());
         secondReview.submit(BusinessOpinion.유지, "유지 의견입니다.", Instant.now());
 

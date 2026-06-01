@@ -28,7 +28,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             """)
     Page<Review> findLatestAssignedByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"patent", "department"})
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
     @Query("""
             select review
             from Review review
@@ -52,7 +52,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             ReviewStatus status
     );
 
-    boolean existsByPatentIdAndDepartmentIdAndStatus(Long patentId, Long departmentId, ReviewStatus status);
+    boolean existsByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
 
     void deleteAllByPatentId(Long patentId);
 }

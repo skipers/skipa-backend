@@ -5,7 +5,10 @@ import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
+import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
@@ -21,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -40,6 +44,9 @@ class ReviewServiceTest {
     private ReviewRepository reviewRepository;
 
     @Mock
+    private ReviewCycleRepository reviewCycleRepository;
+
+    @Mock
     private PatentRepository patentRepository;
 
     @InjectMocks
@@ -47,6 +54,7 @@ class ReviewServiceTest {
 
     private Patent patent;
     private Department department;
+    private ReviewCycle reviewCycle;
 
     @BeforeEach
     void setUp() {
@@ -54,6 +62,13 @@ class ReviewServiceTest {
                 .name("통신")
                 .build();
         ReflectionTestUtils.setField(department, "id", 1L);
+        reviewCycle = ReviewCycle.builder()
+                .name("2026년 2분기 정기 재평가")
+                .type(ReviewCycleType.QUARTERLY)
+                .startDate(LocalDate.now().minusDays(1))
+                .endDate(LocalDate.now().plusDays(1))
+                .build();
+        ReflectionTestUtils.setField(reviewCycle, "id", 1L);
 
         patent = Patent.builder()
                 .title("Patent")
@@ -66,7 +81,9 @@ class ReviewServiceTest {
     @Test
     void createSavesReviewWithPendingSubmissionStatus() {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
-        when(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(10L, 1L, ReviewStatus.미제출)).thenReturn(false);
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L)).thenReturn(false);
         when(reviewRepository.save(any(Review.class))).thenAnswer(invocation -> {
             Review review = invocation.getArgument(0);
             ReflectionTestUtils.setField(review, "id", 100L);
@@ -79,6 +96,8 @@ class ReviewServiceTest {
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.departmentId()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo("미제출");
+        assertThat(response.reviewCycleId()).isEqualTo(1L);
+        assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate());
         assertThat(response.opinion()).isNull();
         assertThat(response.submittedAt()).isNull();
     }
@@ -107,13 +126,30 @@ class ReviewServiceTest {
                 ReviewException.class,
                 ErrorCode.PATENT_DEPARTMENT_NOT_ASSIGNED
         );
-        verify(reviewRepository, never()).existsByPatentIdAndDepartmentIdAndStatus(any(), any(), any());
+        verify(reviewCycleRepository, never())
+                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any());
     }
 
     @Test
-    void createRejectsDuplicateReviewRequest() {
+    void createRejectsMissingActiveReviewCycle() {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
-        when(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(10L, 1L, ReviewStatus.미제출)).thenReturn(true);
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        assertError(
+                () -> reviewService.create(10L),
+                ReviewException.class,
+                ErrorCode.REVIEW_CYCLE_NOT_FOUND
+        );
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void createRejectsDuplicateReviewRequestInSameCycle() {
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L)).thenReturn(true);
 
         assertError(
                 () -> reviewService.create(10L),
@@ -121,17 +157,6 @@ class ReviewServiceTest {
                 ErrorCode.DUPLICATE_REVIEW_REQUEST
         );
         verify(reviewRepository, never()).save(any());
-    }
-
-    @Test
-    void createAllowsNewRequestAfterPreviousSubmission() {
-        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
-        when(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(10L, 1L, ReviewStatus.미제출)).thenReturn(false);
-        when(reviewRepository.save(any(Review.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        ReviewResponse response = reviewService.create(10L);
-
-        assertThat(response.status()).isEqualTo("미제출");
     }
 
     @Test
@@ -181,6 +206,7 @@ class ReviewServiceTest {
         Review review = Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(reviewCycle)
                 .build();
         ReflectionTestUtils.setField(review, "id", 100L);
         return review;

@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patent.dto.response;
 import com.skipers.skipa.domain.review.domain.Review;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public record AssignedPatentResponse(
         Long id,
@@ -14,7 +15,8 @@ public record AssignedPatentResponse(
         Instant submittedAt,
         Instant createdAt,
         Instant updatedAt,
-        Instant reviewRequestedAt
+        Instant reviewRequestedAt,
+        LocalDate dueDate
 ) {
 
     public static AssignedPatentResponse from(Review review) {
@@ -28,7 +30,8 @@ public record AssignedPatentResponse(
                 review.getSubmittedAt(),
                 review.getPatent().getCreatedAt(),
                 review.getPatent().getUpdatedAt(),
-                review.getCreatedAt()
+                review.getCreatedAt(),
+                review.getDueDate()
         );
     }
 }

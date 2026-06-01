@@ -5,7 +5,9 @@ import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
@@ -18,12 +20,15 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
+    private final ReviewCycleRepository reviewCycleRepository;
     private final PatentRepository patentRepository;
 
     @Transactional
@@ -34,11 +39,15 @@ public class ReviewService {
         if (department == null) {
             throw new ReviewException(ErrorCode.PATENT_DEPARTMENT_NOT_ASSIGNED);
         }
+        LocalDate today = LocalDate.now();
+        ReviewCycle reviewCycle = reviewCycleRepository
+                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today)
+                .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_CYCLE_NOT_FOUND));
 
-        if (reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(
+        if (reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
+                reviewCycle.getId(),
                 patentId,
-                department.getId(),
-                ReviewStatus.미제출
+                department.getId()
         )) {
             throw new ReviewException(ErrorCode.DUPLICATE_REVIEW_REQUEST);
         }
@@ -46,6 +55,7 @@ public class ReviewService {
         Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(reviewCycle)
                 .build());
 
         return ReviewResponse.from(review);

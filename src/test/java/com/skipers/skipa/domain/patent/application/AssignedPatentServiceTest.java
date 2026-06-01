@@ -4,6 +4,8 @@ import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
+import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.ReviewSubmitRequest;
 import com.skipers.skipa.domain.review.exception.ReviewException;
@@ -26,6 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -73,6 +76,7 @@ class AssignedPatentServiceTest {
         review = Review.builder()
                 .patent(patent)
                 .department(department)
+                .reviewCycle(reviewCycle())
                 .build();
         ReflectionTestUtils.setField(review, "id", 100L);
     }
@@ -191,5 +195,16 @@ class AssignedPatentServiceTest {
         Department department = Department.builder().name(name).build();
         ReflectionTestUtils.setField(department, "id", id);
         return department;
+    }
+
+    private ReviewCycle reviewCycle() {
+        ReviewCycle reviewCycle = ReviewCycle.builder()
+                .name("2026년 2분기 정기 재평가")
+                .type(ReviewCycleType.QUARTERLY)
+                .startDate(LocalDate.now().minusDays(1))
+                .endDate(LocalDate.now().plusDays(1))
+                .build();
+        ReflectionTestUtils.setField(reviewCycle, "id", 1L);
+        return reviewCycle;
     }
 }

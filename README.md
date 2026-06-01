@@ -306,9 +306,12 @@ src/main/java/com/skipers/skipa
 │   │   ├── application
 │   │   │   └── ReviewService.java
 │   │   ├── dao
-│   │   │   └── ReviewRepository.java
+│   │   │   ├── ReviewRepository.java
+│   │   │   └── ReviewCycleRepository.java
 │   │   ├── domain
 │   │   │   ├── Review.java
+│   │   │   ├── ReviewCycle.java
+│   │   │   ├── ReviewCycleType.java
 │   │   │   ├── ReviewStatus.java
 │   │   │   └── BusinessOpinion.java
 │   │   ├── dto

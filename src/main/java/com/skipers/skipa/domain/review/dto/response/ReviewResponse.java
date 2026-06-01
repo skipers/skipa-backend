@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.review.dto.response;
 import com.skipers.skipa.domain.review.domain.Review;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public record ReviewResponse(
         Long id,
@@ -11,10 +12,13 @@ public record ReviewResponse(
         String applicationNumber,
         Long departmentId,
         String departmentName,
+        Long reviewCycleId,
+        String reviewCycleName,
         String opinion,
         String comment,
         String status,
         Instant submittedAt,
+        LocalDate dueDate,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -27,10 +31,13 @@ public record ReviewResponse(
                 review.getPatent().getApplicationNumber(),
                 review.getDepartment().getId(),
                 review.getDepartment().getName(),
+                review.getReviewCycle().getId(),
+                review.getReviewCycle().getName(),
                 review.getOpinion() != null ? review.getOpinion().name() : null,
                 review.getComment(),
                 review.getStatus().name(),
                 review.getSubmittedAt(),
+                review.getDueDate(),
                 review.getCreatedAt(),
                 review.getUpdatedAt()
         );

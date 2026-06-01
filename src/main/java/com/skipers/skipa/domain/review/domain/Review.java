@@ -14,17 +14,27 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "reviews")
+@Table(
+        name = "reviews",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_reviews_cycle_patent_department",
+                        columnNames = {"review_cycle_id", "patent_id", "department_id"}
+                )
+        }
+)
 public class Review extends BaseTimeEntity {
 
     @Id
@@ -40,6 +50,10 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
 
+    @ManyToOne(fetch = FetchType.LAZY) // 검토 주기(N) : (1) 사업부 검토
+    @JoinColumn(name = "review_cycle_id", nullable = false)
+    private ReviewCycle reviewCycle;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "opinion", length = 20) // 사업부 의견(유지 의견/포기 의견)
     private BusinessOpinion opinion;
@@ -54,21 +68,28 @@ public class Review extends BaseTimeEntity {
     @Column(name = "submitted_at") // 제출일시
     private Instant submittedAt;
 
+    @Column(name = "due_date", nullable = false) // 회신 기한
+    private LocalDate dueDate;
+
     @Builder
     private Review(
             Patent patent,
             Department department,
+            ReviewCycle reviewCycle,
             BusinessOpinion opinion,
             String comment,
             ReviewStatus status,
-            Instant submittedAt
+            Instant submittedAt,
+            LocalDate dueDate
     ) {
         this.patent = patent;
         this.department = department;
+        this.reviewCycle = reviewCycle;
         this.opinion = opinion;
         this.comment = comment;
         this.status = status != null ? status : ReviewStatus.미제출;
         this.submittedAt = submittedAt;
+        this.dueDate = dueDate != null ? dueDate : reviewCycle.getEndDate();
     }
 
     public void submit(BusinessOpinion opinion, String comment, Instant submittedAt) {
