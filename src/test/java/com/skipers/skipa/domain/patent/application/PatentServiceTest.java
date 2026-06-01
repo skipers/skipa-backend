@@ -2,8 +2,9 @@ package com.skipers.skipa.domain.patent.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.skipers.skipa.domain.department.dao.DepartmentRepository;
-import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
+import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
+import com.skipers.skipa.domain.patent.dao.AnnuityHistoryRepository;
+import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -53,6 +54,9 @@ class PatentServiceTest {
 
     @Mock
     private PatentAnnuityRepository patentAnnuityRepository;
+
+    @Mock
+    private OpinionSubmissionRepository opinionSubmissionRepository;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -217,9 +221,11 @@ class PatentServiceTest {
 
         patentService.delete(1L);
 
-        InOrder deletionOrder = inOrder(patentLegalStatusRepository, patentAnnuityRepository, patentRepository);
+        InOrder deletionOrder = inOrder(patentDepartmentRepository, patentLegalStatusRepository, annuityHistoryRepository, opinionSubmissionRepository, patentRepository);
+        deletionOrder.verify(patentDepartmentRepository).deleteAllByPatentId(1L);
         deletionOrder.verify(patentLegalStatusRepository).deleteAllByPatentId(1L);
-        deletionOrder.verify(patentAnnuityRepository).deleteAllByPatentId(1L);
+        deletionOrder.verify(annuityHistoryRepository).deleteAllByPatentId(1L);
+        deletionOrder.verify(opinionSubmissionRepository).deleteAllByPatentId(1L);
         deletionOrder.verify(patentRepository).deleteById(1L);
     }
 
@@ -230,7 +236,8 @@ class PatentServiceTest {
         assertPatentError(() -> patentService.delete(1L), ErrorCode.PATENT_NOT_FOUND);
 
         verify(patentLegalStatusRepository, never()).deleteAllByPatentId(1L);
-        verify(patentAnnuityRepository, never()).deleteAllByPatentId(1L);
+        verify(annuityHistoryRepository, never()).deleteAllByPatentId(1L);
+        verify(opinionSubmissionRepository, never()).deleteAllByPatentId(1L);
         verify(patentRepository, never()).deleteById(1L);
     }
 

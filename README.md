@@ -300,10 +300,10 @@ src/main/java/com/skipers/skipa
 │   ├── decision
 │   │   ├── api
 │   │   │   ├── DecisionController.java
-│   │   │   └── InboxController.java
+│   │   │   └── AssignedPatentController.java
 │   │   ├── application
 │   │   │   ├── DecisionService.java
-│   │   │   └── InboxService.java
+│   │   │   └── AssignedPatentService.java
 │   │   ├── dao
 │   │   │   └── DecisionRepository.java
 │   │   ├── domain
@@ -316,7 +316,7 @@ src/main/java/com/skipers/skipa
 │   │   │   │   └── DecisionSubmitRequest.java
 │   │   │   └── response
 │   │   │       ├── DecisionResponse.java
-│   │   │       └── InboxResponse.java
+│   │   │       └── AssignedPatentResponse.java
 │   │   └── exception
 │   │       ├── DecisionNotFoundException.java
 │   │       └── DecisionAlreadySubmittedException.java
@@ -362,7 +362,7 @@ src/main/java/com/skipers/skipa
 | `domain.department` | 부서 관리 |
 | `domain.patent` | 특허 기본 정보, 문서, 담당 부서, 권리 상태, 연차료 관리 |
 | `domain.report` | AI 평가 보고서 생성 요청, 조회, 상태 확인 |
-| `domain.decision` | 사업부 검토 요청, 결정 제출, Legal 모니터링, Inbox |
+| `domain.decision` | 사업부 담당 특허, 의견 제출, Legal 모니터링 |
 | `domain.dashboard` | Legal 팀 대시보드 통계 |
 | `infra.ai` | AI 서버 연동 |
 | `infra.storage` | S3 등 파일 저장소 연동 |
@@ -383,7 +383,7 @@ src/main/java/com/skipers/skipa
 | Patent Legal Status | `/patents/{patentId}/legal-status` | 권리 상태 이력 관리 |
 | Patent Annuities | `/patents/{patentId}/annuities` | 특허 연차료 관리 |
 | Decisions | `/decisions` | Legal 팀 결정 현황 모니터링 |
-| Inbox | `/inbox` | 사업부 검토 요청함 |
+| Assigned Patents | `/assigned-patents` | 사업부 담당 특허 |
 | Reports | `/patents/{patentId}/reports` | AI 평가 보고서 관리 |
 | Dashboard | `/dashboard` | Legal 팀 대시보드 |
 
