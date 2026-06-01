@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
+import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
+import com.skipers.skipa.domain.opinion.domain.OpinionSubmissionStatus;
 import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -62,6 +65,9 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private PatentDepartmentRepository patentDepartmentRepository;
+
+    @Autowired
+    private OpinionSubmissionRepository opinionSubmissionRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -613,6 +619,113 @@ class AuthApprovalFlowIntegrationTest {
         assertThat(patentDepartmentRepository.existsById(assignment.getId())).isFalse();
         assertThat(departmentRepository.existsById(department.getId())).isTrue();
         assertThat(patentRepository.existsById(patent.getId())).isFalse();
+    }
+
+    @Test
+    void assignedPatentApisAllowBusinessDepartmentAccessAndOpinionSubmission() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Assigned Patent")
+                .applicationNumber("APP-OPINION")
+                .build());
+        OpinionSubmission opinionSubmission = opinionSubmissionRepository.save(OpinionSubmission.builder()
+                .patent(patent)
+                .department(department)
+                .build());
+        String businessToken = createActiveUserToken("business-opinion", "business-opinion@example.com", UserRole.BUSINESS);
+        String legalToken = createActiveUserToken("legal-opinion", "legal-opinion@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(get("/assigned-patents"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(opinionSubmission.getId()))
+                .andExpect(jsonPath("$.data.items[0].patentTitle").value("Assigned Patent"))
+                .andExpect(jsonPath("$.data.items[0].status").value("대기"));
+
+        mockMvc.perform(get("/assigned-patents/{opinionSubmissionId}", opinionSubmission.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.patent.id").value(patent.getId()))
+                .andExpect(jsonPath("$.data.patent.title").value("Assigned Patent"));
+
+        mockMvc.perform(post("/assigned-patents/{opinionSubmissionId}/opinions", opinionSubmission.getId())
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "opinion": "유지",
+                                  "comment": "핵심 특허로 판단됩니다."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.opinion").value("유지"))
+                .andExpect(jsonPath("$.data.comment").value("핵심 특허로 판단됩니다."))
+                .andExpect(jsonPath("$.data.status").value("제출완료"))
+                .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
+
+        OpinionSubmission submitted = opinionSubmissionRepository.findById(opinionSubmission.getId()).orElseThrow();
+        assertThat(submitted.getStatus()).isEqualTo(OpinionSubmissionStatus.제출완료);
+        assertThat(submitted.getSubmittedAt()).isNotNull();
+
+        mockMvc.perform(post("/assigned-patents/{opinionSubmissionId}/opinions", opinionSubmission.getId())
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "opinion": "포기"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("DECISION_ALREADY_SUBMITTED"));
+    }
+
+    @Test
+    void assignedPatentApisRejectOtherDepartmentMissingIdAndInvalidOpinion() throws Exception {
+        Department otherDepartment = departmentRepository.save(Department.builder()
+                .name("제조")
+                .build());
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Other Department Patent")
+                .applicationNumber("APP-OTHER-DEPARTMENT")
+                .build());
+        OpinionSubmission opinionSubmission = opinionSubmissionRepository.save(OpinionSubmission.builder()
+                .patent(patent)
+                .department(otherDepartment)
+                .build());
+        String businessToken = createActiveUserToken("business-other", "business-other@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/assigned-patents/{opinionSubmissionId}", opinionSubmission.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/assigned-patents/{opinionSubmissionId}", 999999L)
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("DECISION_NOT_FOUND"));
+
+        OpinionSubmission ownSubmission = opinionSubmissionRepository.save(OpinionSubmission.builder()
+                .patent(patent)
+                .department(department)
+                .build());
+
+        mockMvc.perform(post("/assigned-patents/{opinionSubmissionId}/opinions", ownSubmission.getId())
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "opinion": "보류"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
     }
 
     @Test
