@@ -719,6 +719,109 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void legalUserCanCreateReviewRequest() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Review Request Patent")
+                .applicationNumber("APP-REVIEW-REQUEST")
+                .build());
+        String legalToken = createActiveUserToken("legal-review", "legal-review@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-review", "business-review@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.patentId").value(patent.getId()))
+                .andExpect(jsonPath("$.data.title").value("Review Request Patent"))
+                .andExpect(jsonPath("$.data.applicationNumber").value("APP-REVIEW-REQUEST"))
+                .andExpect(jsonPath("$.data.departmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.departmentName").value("통신"))
+                .andExpect(jsonPath("$.data.opinion").value(nullValue()))
+                .andExpect(jsonPath("$.data.status").value("미제출"))
+                .andExpect(jsonPath("$.data.submittedAt").value(nullValue()));
+
+        assertThat(reviewRepository.existsByPatentIdAndDepartmentId(patent.getId(), department.getId())).isTrue();
+    }
+
+    @Test
+    void reviewRequestCreationRejectsInvalidAndDuplicateRequests() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Review Error Patent")
+                .applicationNumber("APP-REVIEW-ERROR")
+                .build());
+        String legalToken = createActiveUserToken("legal-review-error", "legal-review-error@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", 999999L)
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": 999999
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .build());
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("DUPLICATE_REVIEW_REQUEST"));
+    }
+
+    @Test
     void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
