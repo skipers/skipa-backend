@@ -28,7 +28,7 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "title", length = 500, nullable = false) // 특허명
     private String title;
 
-    @Column(name = "application_number", length = 20, nullable = false, unique = true) // 출원번호(유니크)
+    @Column(name = "application_number", length = 20, nullable = false, unique = true) // 출원번호
     private String applicationNumber;
 
     @Column(name = "registration_number", length = 20) // 등록번호

@@ -66,7 +66,7 @@ json
 | --- | --- |
 | `ADMIN` | 전체 관리 권한 |
 | `LEGAL` | Legal AI팀 — 운영/요청/현황/특허 관리 |
-| `BUSINESS` | 사업부 — 받은 요청함/결정 제출 |
+| `BUSINESS` | 사업부 — 담당 특허 조회/의견 제출 |
 
 ---
 
@@ -172,13 +172,13 @@ json
 
 ---
 
-### 9. 받은 요청함 (Inbox) — 사업부
+### 9. 담당 특허 (Assigned Patents) — 사업부
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 요청 목록 조회 | `GET` | `/inbox` | 내 부서에 배정된 검토 요청 목록 조회 | `BUSINESS` |
-| 요청 단건 조회 | `GET` | `/inbox/{decisionId}` | 요청 상세 및 특허 정보 조회 | `BUSINESS` |
-| 결정 제출 | `POST` | `/inbox/{decisionId}/decide` | 유지/포기 결정 제출. decision 및 decided_at 업데이트 | `BUSINESS` |
+| 담당 특허 목록 조회 | `GET` | `/assigned-patents` | 내 부서에 배정된 담당 특허 목록 조회 | `BUSINESS` |
+| 담당 특허 단건 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
+| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
 
 ---
 
