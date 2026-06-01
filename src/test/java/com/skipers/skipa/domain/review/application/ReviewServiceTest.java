@@ -139,7 +139,7 @@ class ReviewServiceTest {
         assertError(
                 () -> reviewService.create(10L),
                 ReviewException.class,
-                ErrorCode.REVIEW_CYCLE_NOT_FOUND
+                ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND
         );
         verify(reviewRepository, never()).save(any());
     }

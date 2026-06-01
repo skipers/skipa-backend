@@ -153,7 +153,22 @@ json
 
 ---
 
-### 7. 사업부 검토 요청 전송 (Reviews)
+### 7. 검토 주기 (Review Cycles)
+
+Legal 팀은 사업부 검토 요청에 사용할 검토 주기를 관리합니다.
+검토 주기의 기간은 서로 겹칠 수 없으며, 검토 요청에서 사용 중인 주기는 삭제할 수 없습니다.
+
+| 이름 | Method | URL | 설명 | 권한 |
+| --- | --- | --- | --- | --- |
+| 검토 주기 생성 | `POST` | `/review-cycles` | 검토 주기 등록 | `LEGAL` |
+| 검토 주기 목록 조회 | `GET` | `/review-cycles` | 최근 시작일 순으로 검토 주기 목록 조회 | `LEGAL` |
+| 검토 주기 단일 조회 | `GET` | `/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `LEGAL` |
+| 검토 주기 수정 | `PUT` | `/review-cycles/{reviewCycleId}` | 검토 주기 정보 수정 | `LEGAL` |
+| 검토 주기 삭제 | `DELETE` | `/review-cycles/{reviewCycleId}` | 미사용 검토 주기 삭제 | `LEGAL` |
+
+---
+
+### 8. 사업부 검토 요청 전송 (Reviews)
 
 검토 요청 전송 시 특허의 현재 담당 부서와 활성 검토 주기를 대상으로 `reviews` 행이 생성됩니다.
 회신 기한은 활성 검토 주기의 종료일로 저장됩니다.
@@ -165,7 +180,7 @@ json
 
 ---
 
-### 8. 사업부 검토 (Reviews) — Legal 모니터링
+### 9. 사업부 검토 (Reviews) — Legal 모니터링
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
@@ -174,7 +189,7 @@ json
 
 ---
 
-### 9. 담당 특허 (Assigned Patents) — 사업부
+### 10. 담당 특허 (Assigned Patents) — 사업부
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
@@ -184,7 +199,7 @@ json
 
 ---
 
-### 10. 평가 보고서 (Reports)
+### 11. 평가 보고서 (Reports)
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
@@ -195,7 +210,7 @@ json
 
 ---
 
-### 11. 대시보드 (Dashboard) — Legal
+### 12. 대시보드 (Dashboard) — Legal
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |

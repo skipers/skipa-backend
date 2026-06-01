@@ -42,7 +42,7 @@ public class ReviewService {
         LocalDate today = LocalDate.now();
         ReviewCycle reviewCycle = reviewCycleRepository
                 .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today)
-                .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_CYCLE_NOT_FOUND));
+                .orElseThrow(() -> new ReviewException(ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND));
 
         if (reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
                 reviewCycle.getId(),

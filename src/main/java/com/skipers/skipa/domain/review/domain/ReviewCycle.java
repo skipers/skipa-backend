@@ -53,4 +53,11 @@ public class ReviewCycle extends BaseTimeEntity {
         this.startDate = startDate;
         this.endDate = endDate;
     }
+
+    public void update(String name, ReviewCycleType type, LocalDate startDate, LocalDate endDate) {
+        this.name = name;
+        this.type = type;
+        this.startDate = startDate;
+        this.endDate = endDate;
+    }
 }

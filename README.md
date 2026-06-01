@@ -302,9 +302,11 @@ src/main/java/com/skipers/skipa
 │   │
 │   ├── review
 │   │   ├── api
-│   │   │   └── ReviewController.java
+│   │   │   ├── ReviewController.java
+│   │   │   └── ReviewCycleController.java
 │   │   ├── application
-│   │   │   └── ReviewService.java
+│   │   │   ├── ReviewService.java
+│   │   │   └── ReviewCycleService.java
 │   │   ├── dao
 │   │   │   ├── ReviewRepository.java
 │   │   │   └── ReviewCycleRepository.java
@@ -316,12 +318,15 @@ src/main/java/com/skipers/skipa
 │   │   │   └── BusinessOpinion.java
 │   │   ├── dto
 │   │   │   ├── request
-│   │   │   │   └── ReviewSubmitRequest.java
+│   │   │   │   ├── ReviewSubmitRequest.java
+│   │   │   │   ├── ReviewCycleCreateRequest.java
+│   │   │   │   └── ReviewCycleUpdateRequest.java
 │   │   │   └── response
-│   │   │       └── ReviewResponse.java
+│   │   │       ├── ReviewResponse.java
+│   │   │       └── ReviewCycleResponse.java
 │   │   └── exception
-│   │       ├── ReviewNotFoundException.java
-│   │       └── OpinionAlreadySubmittedException.java
+│   │       ├── ReviewException.java
+│   │       └── ReviewCycleException.java
 │   │
 │   └── dashboard
 │       ├── api
@@ -385,6 +390,7 @@ src/main/java/com/skipers/skipa
 | Patent Legal Status | `/patents/{patentId}/legal-status` | 권리 상태 이력 관리 |
 | Patent Annuities | `/patents/{patentId}/annuities` | 특허 연차료 관리 |
 | Reviews | `/reviews` | Legal 팀 검토 요청 및 의견 제출 현황 모니터링 |
+| Review Cycles | `/review-cycles` | Legal 팀 검토 주기 관리 |
 | Assigned Patents | `/assigned-patents` | 사업부 담당 특허 |
 | Reports | `/patents/{patentId}/reports` | AI 평가 보고서 관리 |
 | Dashboard | `/dashboard` | Legal 팀 대시보드 |

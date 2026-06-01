@@ -974,6 +974,81 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void legalUserCanManageReviewCycles() throws Exception {
+        String legalToken = createActiveUserToken("legal-review-cycle", "legal-review-cycle@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-review-cycle", "business-review-cycle@example.com", UserRole.BUSINESS);
+        LocalDate startDate = LocalDate.now().plusMonths(1);
+        LocalDate endDate = LocalDate.now().plusMonths(2);
+
+        mockMvc.perform(get("/review-cycles")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        MvcResult createResult = mockMvc.perform(post("/review-cycles")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "2026년 하반기 수시 재평가",
+                                  "type": "AD_HOC",
+                                  "startDate": "%s",
+                                  "endDate": "%s"
+                                }
+                                """.formatted(startDate, endDate)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value("2026년 하반기 수시 재평가"))
+                .andExpect(jsonPath("$.data.type").value("AD_HOC"))
+                .andExpect(jsonPath("$.data.startDate").value(startDate.toString()))
+                .andExpect(jsonPath("$.data.endDate").value(endDate.toString()))
+                .andReturn();
+
+        Long reviewCycleId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .asLong();
+
+        mockMvc.perform(get("/review-cycles")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].id").value(reviewCycleId));
+
+        mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycleId)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(reviewCycleId));
+
+        LocalDate updatedStartDate = LocalDate.now().plusMonths(3);
+        LocalDate updatedEndDate = LocalDate.now().plusMonths(4);
+        mockMvc.perform(put("/review-cycles/{reviewCycleId}", reviewCycleId)
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "2026년 하반기 정기 재평가",
+                                  "type": "QUARTERLY",
+                                  "startDate": "%s",
+                                  "endDate": "%s"
+                                }
+                                """.formatted(updatedStartDate, updatedEndDate)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("2026년 하반기 정기 재평가"))
+                .andExpect(jsonPath("$.data.type").value("QUARTERLY"))
+                .andExpect(jsonPath("$.data.startDate").value(updatedStartDate.toString()))
+                .andExpect(jsonPath("$.data.endDate").value(updatedEndDate.toString()));
+
+        mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycleId)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycleId)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("REVIEW_CYCLE_NOT_FOUND"));
+    }
+
+    @Test
     void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
