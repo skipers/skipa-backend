@@ -153,22 +153,22 @@ json
 
 ---
 
-### 7. 결정 요청 전송 (Decisions)
+### 7. 사업부 검토 요청 전송 (Reviews)
 
-검토 요청 전송 시 `decisions` 행이 생성됩니다.
+검토 요청 전송 시 `reviews` 행이 생성됩니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 사업부 전송 | `POST` | `/patents/{patentId}/decisions` | 사업부로 검토 요청 전송. decisions 행 생성 | `LEGAL` |
+| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 사업부로 검토 요청 전송. reviews 행 생성 | `LEGAL` |
 
 ---
 
-### 8. 결정 (Decisions) — Legal 모니터링
+### 8. 사업부 검토 (Reviews) — Legal 모니터링
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 결정 목록 조회 | `GET` | `/decisions` | 전체 결정 현황 조회 (상태/부서/특허 필터 가능) | `LEGAL` |
-| 결정 단건 조회 | `GET` | `/decisions/{decisionId}` | 결정 상세 조회 | `LEGAL` |
+| 사업부 검토 목록 조회 | `GET` | `/reviews` | 전체 검토 요청 및 의견 제출 현황 조회 (상태/부서/특허 필터 가능) | `LEGAL` |
+| 사업부 검토 단건 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청 및 의견 제출 상세 조회 | `LEGAL` |
 
 ---
 
@@ -178,7 +178,7 @@ json
 | --- | --- | --- | --- | --- |
 | 담당 특허 목록 조회 | `GET` | `/assigned-patents` | 내 부서에 배정된 담당 특허 목록 조회 | `BUSINESS` |
 | 담당 특허 단건 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
-| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
+| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지 의견/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
 
 ---
 
@@ -197,9 +197,9 @@ json
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 분기 진행 현황 | `GET` | `/dashboard/summary` | 진행률, 대상/평가/결정 건수 요약 | `LEGAL` |
+| 재평가 진행 현황 | `GET` | `/dashboard/summary` | 진행률, 검토 대상/평가/의견 제출 건수 요약 | `LEGAL` |
 | 담당 부서 배정 현황 | `GET` | `/dashboard/assignment` | 미배정/배정 요청/배정 완료 건수 | `LEGAL` |
-| 특허 유형 분포 / 만기 현황 | `GET` | `/dashboard/distribution` | 특허 유형 분포 및 분기별 만기 현황 | `LEGAL` |
-| 사업부별 처리 현황 | `GET` | `/dashboard/departments` | 부서별 담당/결정 완료/미결정 건수 | `LEGAL` |
+| 특허 유형 분포 / 만료 현황 | `GET` | `/dashboard/distribution` | 특허 유형 분포 및 분기별 만료 현황 | `LEGAL` |
+| 사업부별 검토 현황 | `GET` | `/dashboard/departments` | 부서별 검토 대상/제출 완료/미제출 건수 | `LEGAL` |
 
 .

@@ -1,13 +1,13 @@
-package com.skipers.skipa.domain.opinion.dto.request;
+package com.skipers.skipa.domain.review.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
-public record OpinionSubmissionSubmitRequest(
+public record ReviewSubmitRequest(
 
         @NotBlank(message = "사업부 의견은 필수입니다.")
-        @Pattern(regexp = "^(유지|포기)$", message = "사업부 의견은 유지/포기 중 하나여야 합니다.")
+        @Pattern(regexp = "^(유지|포기)$", message = "사업부 의견은 유지 의견/포기 의견 중 하나여야 합니다.")
         @Schema(description = "사업부 의견", example = "유지")
         String opinion,
 

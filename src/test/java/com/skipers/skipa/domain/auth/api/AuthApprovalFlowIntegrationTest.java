@@ -4,10 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
-import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
-import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
-import com.skipers.skipa.domain.opinion.domain.OpinionSubmissionStatus;
-import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
+import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.user.dao.UserRepository;
@@ -61,10 +60,7 @@ class AuthApprovalFlowIntegrationTest {
     private PatentRepository patentRepository;
 
     @Autowired
-    private PatentDepartmentRepository patentDepartmentRepository;
-
-    @Autowired
-    private OpinionSubmissionRepository opinionSubmissionRepository;
+    private ReviewRepository reviewRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -614,12 +610,12 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
-    void assignedPatentApisAllowBusinessDepartmentAccessAndOpinionSubmission() throws Exception {
+    void assignedPatentApisAllowBusinessDepartmentAccessAndReview() throws Exception {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Assigned Patent")
                 .applicationNumber("APP-OPINION")
                 .build());
-        OpinionSubmission opinionSubmission = opinionSubmissionRepository.save(OpinionSubmission.builder()
+        Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
                 .build());
@@ -640,14 +636,14 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
                 .andExpect(jsonPath("$.data.items[0].title").value("Assigned Patent"))
                 .andExpect(jsonPath("$.data.items[0].applicationNumber").value("APP-OPINION"))
-                .andExpect(jsonPath("$.data.items[0].status").value("대기"));
+                .andExpect(jsonPath("$.data.items[0].status").value("미제출"));
 
         mockMvc.perform(get("/assigned-patents/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.patent.id").value(patent.getId()))
                 .andExpect(jsonPath("$.data.patent.title").value("Assigned Patent"))
-                .andExpect(jsonPath("$.data.status").value("대기"));
+                .andExpect(jsonPath("$.data.status").value("미제출"));
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
@@ -664,8 +660,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("제출완료"))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
 
-        OpinionSubmission submitted = opinionSubmissionRepository.findById(opinionSubmission.getId()).orElseThrow();
-        assertThat(submitted.getStatus()).isEqualTo(OpinionSubmissionStatus.제출완료);
+        Review submitted = reviewRepository.findById(review.getId()).orElseThrow();
+        assertThat(submitted.getStatus()).isEqualTo(ReviewStatus.제출완료);
         assertThat(submitted.getSubmittedAt()).isNotNull();
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
@@ -677,7 +673,7 @@ class AuthApprovalFlowIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("DECISION_ALREADY_SUBMITTED"));
+                .andExpect(jsonPath("$.error.code").value("OPINION_ALREADY_SUBMITTED"));
     }
 
     @Test
@@ -689,7 +685,7 @@ class AuthApprovalFlowIntegrationTest {
                 .title("Other Department Patent")
                 .applicationNumber("APP-OTHER-DEPARTMENT")
                 .build());
-        OpinionSubmission opinionSubmission = opinionSubmissionRepository.save(OpinionSubmission.builder()
+        Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(otherDepartment)
                 .build());
@@ -703,9 +699,9 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/assigned-patents/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("DECISION_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
 
-        OpinionSubmission ownSubmission = opinionSubmissionRepository.save(OpinionSubmission.builder()
+        Review ownReview = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
                 .build());

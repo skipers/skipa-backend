@@ -1,6 +1,6 @@
 package com.skipers.skipa.domain.patent.dto.response;
 
-import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
+import com.skipers.skipa.domain.review.domain.Review;
 
 import java.time.Instant;
 
@@ -16,17 +16,17 @@ public record AssignedPatentResponse(
         Instant updatedAt
 ) {
 
-    public static AssignedPatentResponse from(OpinionSubmission opinionSubmission) {
+    public static AssignedPatentResponse from(Review review) {
         return new AssignedPatentResponse(
-                opinionSubmission.getPatent().getId(),
-                opinionSubmission.getPatent().getTitle(),
-                opinionSubmission.getPatent().getApplicationNumber(),
-                opinionSubmission.getOpinion() != null ? opinionSubmission.getOpinion().name() : null,
-                opinionSubmission.getComment(),
-                opinionSubmission.getStatus().name(),
-                opinionSubmission.getSubmittedAt(),
-                opinionSubmission.getPatent().getCreatedAt(),
-                opinionSubmission.getPatent().getUpdatedAt()
+                review.getPatent().getId(),
+                review.getPatent().getTitle(),
+                review.getPatent().getApplicationNumber(),
+                review.getOpinion() != null ? review.getOpinion().name() : null,
+                review.getComment(),
+                review.getStatus().name(),
+                review.getSubmittedAt(),
+                review.getPatent().getCreatedAt(),
+                review.getPatent().getUpdatedAt()
         );
     }
 }

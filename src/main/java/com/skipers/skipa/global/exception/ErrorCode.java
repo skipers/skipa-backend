@@ -44,10 +44,10 @@ public enum ErrorCode {
     REPORT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "REPORT_GENERATION_FAILED", "보고서 생성에 실패했습니다."),
     REPORT_NOT_COMPLETED(HttpStatus.CONFLICT, "REPORT_NOT_COMPLETED", "아직 생성이 완료되지 않은 보고서입니다."),
 
-    // Decision
-    DECISION_NOT_FOUND(HttpStatus.NOT_FOUND, "DECISION_NOT_FOUND", "검토 요청을 찾을 수 없습니다."),
-    DECISION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "DECISION_ALREADY_SUBMITTED", "이미 결정이 제출된 요청입니다."),
-    INVALID_DECISION_STATUS(HttpStatus.CONFLICT, "INVALID_DECISION_STATUS", "처리할 수 없는 결정 상태입니다."),
+    // Review
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_NOT_FOUND", "사업부 검토를 찾을 수 없습니다."),
+    OPINION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "OPINION_ALREADY_SUBMITTED", "이미 의견이 제출된 요청입니다."),
+    INVALID_REVIEW_STATUS(HttpStatus.CONFLICT, "INVALID_REVIEW_STATUS", "처리할 수 없는 사업부 검토 상태입니다."),
 
     // External
     AI_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "AI_SERVER_ERROR", "AI 서버 연동 중 오류가 발생했습니다."),
