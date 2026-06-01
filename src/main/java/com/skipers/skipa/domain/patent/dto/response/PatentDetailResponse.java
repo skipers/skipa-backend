@@ -32,6 +32,8 @@ public record PatentDetailResponse(
         Boolean isJointApplication,
         String jointApplicant,
         String initialDepartment,
+        Long currentDepartmentId,
+        String currentDepartmentName,
         List<String> keywords,
         String overview,
         String coreContent,
@@ -44,6 +46,9 @@ public record PatentDetailResponse(
             List<String> relatedProducts,
             List<String> keywords
     ) {
+        Long currentDepartmentId = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getId();
+        String currentDepartmentName = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getName();
+
         return new PatentDetailResponse(
                 patent.getId(),
                 patent.getTitle(),
@@ -70,6 +75,8 @@ public record PatentDetailResponse(
                 patent.getIsJointApplication(),
                 patent.getJointApplicant(),
                 patent.getInitialDepartment(),
+                currentDepartmentId,
+                currentDepartmentName,
                 keywords,
                 patent.getOverview(),
                 patent.getCoreContent(),

@@ -4,10 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
-import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
-import com.skipers.skipa.domain.patent.domain.PatentDepartment;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -59,9 +57,6 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private PatentRepository patentRepository;
-
-    @Autowired
-    private PatentDepartmentRepository patentDepartmentRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -598,11 +593,7 @@ class AuthApprovalFlowIntegrationTest {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Assigned Patent")
                 .applicationNumber("APP-ASSIGNED")
-                .build());
-        PatentDepartment assignment = patentDepartmentRepository.save(PatentDepartment.builder()
-                .patent(patent)
-                .department(department)
-                .assignedAt(Instant.parse("2026-05-27T00:00:00Z"))
+                .currentDepartment(department)
                 .build());
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
@@ -610,7 +601,6 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        assertThat(patentDepartmentRepository.existsById(assignment.getId())).isFalse();
         assertThat(departmentRepository.existsById(department.getId())).isTrue();
         assertThat(patentRepository.existsById(patent.getId())).isFalse();
     }

@@ -2,12 +2,15 @@ package com.skipers.skipa.domain.patent.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.skipers.skipa.domain.patent.dao.PatentDepartmentRepository;
+import com.skipers.skipa.domain.department.dao.DepartmentRepository;
+import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.department.exception.DepartmentException;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.dao.AnnuityHistoryRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
@@ -30,7 +33,7 @@ import java.util.List;
 public class PatentService {
 
     private final PatentRepository patentRepository;
-    private final PatentDepartmentRepository patentDepartmentRepository;
+    private final DepartmentRepository departmentRepository;
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final AnnuityHistoryRepository annuityHistoryRepository;
     private final ObjectMapper objectMapper;
@@ -73,6 +76,18 @@ public class PatentService {
                 .coreContent(request.coreContent())
                 .build());
 
+        return toDetailResponse(patent);
+    }
+
+    @Transactional
+    public PatentDetailResponse changeDepartment(Long patentId, PatentDepartmentChangeRequest request) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+
+        Department department = departmentRepository.findById(request.departmentId())
+                .orElseThrow(() -> new DepartmentException(ErrorCode.DEPARTMENT_NOT_FOUND));
+
+        patent.changeCurrentDepartment(department);
         return toDetailResponse(patent);
     }
 
@@ -148,7 +163,6 @@ public class PatentService {
             throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
         }
 
-        patentDepartmentRepository.deleteAllByPatentId(patentId);
         patentLegalStatusRepository.deleteAllByPatentId(patentId); // 권리 상태 이력
         annuityHistoryRepository.deleteAllByPatentId(patentId); // 연차료 납부 이력
         patentRepository.deleteById(patentId);

@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.patent.api;
 
 import com.skipers.skipa.domain.patent.application.PatentService;
+import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -85,6 +87,22 @@ public class PatentController {
             @Valid @RequestBody PatentUpdateRequest request
     ) {
         return ApiResponse.ok(patentService.update(patentId, request));
+    }
+
+    /**
+     * 특허 담당 부서를 변경한다.
+     *
+     * @param patentId 특허 ID
+     * @param request 담당 부서 변경 요청
+     * @return 변경된 특허
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PatchMapping("/{patentId}/department")
+    public ApiResponse<PatentDetailResponse> changeDepartment(
+            @PathVariable Long patentId,
+            @Valid @RequestBody PatentDepartmentChangeRequest request
+    ) {
+        return ApiResponse.ok(patentService.changeDepartment(patentId, request));
     }
 
     /**
