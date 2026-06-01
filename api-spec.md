@@ -177,8 +177,8 @@ json
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 담당 특허 목록 조회 | `GET` | `/assigned-patents` | 내 부서에 배정된 담당 특허 목록 조회 | `BUSINESS` |
-| 담당 특허 단건 조회 | `GET` | `/assigned-patents/{opinionSubmissionId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
-| 의견 제출 | `POST` | `/assigned-patents/{opinionSubmissionId}/opinions` | 유지/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
+| 담당 특허 단건 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
+| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
 
 ---
 

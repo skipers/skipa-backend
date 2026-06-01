@@ -645,17 +645,19 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
-                .andExpect(jsonPath("$.data.items[0].id").value(opinionSubmission.getId()))
-                .andExpect(jsonPath("$.data.items[0].patentTitle").value("Assigned Patent"))
+                .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
+                .andExpect(jsonPath("$.data.items[0].title").value("Assigned Patent"))
+                .andExpect(jsonPath("$.data.items[0].applicationNumber").value("APP-OPINION"))
                 .andExpect(jsonPath("$.data.items[0].status").value("대기"));
 
-        mockMvc.perform(get("/assigned-patents/{opinionSubmissionId}", opinionSubmission.getId())
+        mockMvc.perform(get("/assigned-patents/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.patent.id").value(patent.getId()))
-                .andExpect(jsonPath("$.data.patent.title").value("Assigned Patent"));
+                .andExpect(jsonPath("$.data.patent.title").value("Assigned Patent"))
+                .andExpect(jsonPath("$.data.status").value("대기"));
 
-        mockMvc.perform(post("/assigned-patents/{opinionSubmissionId}/opinions", opinionSubmission.getId())
+        mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -674,7 +676,7 @@ class AuthApprovalFlowIntegrationTest {
         assertThat(submitted.getStatus()).isEqualTo(OpinionSubmissionStatus.제출완료);
         assertThat(submitted.getSubmittedAt()).isNotNull();
 
-        mockMvc.perform(post("/assigned-patents/{opinionSubmissionId}/opinions", opinionSubmission.getId())
+        mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -701,12 +703,12 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String businessToken = createActiveUserToken("business-other", "business-other@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/assigned-patents/{opinionSubmissionId}", opinionSubmission.getId())
+        mockMvc.perform(get("/assigned-patents/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(get("/assigned-patents/{opinionSubmissionId}", 999999L)
+        mockMvc.perform(get("/assigned-patents/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("DECISION_NOT_FOUND"));
@@ -716,7 +718,7 @@ class AuthApprovalFlowIntegrationTest {
                 .department(department)
                 .build());
 
-        mockMvc.perform(post("/assigned-patents/{opinionSubmissionId}/opinions", ownSubmission.getId())
+        mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""

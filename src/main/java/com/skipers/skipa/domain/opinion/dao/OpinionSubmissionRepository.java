@@ -11,7 +11,9 @@ public interface OpinionSubmissionRepository extends JpaRepository<OpinionSubmis
 
     Page<OpinionSubmission> findByDepartmentId(Long departmentId, Pageable pageable);
 
-    Optional<OpinionSubmission> findByIdAndDepartmentId(Long id, Long departmentId);
+    Optional<OpinionSubmission> findByPatentIdAndDepartmentId(Long patentId, Long departmentId);
+
+    boolean existsByPatentId(Long patentId);
 
     void deleteAllByPatentId(Long patentId);
 }

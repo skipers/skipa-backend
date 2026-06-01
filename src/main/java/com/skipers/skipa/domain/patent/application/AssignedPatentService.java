@@ -1,14 +1,13 @@
-package com.skipers.skipa.domain.opinion.application;
+package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
 import com.skipers.skipa.domain.opinion.domain.BusinessOpinion;
 import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
 import com.skipers.skipa.domain.opinion.domain.OpinionSubmissionStatus;
 import com.skipers.skipa.domain.opinion.dto.request.OpinionSubmissionSubmitRequest;
-import com.skipers.skipa.domain.opinion.dto.response.OpinionSubmissionDetailResponse;
-import com.skipers.skipa.domain.opinion.dto.response.OpinionSubmissionResponse;
 import com.skipers.skipa.domain.opinion.exception.OpinionSubmissionException;
-import com.skipers.skipa.domain.patent.application.PatentService;
+import com.skipers.skipa.domain.patent.dto.response.AssignedPatentDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +23,12 @@ import java.time.Instant;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class OpinionSubmissionService {
+public class AssignedPatentService {
 
     private final OpinionSubmissionRepository opinionSubmissionRepository;
     private final PatentService patentService;
 
-    public Page<OpinionSubmissionResponse> getAll(User user, Pageable pageable) {
+    public Page<AssignedPatentResponse> getAll(User user, Pageable pageable) {
         Long departmentId = getDepartmentId(user);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -38,25 +37,25 @@ public class OpinionSubmissionService {
         );
 
         return opinionSubmissionRepository.findByDepartmentId(departmentId, sortedPageable)
-                .map(OpinionSubmissionResponse::from);
+                .map(AssignedPatentResponse::from);
     }
 
-    public OpinionSubmissionDetailResponse get(User user, Long opinionSubmissionId) {
-        OpinionSubmission opinionSubmission = getOwnedSubmission(user, opinionSubmissionId);
+    public AssignedPatentDetailResponse get(User user, Long patentId) {
+        OpinionSubmission opinionSubmission = getOwnedSubmission(user, patentId);
 
-        return OpinionSubmissionDetailResponse.from(
-                opinionSubmission,
-                patentService.get(opinionSubmission.getPatent().getId())
+        return AssignedPatentDetailResponse.of(
+                patentService.get(patentId),
+                opinionSubmission
         );
     }
 
     @Transactional
-    public OpinionSubmissionResponse submit(
+    public AssignedPatentResponse submit(
             User user,
-            Long opinionSubmissionId,
+            Long patentId,
             OpinionSubmissionSubmitRequest request
     ) {
-        OpinionSubmission opinionSubmission = getOwnedSubmission(user, opinionSubmissionId);
+        OpinionSubmission opinionSubmission = getOwnedSubmission(user, patentId);
 
         if (opinionSubmission.getStatus() == OpinionSubmissionStatus.제출완료) {
             throw new OpinionSubmissionException(ErrorCode.DECISION_ALREADY_SUBMITTED);
@@ -71,14 +70,14 @@ public class OpinionSubmissionService {
 
         opinionSubmission.submit(opinion, request.comment(), Instant.now());
 
-        return OpinionSubmissionResponse.from(opinionSubmission);
+        return AssignedPatentResponse.from(opinionSubmission);
     }
 
-    private OpinionSubmission getOwnedSubmission(User user, Long opinionSubmissionId) {
+    private OpinionSubmission getOwnedSubmission(User user, Long patentId) {
         Long departmentId = getDepartmentId(user);
 
-        return opinionSubmissionRepository.findByIdAndDepartmentId(opinionSubmissionId, departmentId)
-                .orElseThrow(() -> opinionSubmissionRepository.existsById(opinionSubmissionId)
+        return opinionSubmissionRepository.findByPatentIdAndDepartmentId(patentId, departmentId)
+                .orElseThrow(() -> opinionSubmissionRepository.existsByPatentId(patentId)
                         ? new OpinionSubmissionException(ErrorCode.FORBIDDEN)
                         : new OpinionSubmissionException(ErrorCode.DECISION_NOT_FOUND));
     }

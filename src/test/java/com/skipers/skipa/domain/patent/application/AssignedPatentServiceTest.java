@@ -1,4 +1,4 @@
-package com.skipers.skipa.domain.opinion.application;
+package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
@@ -6,10 +6,9 @@ import com.skipers.skipa.domain.opinion.domain.BusinessOpinion;
 import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
 import com.skipers.skipa.domain.opinion.domain.OpinionSubmissionStatus;
 import com.skipers.skipa.domain.opinion.dto.request.OpinionSubmissionSubmitRequest;
-import com.skipers.skipa.domain.opinion.dto.response.OpinionSubmissionResponse;
 import com.skipers.skipa.domain.opinion.exception.OpinionSubmissionException;
-import com.skipers.skipa.domain.patent.application.PatentService;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -34,7 +33,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class OpinionSubmissionServiceTest {
+class AssignedPatentServiceTest {
 
     @Mock
     private OpinionSubmissionRepository opinionSubmissionRepository;
@@ -43,7 +42,7 @@ class OpinionSubmissionServiceTest {
     private PatentService patentService;
 
     @InjectMocks
-    private OpinionSubmissionService opinionSubmissionService;
+    private AssignedPatentService assignedPatentService;
 
     private User businessUser;
     private OpinionSubmission opinionSubmission;
@@ -79,26 +78,26 @@ class OpinionSubmissionServiceTest {
         when(opinionSubmissionRepository.findByDepartmentId(1L, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(opinionSubmission), sortedPageable, 1));
 
-        assertThat(opinionSubmissionService.getAll(businessUser, pageable).getContent())
-                .extracting(OpinionSubmissionResponse::id)
-                .containsExactly(100L);
+        assertThat(assignedPatentService.getAll(businessUser, pageable).getContent())
+                .extracting(AssignedPatentResponse::id)
+                .containsExactly(10L);
         verify(opinionSubmissionRepository).findByDepartmentId(1L, sortedPageable);
     }
 
     @Test
     void getRejectsSubmissionAssignedToAnotherDepartment() {
-        when(opinionSubmissionRepository.findByIdAndDepartmentId(100L, 1L)).thenReturn(Optional.empty());
-        when(opinionSubmissionRepository.existsById(100L)).thenReturn(true);
+        when(opinionSubmissionRepository.findByPatentIdAndDepartmentId(10L, 1L)).thenReturn(Optional.empty());
+        when(opinionSubmissionRepository.existsByPatentId(10L)).thenReturn(true);
 
-        assertOpinionError(() -> opinionSubmissionService.get(businessUser, 100L), ErrorCode.FORBIDDEN);
+        assertOpinionError(() -> assignedPatentService.get(businessUser, 10L), ErrorCode.FORBIDDEN);
     }
 
     @Test
     void getRejectsMissingSubmission() {
-        when(opinionSubmissionRepository.findByIdAndDepartmentId(100L, 1L)).thenReturn(Optional.empty());
-        when(opinionSubmissionRepository.existsById(100L)).thenReturn(false);
+        when(opinionSubmissionRepository.findByPatentIdAndDepartmentId(10L, 1L)).thenReturn(Optional.empty());
+        when(opinionSubmissionRepository.existsByPatentId(10L)).thenReturn(false);
 
-        assertOpinionError(() -> opinionSubmissionService.get(businessUser, 100L), ErrorCode.DECISION_NOT_FOUND);
+        assertOpinionError(() -> assignedPatentService.get(businessUser, 10L), ErrorCode.DECISION_NOT_FOUND);
     }
 
     @Test
@@ -113,7 +112,7 @@ class OpinionSubmissionServiceTest {
         );
 
         assertOpinionError(
-                () -> opinionSubmissionService.getAll(legalUser, PageRequest.of(0, 20)),
+                () -> assignedPatentService.getAll(legalUser, PageRequest.of(0, 20)),
                 ErrorCode.FORBIDDEN
         );
         verify(opinionSubmissionRepository, never()).findByDepartmentId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
@@ -121,12 +120,12 @@ class OpinionSubmissionServiceTest {
 
     @Test
     void submitUpdatesOpinionCommentStatusAndSubmittedAt() {
-        when(opinionSubmissionRepository.findByIdAndDepartmentId(100L, 1L))
+        when(opinionSubmissionRepository.findByPatentIdAndDepartmentId(10L, 1L))
                 .thenReturn(Optional.of(opinionSubmission));
 
-        OpinionSubmissionResponse response = opinionSubmissionService.submit(
+        AssignedPatentResponse response = assignedPatentService.submit(
                 businessUser,
-                100L,
+                10L,
                 new OpinionSubmissionSubmitRequest("유지", "유지 요청")
         );
 
@@ -141,13 +140,13 @@ class OpinionSubmissionServiceTest {
     @Test
     void submitRejectsAlreadySubmittedRequest() {
         opinionSubmission.submit(BusinessOpinion.유지, "기존 의견", java.time.Instant.now());
-        when(opinionSubmissionRepository.findByIdAndDepartmentId(100L, 1L))
+        when(opinionSubmissionRepository.findByPatentIdAndDepartmentId(10L, 1L))
                 .thenReturn(Optional.of(opinionSubmission));
 
         assertOpinionError(
-                () -> opinionSubmissionService.submit(
+                () -> assignedPatentService.submit(
                         businessUser,
-                        100L,
+                        10L,
                         new OpinionSubmissionSubmitRequest("포기", "변경 의견")
                 ),
                 ErrorCode.DECISION_ALREADY_SUBMITTED
@@ -156,13 +155,13 @@ class OpinionSubmissionServiceTest {
 
     @Test
     void submitRejectsInvalidOpinion() {
-        when(opinionSubmissionRepository.findByIdAndDepartmentId(100L, 1L))
+        when(opinionSubmissionRepository.findByPatentIdAndDepartmentId(10L, 1L))
                 .thenReturn(Optional.of(opinionSubmission));
 
         assertOpinionError(
-                () -> opinionSubmissionService.submit(
+                () -> assignedPatentService.submit(
                         businessUser,
-                        100L,
+                        10L,
                         new OpinionSubmissionSubmitRequest("보류", null)
                 ),
                 ErrorCode.INVALID_REQUEST

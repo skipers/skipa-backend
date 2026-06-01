@@ -1,9 +1,9 @@
-package com.skipers.skipa.domain.opinion.api;
+package com.skipers.skipa.domain.patent.api;
 
-import com.skipers.skipa.domain.opinion.application.OpinionSubmissionService;
 import com.skipers.skipa.domain.opinion.dto.request.OpinionSubmissionSubmitRequest;
-import com.skipers.skipa.domain.opinion.dto.response.OpinionSubmissionDetailResponse;
-import com.skipers.skipa.domain.opinion.dto.response.OpinionSubmissionResponse;
+import com.skipers.skipa.domain.patent.application.AssignedPatentService;
+import com.skipers.skipa.domain.patent.dto.response.AssignedPatentDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import com.skipers.skipa.global.security.CustomUserDetails;
@@ -22,36 +22,36 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/assigned-patents") // 사업부 담당 특허
+@RequestMapping("/assigned-patents")
 public class AssignedPatentController {
 
-    private final OpinionSubmissionService opinionSubmissionService;
+    private final AssignedPatentService assignedPatentService;
 
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping
-    public ApiResponse<PageResponse<OpinionSubmissionResponse>> getAll(
+    public ApiResponse<PageResponse<AssignedPatentResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(PageResponse.from(opinionSubmissionService.getAll(userDetails.getUser(), pageable)));
+        return ApiResponse.ok(PageResponse.from(assignedPatentService.getAll(userDetails.getUser(), pageable)));
     }
 
     @PreAuthorize("hasRole('BUSINESS')")
-    @GetMapping("/{opinionSubmissionId}")
-    public ApiResponse<OpinionSubmissionDetailResponse> get(
+    @GetMapping("/{patentId}")
+    public ApiResponse<AssignedPatentDetailResponse> get(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long opinionSubmissionId
+            @PathVariable Long patentId
     ) {
-        return ApiResponse.ok(opinionSubmissionService.get(userDetails.getUser(), opinionSubmissionId));
+        return ApiResponse.ok(assignedPatentService.get(userDetails.getUser(), patentId));
     }
 
     @PreAuthorize("hasRole('BUSINESS')")
-    @PostMapping("/{opinionSubmissionId}/opinions")
-    public ApiResponse<OpinionSubmissionResponse> submit(
+    @PostMapping("/{patentId}/opinions")
+    public ApiResponse<AssignedPatentResponse> submit(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long opinionSubmissionId,
+            @PathVariable Long patentId,
             @Valid @RequestBody OpinionSubmissionSubmitRequest request
     ) {
-        return ApiResponse.ok(opinionSubmissionService.submit(userDetails.getUser(), opinionSubmissionId, request));
+        return ApiResponse.ok(assignedPatentService.submit(userDetails.getUser(), patentId, request));
     }
 }
