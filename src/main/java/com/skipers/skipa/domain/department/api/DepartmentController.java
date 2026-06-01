@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -36,6 +37,7 @@ public class DepartmentController {
      * @param request 생성 요청
      * @return 생성된 부서
      */
+    @Operation(summary = "부서 생성", description = "새로운 부서를 생성합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(@Valid @RequestBody DepartmentCreateRequest request) {
@@ -48,6 +50,7 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 부서
      */
+    @Operation(summary = "부서 단일 조회", description = "부서 ID로 부서 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> get(@PathVariable Long departmentId) {
@@ -61,6 +64,7 @@ public class DepartmentController {
      * @param pageable page/size 정보
      * @return 부서 목록 페이지
      */
+    @Operation(summary = "부서 목록 조회", description = "부서 목록을 페이지 단위로 조회합니다. 부서명으로 검색할 수 있습니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping
     public ApiResponse<PageResponse<DepartmentResponse>> getAll(
@@ -77,6 +81,7 @@ public class DepartmentController {
      * @param request 수정 요청
      * @return 수정된 부서
      */
+    @Operation(summary = "부서 수정", description = "부서 ID에 해당하는 부서 정보를 수정합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> update(
@@ -92,6 +97,7 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 성공 응답
      */
+    @Operation(summary = "부서 삭제", description = "부서 ID에 해당하는 부서를 삭제합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {

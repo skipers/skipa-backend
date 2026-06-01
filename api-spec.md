@@ -89,7 +89,7 @@ json
 | --- | --- | --- | --- | --- |
 | 사용자 목록 조회 | `GET` | `/users` | 전체 사용자 목록 (검색/필터 가능) | `ADMIN` |
 | 사용자 생성 | `POST` | `/users` | 신규 사용자 등록 | `ADMIN` |
-| 사용자 단건 조회 | `GET` | `/users/{userId}` | 특정 사용자 정보 조회 | `ADMIN` |
+| 사용자 단일 조회 | `GET` | `/users/{userId}` | 특정 사용자 정보 조회 | `ADMIN` |
 | 사용자 수정 | `PUT` | `/users/{userId}` | 이름/이메일/역할/부서 수정 | `ADMIN` |
 | 사용자 삭제 | `DELETE` | `/users/{userId}` | 사용자 삭제 | `ADMIN` |
 
@@ -111,8 +111,8 @@ json
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 특허 목록 조회 | `GET` | `/patents` | 특허 목록 조회. legal: 전체 / business: 배정된 것만 | `LEGAL`, `BUSINESS` |
-| 특허 단건 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `LEGAL`, `BUSINESS` |
-| 특허 등록 | `POST` | `/patents` | 특허 단건 수동 등록 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
+| 특허 단일 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `LEGAL`, `BUSINESS` |
+| 특허 등록 | `POST` | `/patents` | 특허 수동 등록 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 | 특허 수정 | `PUT` | `/patents/{patentId}` | 특허 정보 수정 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 | 특허 삭제 | `DELETE` | `/patents/{patentId}` | 특허 삭제 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 
@@ -168,7 +168,7 @@ json
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 사업부 검토 목록 조회 | `GET` | `/reviews` | 전체 검토 요청 및 의견 제출 현황 조회 (상태/부서/특허 필터 가능) | `LEGAL` |
-| 사업부 검토 단건 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청 및 의견 제출 상세 조회 | `LEGAL` |
+| 사업부 검토 단일 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청 및 의견 제출 상세 조회 | `LEGAL` |
 
 ---
 
@@ -177,7 +177,7 @@ json
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 담당 특허 목록 조회 | `GET` | `/assigned-patents` | 내 부서에 배정된 담당 특허 목록 조회 | `BUSINESS` |
-| 담당 특허 단건 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
+| 담당 특허 단일 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
 | 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지 의견/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
 
 ---
