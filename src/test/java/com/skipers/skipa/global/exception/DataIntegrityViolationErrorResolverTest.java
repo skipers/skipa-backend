@@ -23,16 +23,6 @@ class DataIntegrityViolationErrorResolverTest {
     }
 
     @Test
-    void reviewConstraintReturnsDuplicateReviewRequest() {
-        ConstraintViolationException cause = mock(ConstraintViolationException.class);
-        when(cause.getConstraintName()).thenReturn("uk_reviews_patent_department");
-
-        ErrorCode result = resolver.resolve(new DataIntegrityViolationException("constraint violation", cause));
-
-        assertThat(result).isEqualTo(ErrorCode.DUPLICATE_REVIEW_REQUEST);
-    }
-
-    @Test
     void unknownConstraintReturnsConflict() {
         ConstraintViolationException cause = mock(ConstraintViolationException.class);
         when(cause.getConstraintName()).thenReturn("unknown_constraint");

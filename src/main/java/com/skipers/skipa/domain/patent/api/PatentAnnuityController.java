@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
+import com.skipers.skipa.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,6 +49,7 @@ public class PatentAnnuityController {
     /**
      * 특허의 연차료 납부 이력 목록을 조회한다(page/size 기반).
      *
+     * @param userDetails 인증 사용자 정보
      * @param patentId 특허 ID
      * @param pageable page/size 정보
      * @return 연차료 납부 이력 목록 페이지
@@ -55,9 +58,10 @@ public class PatentAnnuityController {
     @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentAnnuityResponse>> getAll(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long patentId,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(PageResponse.from(patentAnnuityService.getAll(patentId, pageable)));
+        return ApiResponse.ok(PageResponse.from(patentAnnuityService.getAll(userDetails.getUser(), patentId, pageable)));
     }
 }

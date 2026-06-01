@@ -1,15 +1,12 @@
 package com.skipers.skipa.domain.review.application;
 
-import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
-import com.skipers.skipa.domain.department.exception.DepartmentException;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
-import com.skipers.skipa.domain.review.dto.request.ReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.global.exception.BusinessException;
@@ -45,9 +42,6 @@ class ReviewServiceTest {
     @Mock
     private PatentRepository patentRepository;
 
-    @Mock
-    private DepartmentRepository departmentRepository;
-
     @InjectMocks
     private ReviewService reviewService;
 
@@ -56,30 +50,30 @@ class ReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-        patent = Patent.builder()
-                .title("Patent")
-                .applicationNumber("APP-1")
-                .build();
-        ReflectionTestUtils.setField(patent, "id", 10L);
-
         department = Department.builder()
                 .name("통신")
                 .build();
         ReflectionTestUtils.setField(department, "id", 1L);
+
+        patent = Patent.builder()
+                .title("Patent")
+                .applicationNumber("APP-1")
+                .currentDepartment(department)
+                .build();
+        ReflectionTestUtils.setField(patent, "id", 10L);
     }
 
     @Test
     void createSavesReviewWithPendingSubmissionStatus() {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
-        when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
-        when(reviewRepository.existsByPatentIdAndDepartmentId(10L, 1L)).thenReturn(false);
+        when(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(10L, 1L, ReviewStatus.미제출)).thenReturn(false);
         when(reviewRepository.save(any(Review.class))).thenAnswer(invocation -> {
             Review review = invocation.getArgument(0);
             ReflectionTestUtils.setField(review, "id", 100L);
             return review;
         });
 
-        ReviewResponse response = reviewService.create(10L, new ReviewCreateRequest(1L));
+        ReviewResponse response = reviewService.create(10L);
 
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.patentId()).isEqualTo(10L);
@@ -94,38 +88,50 @@ class ReviewServiceTest {
         when(patentRepository.findById(10L)).thenReturn(Optional.empty());
 
         assertError(
-                () -> reviewService.create(10L, new ReviewCreateRequest(1L)),
+                () -> reviewService.create(10L),
                 PatentException.class,
                 ErrorCode.PATENT_NOT_FOUND
         );
-        verify(departmentRepository, never()).findById(any());
     }
 
     @Test
-    void createRejectsMissingDepartment() {
-        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
-        when(departmentRepository.findById(1L)).thenReturn(Optional.empty());
+    void createRejectsPatentWithoutAssignedDepartment() {
+        Patent unassignedPatent = Patent.builder()
+                .title("Patent")
+                .applicationNumber("APP-1")
+                .build();
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(unassignedPatent));
 
         assertError(
-                () -> reviewService.create(10L, new ReviewCreateRequest(1L)),
-                DepartmentException.class,
-                ErrorCode.DEPARTMENT_NOT_FOUND
+                () -> reviewService.create(10L),
+                ReviewException.class,
+                ErrorCode.PATENT_DEPARTMENT_NOT_ASSIGNED
         );
-        verify(reviewRepository, never()).existsByPatentIdAndDepartmentId(any(), any());
+        verify(reviewRepository, never()).existsByPatentIdAndDepartmentIdAndStatus(any(), any(), any());
     }
 
     @Test
     void createRejectsDuplicateReviewRequest() {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
-        when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
-        when(reviewRepository.existsByPatentIdAndDepartmentId(10L, 1L)).thenReturn(true);
+        when(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(10L, 1L, ReviewStatus.미제출)).thenReturn(true);
 
         assertError(
-                () -> reviewService.create(10L, new ReviewCreateRequest(1L)),
+                () -> reviewService.create(10L),
                 ReviewException.class,
                 ErrorCode.DUPLICATE_REVIEW_REQUEST
         );
         verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void createAllowsNewRequestAfterPreviousSubmission() {
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
+        when(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(10L, 1L, ReviewStatus.미제출)).thenReturn(false);
+        when(reviewRepository.save(any(Review.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReviewResponse response = reviewService.create(10L);
+
+        assertThat(response.status()).isEqualTo("미제출");
     }
 
     @Test

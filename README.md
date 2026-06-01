@@ -243,7 +243,8 @@ src/main/java/com/skipers/skipa
 │   │   │   ├── PatentDepartmentService.java
 │   │   │   ├── PatentLegalStatusService.java
 │   │   │   ├── PatentAnnuityService.java
-│   │   │   └── AssignedPatentService.java
+│   │   │   ├── AssignedPatentService.java
+│   │   │   └── BusinessPatentAccessValidator.java
 │   │   ├── dao
 │   │   │   ├── PatentRepository.java
 │   │   │   ├── PatentLegalStatusRepository.java
@@ -312,7 +313,6 @@ src/main/java/com/skipers/skipa
 │   │   │   └── BusinessOpinion.java
 │   │   ├── dto
 │   │   │   ├── request
-│   │   │   │   ├── ReviewCreateRequest.java
 │   │   │   │   └── ReviewSubmitRequest.java
 │   │   │   └── response
 │   │   │       └── ReviewResponse.java

@@ -34,6 +34,7 @@ public enum ErrorCode {
     // Patent
     PATENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_NOT_FOUND", "특허를 찾을 수 없습니다."),
     DUPLICATE_APPLICATION_NUMBER(HttpStatus.CONFLICT, "DUPLICATE_APPLICATION_NUMBER", "이미 등록된 출원번호입니다."),
+    PATENT_DEPARTMENT_NOT_ASSIGNED(HttpStatus.CONFLICT, "PATENT_DEPARTMENT_NOT_ASSIGNED", "특허 담당 부서가 배정되지 않았습니다."),
     PATENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DOCUMENT_NOT_FOUND", "특허 문서를 찾을 수 없습니다."),
     PATENT_DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DEPARTMENT_NOT_FOUND", "특허 담당 부서 정보를 찾을 수 없습니다."),
     PATENT_LEGAL_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_LEGAL_STATUS_NOT_FOUND", "특허 권리 상태 이력을 찾을 수 없습니다."),

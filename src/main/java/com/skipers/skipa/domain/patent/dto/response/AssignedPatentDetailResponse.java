@@ -9,7 +9,8 @@ public record AssignedPatentDetailResponse(
         String opinion,
         String comment,
         String status,
-        Instant submittedAt
+        Instant submittedAt,
+        Instant reviewRequestedAt
 ) {
 
     public static AssignedPatentDetailResponse of(
@@ -21,7 +22,8 @@ public record AssignedPatentDetailResponse(
                 review.getOpinion() != null ? review.getOpinion().name() : null,
                 review.getComment(),
                 review.getStatus().name(),
-                review.getSubmittedAt()
+                review.getSubmittedAt(),
+                review.getCreatedAt()
         );
     }
 }

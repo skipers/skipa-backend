@@ -13,7 +13,8 @@ public record AssignedPatentResponse(
         String status,
         Instant submittedAt,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        Instant reviewRequestedAt
 ) {
 
     public static AssignedPatentResponse from(Review review) {
@@ -26,7 +27,8 @@ public record AssignedPatentResponse(
                 review.getStatus().name(),
                 review.getSubmittedAt(),
                 review.getPatent().getCreatedAt(),
-                review.getPatent().getUpdatedAt()
+                review.getPatent().getUpdatedAt(),
+                review.getCreatedAt()
         );
     }
 }

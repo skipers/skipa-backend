@@ -27,6 +27,7 @@ public class AssignedPatentService {
 
     private final ReviewRepository reviewRepository;
     private final PatentService patentService;
+    private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
     public Page<AssignedPatentResponse> getAll(User user, Pageable pageable) {
         Long departmentId = getDepartmentId(user);
@@ -36,7 +37,7 @@ public class AssignedPatentService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findByDepartmentId(departmentId, sortedPageable)
+        return reviewRepository.findLatestAssignedByDepartmentId(departmentId, sortedPageable)
                 .map(AssignedPatentResponse::from);
     }
 
@@ -55,11 +56,7 @@ public class AssignedPatentService {
             Long patentId,
             ReviewSubmitRequest request
     ) {
-        Review review = getOwnedReview(user, patentId);
-
-        if (review.getStatus() == ReviewStatus.제출완료) {
-            throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
-        }
+        Review review = getPendingOwnedReview(user, patentId);
 
         BusinessOpinion opinion;
         try {
@@ -75,10 +72,23 @@ public class AssignedPatentService {
 
     private Review getOwnedReview(User user, Long patentId) {
         Long departmentId = getDepartmentId(user);
+        businessPatentAccessValidator.validate(user, patentId);
 
-        return reviewRepository.findByPatentIdAndDepartmentId(patentId, departmentId)
-                .orElseThrow(() -> reviewRepository.existsByPatentId(patentId)
-                        ? new ReviewException(ErrorCode.FORBIDDEN)
+        return reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId)
+                .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
+    }
+
+    private Review getPendingOwnedReview(User user, Long patentId) {
+        Long departmentId = getDepartmentId(user);
+        businessPatentAccessValidator.validate(user, patentId);
+
+        return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(
+                        patentId,
+                        departmentId,
+                        ReviewStatus.미제출
+                )
+                .orElseThrow(() -> reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId).isPresent()
+                        ? new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED)
                         : new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
     }
 

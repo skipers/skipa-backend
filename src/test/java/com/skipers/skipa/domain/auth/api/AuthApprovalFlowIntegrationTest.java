@@ -617,6 +617,7 @@ class AuthApprovalFlowIntegrationTest {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Assigned Patent")
                 .applicationNumber("APP-OPINION")
+                .currentDepartment(department)
                 .build());
         Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
@@ -639,14 +640,16 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
                 .andExpect(jsonPath("$.data.items[0].title").value("Assigned Patent"))
                 .andExpect(jsonPath("$.data.items[0].applicationNumber").value("APP-OPINION"))
-                .andExpect(jsonPath("$.data.items[0].status").value("미제출"));
+                .andExpect(jsonPath("$.data.items[0].status").value("미제출"))
+                .andExpect(jsonPath("$.data.items[0].reviewRequestedAt").isNotEmpty());
 
         mockMvc.perform(get("/assigned-patents/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.patent.id").value(patent.getId()))
                 .andExpect(jsonPath("$.data.patent.title").value("Assigned Patent"))
-                .andExpect(jsonPath("$.data.status").value("미제출"));
+                .andExpect(jsonPath("$.data.status").value("미제출"))
+                .andExpect(jsonPath("$.data.reviewRequestedAt").isNotEmpty());
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
@@ -687,6 +690,7 @@ class AuthApprovalFlowIntegrationTest {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Other Department Patent")
                 .applicationNumber("APP-OTHER-DEPARTMENT")
+                .currentDepartment(otherDepartment)
                 .build());
         Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
@@ -702,8 +706,9 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/assigned-patents/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
+        patent.changeCurrentDepartment(department);
         Review ownReview = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
@@ -726,37 +731,23 @@ class AuthApprovalFlowIntegrationTest {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Review Request Patent")
                 .applicationNumber("APP-REVIEW-REQUEST")
+                .currentDepartment(department)
                 .build());
         String legalToken = createActiveUserToken("legal-review", "legal-review@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review", "business-review@example.com", UserRole.BUSINESS);
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "departmentId": %d
-                                }
-                                """.formatted(department.getId())))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "departmentId": %d
-                                }
-                                """.formatted(department.getId())))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "departmentId": %d
-                                }
-                                """.formatted(department.getId())))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.patentId").value(patent.getId()))
                 .andExpect(jsonPath("$.data.title").value("Review Request Patent"))
@@ -767,7 +758,11 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("미제출"))
                 .andExpect(jsonPath("$.data.submittedAt").value(nullValue()));
 
-        assertThat(reviewRepository.existsByPatentIdAndDepartmentId(patent.getId(), department.getId())).isTrue();
+        assertThat(reviewRepository.existsByPatentIdAndDepartmentIdAndStatus(
+                patent.getId(),
+                department.getId(),
+                ReviewStatus.미제출
+        )).isTrue();
     }
 
     @Test
@@ -775,37 +770,25 @@ class AuthApprovalFlowIntegrationTest {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Review Error Patent")
                 .applicationNumber("APP-REVIEW-ERROR")
+                .currentDepartment(department)
+                .build());
+        Patent unassignedPatent = patentRepository.save(Patent.builder()
+                .title("Unassigned Review Patent")
+                .applicationNumber("APP-REVIEW-NO-DEPT")
                 .build());
         String legalToken = createActiveUserToken("legal-review-error", "legal-review-error@example.com", UserRole.LEGAL);
 
         mockMvc.perform(post("/patents/{patentId}/reviews", 999999L)
                         .header("Authorization", "Bearer " + legalToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "departmentId": %d
-                                }
-                                """.formatted(department.getId())))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/patents/{patentId}/reviews", unassignedPatent.getId())
                         .header("Authorization", "Bearer " + legalToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "departmentId": 999999
-                                }
-                                """))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
-
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
-                        .header("Authorization", "Bearer " + legalToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("PATENT_DEPARTMENT_NOT_ASSIGNED"));
 
         reviewRepository.save(Review.builder()
                 .patent(patent)
@@ -814,14 +797,75 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "departmentId": %d
-                                }
-                                """.formatted(department.getId())))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_REVIEW_REQUEST"));
+    }
+
+    @Test
+    void reviewRequestCreationAllowsNewRequestAfterPreviousSubmission() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Repeated Review Patent")
+                .applicationNumber("APP-REVIEW-REPEATED")
+                .currentDepartment(department)
+                .build());
+        Review submittedReview = reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .build());
+        submittedReview.submit(BusinessOpinion.유지, "기존 의견", Instant.now());
+        String legalToken = createActiveUserToken("legal-review-repeat", "legal-review-repeat@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-review-repeat", "business-review-repeat@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("미제출"));
+
+        assertThat(reviewRepository.findAll()).hasSize(2);
+
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
+                .andExpect(jsonPath("$.data.items[0].status").value("미제출"));
+    }
+
+    @Test
+    void businessUserCanReadOnlyAssignedPatentHistory() throws Exception {
+        Department otherDepartment = departmentRepository.save(Department.builder()
+                .name("제조")
+                .build());
+        Patent assignedPatent = patentRepository.save(Patent.builder()
+                .title("Assigned History Patent")
+                .applicationNumber("APP-HISTORY-OWN")
+                .currentDepartment(department)
+                .build());
+        Patent otherPatent = patentRepository.save(Patent.builder()
+                .title("Other History Patent")
+                .applicationNumber("APP-HISTORY-OTHER")
+                .currentDepartment(otherDepartment)
+                .build());
+        String businessToken = createActiveUserToken("business-history", "business-history@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents/{patentId}/annuities", assignedPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patents/{patentId}/legal-status", assignedPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patents/{patentId}/annuities", otherPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/patents/{patentId}/legal-status", otherPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
     }
 
     @Test

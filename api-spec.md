@@ -155,11 +155,12 @@ json
 
 ### 7. 사업부 검토 요청 전송 (Reviews)
 
-검토 요청 전송 시 `reviews` 행이 생성됩니다.
+검토 요청 전송 시 특허의 현재 담당 부서를 대상으로 `reviews` 행이 생성됩니다.
+동일한 특허와 부서에 미제출 요청이 있으면 중복 요청할 수 없으며, 제출 완료 후에는 다시 요청할 수 있습니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 사업부로 검토 요청 전송. reviews 행 생성 | `LEGAL` |
+| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 현재 담당 부서로 검토 요청 전송. reviews 행 생성 | `LEGAL` |
 
 ---
 
