@@ -1,13 +1,11 @@
 package com.skipers.skipa.domain.report.api;
 
 import com.skipers.skipa.domain.report.application.ReportService;
-import com.skipers.skipa.domain.report.dto.request.ReportCreateRequest;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -17,7 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,10 +28,9 @@ public class ReportController {
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<ReportCreateResponse>> create(
-            @PathVariable Long patentId,
-            @Valid @RequestBody ReportCreateRequest request
+            @PathVariable Long patentId
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reportService.create(patentId, request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reportService.create(patentId)));
     }
 
     @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
@@ -64,4 +60,3 @@ public class ReportController {
         return ApiResponse.ok(reportService.getStatus(patentId, reportId));
     }
 }
-

@@ -6,7 +6,6 @@ import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
-import com.skipers.skipa.domain.report.dto.request.ReportCreateRequest;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
@@ -29,7 +28,7 @@ public class ReportService {
     private final PatentRepository patentRepository;
 
     @Transactional
-    public ReportCreateResponse create(Long patentId, ReportCreateRequest request) {
+    public ReportCreateResponse create(Long patentId) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
