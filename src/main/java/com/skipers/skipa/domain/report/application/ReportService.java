@@ -10,6 +10,7 @@ import com.skipers.skipa.domain.report.dto.request.ReportCreateRequest;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
+import com.skipers.skipa.domain.report.exception.ReportException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -56,16 +57,15 @@ public class ReportService {
 
     public ReportResponse get(Long patentId, Long reportId) {
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
-                .orElseThrow(() -> new PatentException(ErrorCode.REPORT_NOT_FOUND));
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
         return ReportResponse.from(report);
     }
 
     public ReportStatusResponse getStatus(Long patentId, Long reportId) {
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
-                .orElseThrow(() -> new PatentException(ErrorCode.REPORT_NOT_FOUND));
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
         return ReportStatusResponse.from(report);
     }
 }
-

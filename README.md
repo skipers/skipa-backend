@@ -294,8 +294,7 @@ src/main/java/com/skipers/skipa
 │   │   │       ├── ReportResponse.java
 │   │   │       └── ReportStatusResponse.java
 │   │   └── exception
-│   │       ├── ReportNotFoundException.java
-│   │       └── ReportGenerationFailedException.java
+│   │       └── ReportException.java
 │   │
 │   ├── decision
 │   │   ├── api
