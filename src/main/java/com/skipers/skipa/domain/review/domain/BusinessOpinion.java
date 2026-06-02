@@ -1,4 +1,4 @@
-package com.skipers.skipa.domain.opinion.domain;
+package com.skipers.skipa.domain.review.domain;
 
 public enum BusinessOpinion {
     유지,

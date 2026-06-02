@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +29,9 @@ public class AuthController {
      * 가입 후 계정은 PENDING 상태로 저장되며, admin 승인 후 로그인이 가능하다.
      *
      * @param request 로그인 ID, 비밀번호, 이름, 이메일, 역할
-     * @return 가입된 사용자 정보
+    * @return 가입된 사용자 정보
      */
+    @Operation(summary = "회원가입", description = "사용자 정보를 입력받아 승인 대기 상태의 계정을 생성합니다.")
     @SecurityRequirements
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
@@ -43,6 +45,7 @@ public class AuthController {
      * @param request 로그인 ID, 비밀번호
      * @return access token, refresh token, 사용자 정보
      */
+    @Operation(summary = "로그인", description = "로그인 정보를 검증하고 인증 토큰과 사용자 정보를 반환합니다.")
     @SecurityRequirements
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {

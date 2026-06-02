@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentLegalStatusCreateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentLegalStatusResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class PatentLegalStatusService {
 
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final PatentRepository patentRepository;
+    private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
     @Transactional
     public PatentLegalStatusResponse create(Long patentId, PatentLegalStatusCreateRequest request) {
@@ -47,7 +49,9 @@ public class PatentLegalStatusService {
         return PatentLegalStatusResponse.from(legalStatus);
     }
 
-    public Page<PatentLegalStatusResponse> getAll(Long patentId, Pageable pageable) {
+    public Page<PatentLegalStatusResponse> getAll(User user, Long patentId, Pageable pageable) {
+        businessPatentAccessValidator.validate(user, patentId);
+
         if (!patentRepository.existsById(patentId)) {
             throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
         }

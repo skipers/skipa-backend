@@ -89,7 +89,7 @@ json
 | --- | --- | --- | --- | --- |
 | 사용자 목록 조회 | `GET` | `/users` | 전체 사용자 목록 (검색/필터 가능) | `ADMIN` |
 | 사용자 생성 | `POST` | `/users` | 신규 사용자 등록 | `ADMIN` |
-| 사용자 단건 조회 | `GET` | `/users/{userId}` | 특정 사용자 정보 조회 | `ADMIN` |
+| 사용자 단일 조회 | `GET` | `/users/{userId}` | 특정 사용자 정보 조회 | `ADMIN` |
 | 사용자 수정 | `PUT` | `/users/{userId}` | 이름/이메일/역할/부서 수정 | `ADMIN` |
 | 사용자 삭제 | `DELETE` | `/users/{userId}` | 사용자 삭제 | `ADMIN` |
 
@@ -111,8 +111,8 @@ json
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 특허 목록 조회 | `GET` | `/patents` | 특허 목록 조회. legal: 전체 / business: 배정된 것만 | `LEGAL`, `BUSINESS` |
-| 특허 단건 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `LEGAL`, `BUSINESS` |
-| 특허 등록 | `POST` | `/patents` | 특허 단건 수동 등록 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
+| 특허 단일 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `LEGAL`, `BUSINESS` |
+| 특허 등록 | `POST` | `/patents` | 특허 수동 등록 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 | 특허 수정 | `PUT` | `/patents/{patentId}` | 특허 정보 수정 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 | 특허 삭제 | `DELETE` | `/patents/{patentId}` | 특허 삭제 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 
@@ -152,36 +152,53 @@ json
 
 ---
 
-### 7. 결정 요청 전송 (Decisions)
+### 7. 검토 주기 (Review Cycles)
 
-검토 요청 전송 시 `decisions` 행이 생성됩니다.
-
-| 이름 | Method | URL | 설명 | 권한 |
-| --- | --- | --- | --- | --- |
-| 사업부 전송 | `POST` | `/patents/{patentId}/decisions` | 사업부로 검토 요청 전송. decisions 행 생성 | `LEGAL` |
-
----
-
-### 8. 결정 (Decisions) — Legal 모니터링
+Legal 팀은 사업부 검토 요청에 사용할 검토 주기를 관리합니다.
+검토 주기의 기간은 서로 겹칠 수 없으며, 검토 요청에서 사용 중인 주기는 삭제할 수 없습니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 결정 목록 조회 | `GET` | `/decisions` | 전체 결정 현황 조회 (상태/부서/특허 필터 가능) | `LEGAL` |
-| 결정 단건 조회 | `GET` | `/decisions/{decisionId}` | 결정 상세 조회 | `LEGAL` |
+| 검토 주기 생성 | `POST` | `/review-cycles` | 검토 주기 등록 | `LEGAL` |
+| 검토 주기 목록 조회 | `GET` | `/review-cycles` | 최근 시작일 순으로 검토 주기 목록 조회 | `LEGAL` |
+| 검토 주기 단일 조회 | `GET` | `/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `LEGAL` |
+| 검토 주기 수정 | `PUT` | `/review-cycles/{reviewCycleId}` | 검토 주기 정보 수정 | `LEGAL` |
+| 검토 주기 삭제 | `DELETE` | `/review-cycles/{reviewCycleId}` | 미사용 검토 주기 삭제 | `LEGAL` |
 
 ---
 
-### 9. 담당 특허 (Assigned Patents) — 사업부
+### 8. 사업부 검토 요청 전송 (Reviews)
+
+검토 요청 전송 시 특허의 현재 담당 부서와 활성 검토 주기를 대상으로 `reviews` 행이 생성됩니다.
+회신 기한은 활성 검토 주기의 종료일로 저장됩니다.
+동일한 검토 주기, 특허, 부서 조합은 중복 요청할 수 없으며, 다음 검토 주기에는 다시 요청할 수 있습니다.
+
+| 이름 | Method | URL | 설명 | 권한 |
+| --- | --- | --- | --- | --- |
+| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 현재 담당 부서와 활성 검토 주기로 검토 요청 전송. reviews 행 생성 | `LEGAL` |
+
+---
+
+### 9. 사업부 검토 (Reviews) — Legal 모니터링
+
+| 이름 | Method | URL | 설명 | 권한 |
+| --- | --- | --- | --- | --- |
+| 사업부 검토 목록 조회 | `GET` | `/reviews` | 전체 검토 요청 및 의견 제출 현황 조회 (상태/부서/특허 필터 가능) | `LEGAL` |
+| 사업부 검토 단일 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청 및 의견 제출 상세 조회 | `LEGAL` |
+
+---
+
+### 10. 담당 특허 (Assigned Patents) — 사업부
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 담당 특허 목록 조회 | `GET` | `/assigned-patents` | 내 부서에 배정된 담당 특허 목록 조회 | `BUSINESS` |
-| 담당 특허 단건 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
-| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
+| 담당 특허 단일 조회 | `GET` | `/assigned-patents/{patentId}` | 담당 특허 및 의견 제출 정보 조회 | `BUSINESS` |
+| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 유지 의견/포기 의견 제출. opinion, comment, status, submitted_at 업데이트 | `BUSINESS` |
 
 ---
 
-### 10. 평가 보고서 (Reports)
+### 11. 평가 보고서 (Reports)
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
@@ -192,13 +209,13 @@ json
 
 ---
 
-### 11. 대시보드 (Dashboard) — Legal
+### 12. 대시보드 (Dashboard) — Legal
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 분기 진행 현황 | `GET` | `/dashboard/summary` | 진행률, 대상/평가/결정 건수 요약 | `LEGAL` |
+| 재평가 진행 현황 | `GET` | `/dashboard/summary` | 진행률, 검토 대상/평가/의견 제출 건수 요약 | `LEGAL` |
 | 담당 부서 배정 현황 | `GET` | `/dashboard/assignment` | 미배정/배정 요청/배정 완료 건수 | `LEGAL` |
-| 특허 유형 분포 / 만기 현황 | `GET` | `/dashboard/distribution` | 특허 유형 분포 및 분기별 만기 현황 | `LEGAL` |
-| 사업부별 처리 현황 | `GET` | `/dashboard/departments` | 부서별 담당/결정 완료/미결정 건수 | `LEGAL` |
+| 특허 유형 분포 / 만료 현황 | `GET` | `/dashboard/distribution` | 특허 유형 분포 및 분기별 만료 현황 | `LEGAL` |
+| 사업부별 검토 현황 | `GET` | `/dashboard/departments` | 부서별 검토 대상/제출 완료/미제출 건수 | `LEGAL` |
 
 .

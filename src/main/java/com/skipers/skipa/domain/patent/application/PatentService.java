@@ -5,10 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
-import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
+import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
-import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
@@ -16,6 +15,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class PatentService {
     private final DepartmentRepository departmentRepository;
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
-    private final OpinionSubmissionRepository opinionSubmissionRepository;
+    private final ReviewRepository reviewRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -167,7 +167,7 @@ public class PatentService {
 
         patentLegalStatusRepository.deleteAllByPatentId(patentId); // 권리 상태 이력
         patentAnnuityRepository.deleteAllByPatentId(patentId); // 연차료 납부 이력
-        opinionSubmissionRepository.deleteAllByPatentId(patentId); // 사업부 의견 제출
+        reviewRepository.deleteAllByPatentId(patentId); // 사업부 검토
         patentRepository.deleteById(patentId);
     }
 

@@ -16,7 +16,7 @@ SKIPA(SK IP Agent)는 사내 특허의 가치 평가와 Life Cycle 관리를 지
 - 특허별 담당 부서 배정
 - 연차료 납부 이력 관리
 - 권리 상태 이력 관리
-- 사업부 검토 요청 및 유지/포기 결정 관리
+- 사업부 검토 요청 및 유지 의견/포기 의견 제출 관리
 - AI 평가 보고서 생성 요청 및 조회
 - Legal 팀 대시보드 데이터 제공
 
@@ -235,21 +235,22 @@ src/main/java/com/skipers/skipa
 │   │   │   ├── PatentDocumentController.java
 │   │   │   ├── PatentDepartmentController.java
 │   │   │   ├── PatentLegalStatusController.java
-│   │   │   └── PatentAnnuityController.java
+│   │   │   ├── PatentAnnuityController.java
+│   │   │   └── AssignedPatentController.java
 │   │   ├── application
 │   │   │   ├── PatentService.java
 │   │   │   ├── PatentDocumentService.java
 │   │   │   ├── PatentDepartmentService.java
 │   │   │   ├── PatentLegalStatusService.java
-│   │   │   └── PatentAnnuityService.java
+│   │   │   ├── PatentAnnuityService.java
+│   │   │   ├── AssignedPatentService.java
+│   │   │   └── BusinessPatentAccessValidator.java
 │   │   ├── dao
 │   │   │   ├── PatentRepository.java
-│   │   │   ├── PatentDepartmentRepository.java
 │   │   │   ├── PatentLegalStatusRepository.java
 │   │   │   └── PatentAnnuityRepository.java
 │   │   ├── domain
 │   │   │   ├── Patent.java
-│   │   │   ├── PatentDepartment.java
 │   │   │   ├── PatentLegalStatus.java
 │   │   │   ├── PatentAnnuity.java
 │   │   │   ├── PatentLegalStatusType.java
@@ -268,7 +269,9 @@ src/main/java/com/skipers/skipa
 │   │   │       ├── PatentDocumentExtractResponse.java
 │   │   │       ├── PatentDepartmentResponse.java
 │   │   │       ├── PatentLegalStatusResponse.java
-│   │   │       └── PatentAnnuityResponse.java
+│   │   │       ├── PatentAnnuityResponse.java
+│   │   │       ├── AssignedPatentResponse.java
+│   │   │       └── AssignedPatentDetailResponse.java
 │   │   └── exception
 │   │       ├── PatentNotFoundException.java
 │   │       ├── DuplicateApplicationNumberException.java
@@ -294,29 +297,33 @@ src/main/java/com/skipers/skipa
 │   │   └── exception
 │   │       └── ReportException.java
 │   │
-│   ├── decision
+│   ├── review
 │   │   ├── api
-│   │   │   ├── DecisionController.java
-│   │   │   └── AssignedPatentController.java
+│   │   │   ├── ReviewController.java
+│   │   │   └── ReviewCycleController.java
 │   │   ├── application
-│   │   │   ├── DecisionService.java
-│   │   │   └── AssignedPatentService.java
+│   │   │   ├── ReviewService.java
+│   │   │   └── ReviewCycleService.java
 │   │   ├── dao
-│   │   │   └── DecisionRepository.java
+│   │   │   ├── ReviewRepository.java
+│   │   │   └── ReviewCycleRepository.java
 │   │   ├── domain
-│   │   │   ├── Decision.java
-│   │   │   ├── DecisionStatus.java
-│   │   │   └── DecisionType.java
+│   │   │   ├── Review.java
+│   │   │   ├── ReviewCycle.java
+│   │   │   ├── ReviewCycleType.java
+│   │   │   ├── ReviewStatus.java
+│   │   │   └── BusinessOpinion.java
 │   │   ├── dto
 │   │   │   ├── request
-│   │   │   │   ├── DecisionCreateRequest.java
-│   │   │   │   └── DecisionSubmitRequest.java
+│   │   │   │   ├── ReviewSubmitRequest.java
+│   │   │   │   ├── ReviewCycleCreateRequest.java
+│   │   │   │   └── ReviewCycleUpdateRequest.java
 │   │   │   └── response
-│   │   │       ├── DecisionResponse.java
-│   │   │       └── AssignedPatentResponse.java
+│   │   │       ├── ReviewResponse.java
+│   │   │       └── ReviewCycleResponse.java
 │   │   └── exception
-│   │       ├── DecisionNotFoundException.java
-│   │       └── DecisionAlreadySubmittedException.java
+│   │       ├── ReviewException.java
+│   │       └── ReviewCycleException.java
 │   │
 │   └── dashboard
 │       ├── api
@@ -359,7 +366,7 @@ src/main/java/com/skipers/skipa
 | `domain.department` | 부서 관리 |
 | `domain.patent` | 특허 기본 정보, 문서, 담당 부서, 권리 상태, 연차료 관리 |
 | `domain.report` | AI 평가 보고서 생성 요청, 조회, 상태 확인 |
-| `domain.decision` | 사업부 담당 특허, 의견 제출, Legal 모니터링 |
+| `domain.review` | 사업부 검토 요청, 의견 제출, Legal 모니터링 |
 | `domain.dashboard` | Legal 팀 대시보드 통계 |
 | `infra.ai` | AI 서버 연동 |
 | `infra.storage` | S3 등 파일 저장소 연동 |
@@ -379,7 +386,8 @@ src/main/java/com/skipers/skipa
 | Patent Departments | `/patents/{patentId}/departments` | 특허 담당 부서 관리 |
 | Patent Legal Status | `/patents/{patentId}/legal-status` | 권리 상태 이력 관리 |
 | Patent Annuities | `/patents/{patentId}/annuities` | 특허 연차료 관리 |
-| Decisions | `/decisions` | Legal 팀 결정 현황 모니터링 |
+| Reviews | `/reviews` | Legal 팀 검토 요청 및 의견 제출 현황 모니터링 |
+| Review Cycles | `/review-cycles` | Legal 팀 검토 주기 관리 |
 | Assigned Patents | `/assigned-patents` | 사업부 담당 특허 |
 | Reports | `/patents/{patentId}/reports` | AI 평가 보고서 관리 |
 | Dashboard | `/dashboard` | Legal 팀 대시보드 |

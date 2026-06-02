@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class PatentAnnuityService {
 
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final PatentRepository patentRepository;
+    private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
     @Transactional
     public PatentAnnuityResponse create(Long patentId, PatentAnnuityCreateRequest request) {
@@ -50,7 +52,9 @@ public class PatentAnnuityService {
         return PatentAnnuityResponse.from(patentAnnuity);
     }
 
-    public Page<PatentAnnuityResponse> getAll(Long patentId, Pageable pageable) {
+    public Page<PatentAnnuityResponse> getAll(User user, Long patentId, Pageable pageable) {
+        businessPatentAccessValidator.validate(user, patentId);
+
         if (!patentRepository.existsById(patentId)) {
             throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
         }

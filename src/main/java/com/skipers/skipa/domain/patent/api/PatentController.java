@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +40,7 @@ public class PatentController {
      * @param request 생성 요청
      * @return 생성된 특허
      */
+    @Operation(summary = "특허 생성", description = "새로운 특허 정보를 생성합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) {
@@ -51,6 +53,7 @@ public class PatentController {
      * @param patentId 특허 ID
      * @return 특허
      */
+    @Operation(summary = "특허 단일 조회", description = "특허 ID로 상세 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/{patentId}")
     public ApiResponse<PatentDetailResponse> get(@PathVariable Long patentId) {
@@ -64,6 +67,7 @@ public class PatentController {
      * @param pageable page/size 정보
      * @return 특허 목록 페이지
      */
+    @Operation(summary = "특허 목록 조회", description = "특허 목록을 페이지 단위로 조회합니다. 특허명으로 검색할 수 있습니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping
     public ApiResponse<PageResponse<PatentListResponse>> getAll(
@@ -80,6 +84,7 @@ public class PatentController {
      * @param request 수정 요청
      * @return 수정된 특허
      */
+    @Operation(summary = "특허 수정", description = "특허 ID에 해당하는 특허 정보를 수정합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PutMapping("/{patentId}")
     public ApiResponse<PatentDetailResponse> update(
@@ -96,6 +101,7 @@ public class PatentController {
      * @param request 담당 부서 변경 요청
      * @return 변경된 특허
      */
+    @Operation(summary = "특허 담당 부서 변경", description = "특허의 현재 담당 부서를 변경합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PatchMapping("/{patentId}/department")
     public ApiResponse<PatentDetailResponse> changeDepartment(
@@ -111,6 +117,7 @@ public class PatentController {
      * @param patentId 특허 ID
      * @return 성공 응답
      */
+    @Operation(summary = "특허 삭제", description = "특허 ID에 해당하는 특허와 연관 데이터를 삭제합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @DeleteMapping("/{patentId}")
     public ApiResponse<Void> delete(@PathVariable Long patentId) {

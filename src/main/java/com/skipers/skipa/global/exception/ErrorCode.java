@@ -34,6 +34,7 @@ public enum ErrorCode {
     // Patent
     PATENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_NOT_FOUND", "특허를 찾을 수 없습니다."),
     DUPLICATE_APPLICATION_NUMBER(HttpStatus.CONFLICT, "DUPLICATE_APPLICATION_NUMBER", "이미 등록된 출원번호입니다."),
+    PATENT_DEPARTMENT_NOT_ASSIGNED(HttpStatus.CONFLICT, "PATENT_DEPARTMENT_NOT_ASSIGNED", "특허 담당 부서가 배정되지 않았습니다."),
     PATENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DOCUMENT_NOT_FOUND", "특허 문서를 찾을 수 없습니다."),
     PATENT_DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DEPARTMENT_NOT_FOUND", "특허 담당 부서 정보를 찾을 수 없습니다."),
     PATENT_LEGAL_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_LEGAL_STATUS_NOT_FOUND", "특허 권리 상태 이력을 찾을 수 없습니다."),
@@ -44,10 +45,18 @@ public enum ErrorCode {
     REPORT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "REPORT_GENERATION_FAILED", "보고서 생성에 실패했습니다."),
     REPORT_NOT_COMPLETED(HttpStatus.CONFLICT, "REPORT_NOT_COMPLETED", "아직 생성이 완료되지 않은 보고서입니다."),
 
-    // Decision
-    DECISION_NOT_FOUND(HttpStatus.NOT_FOUND, "DECISION_NOT_FOUND", "검토 요청을 찾을 수 없습니다."),
-    DECISION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "DECISION_ALREADY_SUBMITTED", "이미 결정이 제출된 요청입니다."),
-    INVALID_DECISION_STATUS(HttpStatus.CONFLICT, "INVALID_DECISION_STATUS", "처리할 수 없는 결정 상태입니다."),
+    // Review
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_NOT_FOUND", "사업부 검토를 찾을 수 없습니다."),
+    REVIEW_CYCLE_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_CYCLE_NOT_FOUND", "검토 주기를 찾을 수 없습니다."),
+    ACTIVE_REVIEW_CYCLE_NOT_FOUND(HttpStatus.NOT_FOUND, "ACTIVE_REVIEW_CYCLE_NOT_FOUND", "현재 활성화된 검토 주기를 찾을 수 없습니다."),
+    DUPLICATE_REVIEW_CYCLE_NAME(HttpStatus.CONFLICT, "DUPLICATE_REVIEW_CYCLE_NAME", "이미 존재하는 검토 주기명입니다."),
+    REVIEW_CYCLE_PERIOD_OVERLAP(HttpStatus.CONFLICT, "REVIEW_CYCLE_PERIOD_OVERLAP", "기존 검토 주기와 기간이 겹칩니다."),
+    REVIEW_CYCLE_IN_USE(HttpStatus.CONFLICT, "REVIEW_CYCLE_IN_USE", "검토 요청에서 사용 중인 검토 주기는 삭제할 수 없습니다."),
+    INVALID_REVIEW_CYCLE_TYPE(HttpStatus.BAD_REQUEST, "INVALID_REVIEW_CYCLE_TYPE", "유효하지 않은 검토 주기 유형입니다."),
+    INVALID_REVIEW_CYCLE_PERIOD(HttpStatus.BAD_REQUEST, "INVALID_REVIEW_CYCLE_PERIOD", "검토 주기 종료일은 시작일보다 빠를 수 없습니다."),
+    DUPLICATE_REVIEW_REQUEST(HttpStatus.CONFLICT, "DUPLICATE_REVIEW_REQUEST", "이미 요청된 사업부 검토입니다."),
+    OPINION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "OPINION_ALREADY_SUBMITTED", "이미 의견이 제출된 요청입니다."),
+    INVALID_REVIEW_STATUS(HttpStatus.CONFLICT, "INVALID_REVIEW_STATUS", "처리할 수 없는 사업부 검토 상태입니다."),
 
     // External
     AI_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "AI_SERVER_ERROR", "AI 서버 연동 중 오류가 발생했습니다."),

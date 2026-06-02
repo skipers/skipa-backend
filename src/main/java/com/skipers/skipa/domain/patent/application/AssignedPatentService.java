@@ -1,13 +1,13 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.skipers.skipa.domain.opinion.dao.OpinionSubmissionRepository;
-import com.skipers.skipa.domain.opinion.domain.BusinessOpinion;
-import com.skipers.skipa.domain.opinion.domain.OpinionSubmission;
-import com.skipers.skipa.domain.opinion.domain.OpinionSubmissionStatus;
-import com.skipers.skipa.domain.opinion.dto.request.OpinionSubmissionSubmitRequest;
-import com.skipers.skipa.domain.opinion.exception.OpinionSubmissionException;
 import com.skipers.skipa.domain.patent.dto.response.AssignedPatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
+import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.domain.BusinessOpinion;
+import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewStatus;
+import com.skipers.skipa.domain.review.dto.request.ReviewSubmitRequest;
+import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +25,9 @@ import java.time.Instant;
 @Transactional(readOnly = true)
 public class AssignedPatentService {
 
-    private final OpinionSubmissionRepository opinionSubmissionRepository;
+    private final ReviewRepository reviewRepository;
     private final PatentService patentService;
+    private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
     public Page<AssignedPatentResponse> getAll(User user, Pageable pageable) {
         Long departmentId = getDepartmentId(user);
@@ -36,16 +37,16 @@ public class AssignedPatentService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return opinionSubmissionRepository.findByDepartmentId(departmentId, sortedPageable)
+        return reviewRepository.findLatestAssignedByDepartmentId(departmentId, sortedPageable)
                 .map(AssignedPatentResponse::from);
     }
 
     public AssignedPatentDetailResponse get(User user, Long patentId) {
-        OpinionSubmission opinionSubmission = getOwnedSubmission(user, patentId);
+        Review review = getOwnedReview(user, patentId);
 
         return AssignedPatentDetailResponse.of(
                 patentService.get(patentId),
-                opinionSubmission
+                review
         );
     }
 
@@ -53,38 +54,47 @@ public class AssignedPatentService {
     public AssignedPatentResponse submit(
             User user,
             Long patentId,
-            OpinionSubmissionSubmitRequest request
+            ReviewSubmitRequest request
     ) {
-        OpinionSubmission opinionSubmission = getOwnedSubmission(user, patentId);
-
-        if (opinionSubmission.getStatus() == OpinionSubmissionStatus.제출완료) {
-            throw new OpinionSubmissionException(ErrorCode.DECISION_ALREADY_SUBMITTED);
-        }
+        Review review = getPendingOwnedReview(user, patentId);
 
         BusinessOpinion opinion;
         try {
             opinion = BusinessOpinion.valueOf(request.opinion());
         } catch (IllegalArgumentException e) {
-            throw new OpinionSubmissionException(ErrorCode.INVALID_REQUEST);
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
         }
 
-        opinionSubmission.submit(opinion, request.comment(), Instant.now());
+        review.submit(opinion, request.comment(), Instant.now());
 
-        return AssignedPatentResponse.from(opinionSubmission);
+        return AssignedPatentResponse.from(review);
     }
 
-    private OpinionSubmission getOwnedSubmission(User user, Long patentId) {
+    private Review getOwnedReview(User user, Long patentId) {
         Long departmentId = getDepartmentId(user);
+        businessPatentAccessValidator.validate(user, patentId);
 
-        return opinionSubmissionRepository.findByPatentIdAndDepartmentId(patentId, departmentId)
-                .orElseThrow(() -> opinionSubmissionRepository.existsByPatentId(patentId)
-                        ? new OpinionSubmissionException(ErrorCode.FORBIDDEN)
-                        : new OpinionSubmissionException(ErrorCode.DECISION_NOT_FOUND));
+        return reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId)
+                .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
+    }
+
+    private Review getPendingOwnedReview(User user, Long patentId) {
+        Long departmentId = getDepartmentId(user);
+        businessPatentAccessValidator.validate(user, patentId);
+
+        return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(
+                        patentId,
+                        departmentId,
+                        ReviewStatus.미제출
+                )
+                .orElseThrow(() -> reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId).isPresent()
+                        ? new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED)
+                        : new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
     }
 
     private Long getDepartmentId(User user) {
         if (user.getDepartment() == null) {
-            throw new OpinionSubmissionException(ErrorCode.FORBIDDEN);
+            throw new ReviewException(ErrorCode.FORBIDDEN);
         }
 
         return user.getDepartment().getId();
