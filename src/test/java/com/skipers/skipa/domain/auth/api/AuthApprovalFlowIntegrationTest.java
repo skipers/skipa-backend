@@ -912,6 +912,33 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void opinionSubmissionRejectsExpiredReviewRequest() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Expired Review Patent")
+                .applicationNumber("APP-REVIEW-EXPIRED")
+                .currentDepartment(department)
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .dueDate(LocalDate.now().minusDays(1))
+                .build());
+        String businessToken = createActiveUserToken("business-expired-review", "business-expired-review@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "opinion": "유지"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("REVIEW_DEADLINE_EXPIRED"));
+    }
+
+    @Test
     void businessUserCanReadOnlyAssignedPatentHistory() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")

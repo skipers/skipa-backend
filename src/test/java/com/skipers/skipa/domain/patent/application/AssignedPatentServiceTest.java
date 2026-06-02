@@ -177,6 +177,27 @@ class AssignedPatentServiceTest {
         );
     }
 
+    @Test
+    void submitRejectsRequestAfterDueDate() {
+        Review expiredReview = Review.builder()
+                .patent(review.getPatent())
+                .department(review.getDepartment())
+                .reviewCycle(reviewCycle())
+                .dueDate(LocalDate.now().minusDays(1))
+                .build();
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
+                .thenReturn(Optional.of(expiredReview));
+
+        assertReviewError(
+                () -> assignedPatentService.submit(
+                        businessUser,
+                        10L,
+                        new ReviewSubmitRequest("유지", null)
+                ),
+                ErrorCode.REVIEW_DEADLINE_EXPIRED
+        );
+    }
+
     private void assertReviewError(Runnable invocation, ErrorCode errorCode) {
         assertThatThrownBy(invocation::run)
                 .isInstanceOfSatisfying(ReviewException.class,

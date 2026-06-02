@@ -56,6 +56,7 @@ public enum ErrorCode {
     INVALID_REVIEW_CYCLE_PERIOD(HttpStatus.BAD_REQUEST, "INVALID_REVIEW_CYCLE_PERIOD", "검토 주기 종료일은 시작일보다 빠를 수 없습니다."),
     DUPLICATE_REVIEW_REQUEST(HttpStatus.CONFLICT, "DUPLICATE_REVIEW_REQUEST", "이미 요청된 사업부 검토입니다."),
     OPINION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "OPINION_ALREADY_SUBMITTED", "이미 의견이 제출된 요청입니다."),
+    REVIEW_DEADLINE_EXPIRED(HttpStatus.CONFLICT, "REVIEW_DEADLINE_EXPIRED", "의견 제출 기한이 지났습니다."),
     INVALID_REVIEW_STATUS(HttpStatus.CONFLICT, "INVALID_REVIEW_STATUS", "처리할 수 없는 사업부 검토 상태입니다."),
 
     // External

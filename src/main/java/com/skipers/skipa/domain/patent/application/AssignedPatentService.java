@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -59,6 +60,9 @@ public class AssignedPatentService {
         Review review = getOwnedReview(user, patentId);
         if (review.getStatus() != ReviewStatus.미제출) {
             throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
+        }
+        if (review.getDueDate().isBefore(LocalDate.now())) {
+            throw new ReviewException(ErrorCode.REVIEW_DEADLINE_EXPIRED);
         }
 
         BusinessOpinion opinion;
