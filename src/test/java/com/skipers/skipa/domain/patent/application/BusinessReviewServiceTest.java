@@ -135,20 +135,20 @@ class BusinessReviewServiceTest {
         BusinessReviewResponse response = businessReviewService.submit(
                 businessUser,
                 10L,
-                new ReviewSubmitRequest("유지", "유지 요청")
+                new ReviewSubmitRequest("MAINTAIN", "유지 요청")
         );
 
-        assertThat(response.opinion()).isEqualTo("유지");
+        assertThat(response.opinion()).isEqualTo("MAINTAIN");
         assertThat(response.comment()).isEqualTo("유지 요청");
-        assertThat(response.status()).isEqualTo("제출완료");
+        assertThat(response.status()).isEqualTo("SUBMITTED");
         assertThat(response.submittedAt()).isNotNull();
-        assertThat(review.getOpinion()).isEqualTo(BusinessOpinion.유지);
-        assertThat(review.getStatus()).isEqualTo(ReviewStatus.제출완료);
+        assertThat(review.getOpinion()).isEqualTo(BusinessOpinion.MAINTAIN);
+        assertThat(review.getStatus()).isEqualTo(ReviewStatus.SUBMITTED);
     }
 
     @Test
     void submitRejectsAlreadySubmittedRequest() {
-        review.submit(BusinessOpinion.유지, "기존 의견", java.time.Instant.now());
+        review.submit(BusinessOpinion.MAINTAIN, "기존 의견", java.time.Instant.now());
         when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
                 .thenReturn(Optional.of(review));
 
@@ -156,7 +156,7 @@ class BusinessReviewServiceTest {
                 () -> businessReviewService.submit(
                         businessUser,
                         10L,
-                        new ReviewSubmitRequest("포기", "변경 의견")
+                        new ReviewSubmitRequest("ABANDON", "변경 의견")
                 ),
                 ErrorCode.OPINION_ALREADY_SUBMITTED
         );
@@ -192,7 +192,7 @@ class BusinessReviewServiceTest {
                 () -> businessReviewService.submit(
                         businessUser,
                         10L,
-                        new ReviewSubmitRequest("유지", null)
+                        new ReviewSubmitRequest("MAINTAIN", null)
                 ),
                 ErrorCode.REVIEW_DEADLINE_EXPIRED
         );

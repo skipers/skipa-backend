@@ -58,7 +58,7 @@ public class BusinessReviewService {
             ReviewSubmitRequest request
     ) {
         Review review = getOwnedReview(user, patentId);
-        if (review.getStatus() != ReviewStatus.미제출) {
+        if (review.getStatus() != ReviewStatus.PENDING) {
             throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
         }
         if (review.getDueDate().isBefore(LocalDate.now())) {

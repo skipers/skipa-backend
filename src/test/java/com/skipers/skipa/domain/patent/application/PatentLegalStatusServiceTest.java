@@ -55,13 +55,13 @@ class PatentLegalStatusServiceTest {
         when(patentLegalStatusRepository.save(any(PatentLegalStatus.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PatentLegalStatusResponse response = patentLegalStatusService.create(1L, request("등록"));
+        PatentLegalStatusResponse response = patentLegalStatusService.create(1L, request("REGISTERED"));
 
         assertThat(response.patentId()).isEqualTo(1L);
-        assertThat(response.status()).isEqualTo("등록");
+        assertThat(response.status()).isEqualTo("REGISTERED");
         assertThat(response.changedAt()).isEqualTo(LocalDate.of(2026, 5, 29));
         verify(patentLegalStatusRepository).save(org.mockito.ArgumentMatchers.argThat(status ->
-                status.getPatent() == patent && status.getStatus() == PatentLegalStatusType.등록
+                status.getPatent() == patent && status.getStatus() == PatentLegalStatusType.REGISTERED
         ));
     }
 
@@ -69,7 +69,7 @@ class PatentLegalStatusServiceTest {
     void createRejectsMissingPatent() {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertPatentError(() -> patentLegalStatusService.create(1L, request("등록")), ErrorCode.PATENT_NOT_FOUND);
+        assertPatentError(() -> patentLegalStatusService.create(1L, request("REGISTERED")), ErrorCode.PATENT_NOT_FOUND);
 
         verify(patentLegalStatusRepository, never()).save(any());
     }
@@ -90,7 +90,7 @@ class PatentLegalStatusServiceTest {
         User user = legalUser();
         PatentLegalStatus legalStatus = PatentLegalStatus.builder()
                 .patent(patent())
-                .status(PatentLegalStatusType.공개)
+                .status(PatentLegalStatusType.PUBLISHED)
                 .changedAt(LocalDate.of(2026, 5, 29))
                 .build();
         ReflectionTestUtils.setField(legalStatus, "id", 10L);

@@ -95,7 +95,7 @@ class ReviewServiceTest {
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.departmentId()).isEqualTo(1L);
-        assertThat(response.status()).isEqualTo("미제출");
+        assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.reviewCycleId()).isEqualTo(1L);
         assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate());
         assertThat(response.opinion()).isNull();
@@ -178,13 +178,13 @@ class ReviewServiceTest {
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
         Review review = review();
-        when(reviewRepository.findAllByFilters(ReviewStatus.미제출, 1L, 10L, sortedPageable))
+        when(reviewRepository.findAllByFilters(ReviewStatus.PENDING, 1L, 10L, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll("미제출", 1L, 10L, pageable).getContent())
+        assertThat(reviewService.getAll("PENDING", 1L, 10L, pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
-        verify(reviewRepository).findAllByFilters(ReviewStatus.미제출, 1L, 10L, sortedPageable);
+        verify(reviewRepository).findAllByFilters(ReviewStatus.PENDING, 1L, 10L, sortedPageable);
     }
 
     @Test

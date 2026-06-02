@@ -55,14 +55,14 @@ class PatentAnnuityServiceTest {
         when(patentAnnuityRepository.save(any(PatentAnnuity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PatentAnnuityResponse response = patentAnnuityService.create(1L, request("납부"));
+        PatentAnnuityResponse response = patentAnnuityService.create(1L, request("PAID"));
 
         assertThat(response.patentId()).isEqualTo(1L);
         assertThat(response.annuityYear()).isEqualTo(3);
-        assertThat(response.status()).isEqualTo("납부");
+        assertThat(response.status()).isEqualTo("PAID");
         verify(patentAnnuityRepository).save(org.mockito.ArgumentMatchers.argThat(annuity ->
                 annuity.getPatent() == patent
-                        && annuity.getStatus() == PatentAnnuityStatus.납부
+                        && annuity.getStatus() == PatentAnnuityStatus.PAID
                         && annuity.getAmount().equals(100_000)
         ));
     }
@@ -71,7 +71,7 @@ class PatentAnnuityServiceTest {
     void createRejectsMissingPatent() {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertPatentError(() -> patentAnnuityService.create(1L, request("납부")), ErrorCode.PATENT_NOT_FOUND);
+        assertPatentError(() -> patentAnnuityService.create(1L, request("PAID")), ErrorCode.PATENT_NOT_FOUND);
 
         verify(patentAnnuityRepository, never()).save(any());
     }
@@ -93,7 +93,7 @@ class PatentAnnuityServiceTest {
         PatentAnnuity annuity = PatentAnnuity.builder()
                 .patent(patent())
                 .annuityYear(3)
-                .status(PatentAnnuityStatus.미납)
+                .status(PatentAnnuityStatus.UNPAID)
                 .build();
         ReflectionTestUtils.setField(annuity, "id", 10L);
         PageRequest pageable = PageRequest.of(0, 20);

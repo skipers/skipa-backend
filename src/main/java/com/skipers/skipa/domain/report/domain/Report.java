@@ -39,7 +39,7 @@ public class Report extends BaseTimeEntity {
     private String reportKey;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20) // 생성 상태(생성중/완료/실패)
+    @Column(name = "status", nullable = false, length = 20) // 생성 상태(GENERATING/COMPLETED/FAILED)
     private ReportStatus status;
 
     @Column(name = "evaluated_at") // 평가 완료 시각
@@ -49,8 +49,7 @@ public class Report extends BaseTimeEntity {
     private Report(Patent patent, String reportKey, ReportStatus status, Instant evaluatedAt) {
         this.patent = patent;
         this.reportKey = reportKey;
-        this.status = status != null ? status : ReportStatus.생성중;
+        this.status = status != null ? status : ReportStatus.GENERATING;
         this.evaluatedAt = evaluatedAt;
     }
 }
-

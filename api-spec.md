@@ -208,7 +208,7 @@ Legal 팀은 사업부 검토 요청에 사용할 검토 주기를 관리합니�
 | --- | --- | --- | --- | --- |
 | 사업부 검토 현황 목록 조회 | `GET` | `/assigned-patents` | 내 부서에 요청된 특허 검토 현황 목록 조회 | `BUSINESS` |
 | 사업부 검토 현황 단일 조회 | `GET` | `/assigned-patents/{patentId}` | 특허 검토 요청 및 의견 제출 정보 조회 | `BUSINESS` |
-| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 최신 검토 요청에 유지 의견/포기 의견 제출. 회신 기한이 지난 요청은 제출 불가 | `BUSINESS` |
+| 의견 제출 | `POST` | `/assigned-patents/{patentId}/opinions` | 최신 검토 요청에 `MAINTAIN`/`ABANDON` 의견 제출. 회신 기한이 지난 요청은 제출 불가 | `BUSINESS` |
 
 ---
 
@@ -217,9 +217,9 @@ Legal 팀은 사업부 검토 요청에 사용할 검토 주기를 관리합니�
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 해당 특허의 보고서 목록 조회(page/size 기반). business는 현재 담당 부서가 본인 소속 부서인 특허만 조회 | `LEGAL`, `BUSINESS` |
-| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | 평가 보고서 생성 요청(비동기). 생성 직후 상태는 `생성중` | `LEGAL` |
+| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | 평가 보고서 생성 요청(비동기). 생성 직후 상태는 `GENERATING` | `LEGAL` |
 | 보고서 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 보고서 상세 조회(상태/평가완료시각/reportKey). business는 본인 소속 부서 담당 특허만 조회. presigned URL은 미확정 | `LEGAL`, `BUSINESS` |
-| 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | 생성 진행 상태 폴링 (생성중/완료/실패). business는 본인 소속 부서 담당 특허만 조회 | `LEGAL`, `BUSINESS` |
+| 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | 생성 진행 상태 폴링 (`GENERATING`/`COMPLETED`/`FAILED`). business는 본인 소속 부서 담당 특허만 조회 | `LEGAL`, `BUSINESS` |
 
 ---
 

@@ -712,7 +712,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
                 .andExpect(jsonPath("$.data.items[0].title").value("Assigned Patent"))
                 .andExpect(jsonPath("$.data.items[0].applicationNumber").value("APP-OPINION"))
-                .andExpect(jsonPath("$.data.items[0].status").value("미제출"))
+                .andExpect(jsonPath("$.data.items[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.data.items[0].reviewRequestedAt").isNotEmpty());
 
         mockMvc.perform(get("/assigned-patents/{patentId}", patent.getId())
@@ -720,7 +720,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.patent.id").value(patent.getId()))
                 .andExpect(jsonPath("$.data.patent.title").value("Assigned Patent"))
-                .andExpect(jsonPath("$.data.status").value("미제출"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.reviewRequestedAt").isNotEmpty());
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
@@ -728,18 +728,18 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "opinion": "유지",
+                                  "opinion": "MAINTAIN",
                                   "comment": "핵심 특허로 판단됩니다."
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.opinion").value("유지"))
+                .andExpect(jsonPath("$.data.opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.comment").value("핵심 특허로 판단됩니다."))
-                .andExpect(jsonPath("$.data.status").value("제출완료"))
+                .andExpect(jsonPath("$.data.status").value("SUBMITTED"))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
 
         Review submitted = reviewRepository.findById(review.getId()).orElseThrow();
-        assertThat(submitted.getStatus()).isEqualTo(ReviewStatus.제출완료);
+        assertThat(submitted.getStatus()).isEqualTo(ReviewStatus.SUBMITTED);
         assertThat(submitted.getSubmittedAt()).isNotNull();
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
@@ -747,7 +747,7 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "opinion": "포기"
+                                  "opinion": "ABANDON"
                                 }
                                 """))
                 .andExpect(status().isConflict())
@@ -831,7 +831,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
                 .andExpect(jsonPath("$.data.reviewCycleName").value("2026년 2분기 정기 재평가"))
                 .andExpect(jsonPath("$.data.opinion").value(nullValue()))
-                .andExpect(jsonPath("$.data.status").value("미제출"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.submittedAt").value(nullValue()))
                 .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getEndDate().toString()));
 
@@ -898,14 +898,14 @@ class AuthApprovalFlowIntegrationTest {
                 .department(department)
                 .reviewCycle(previousCycle)
                 .build());
-        submittedReview.submit(BusinessOpinion.유지, "기존 의견", Instant.now());
+        submittedReview.submit(BusinessOpinion.MAINTAIN, "기존 의견", Instant.now());
         String legalToken = createActiveUserToken("legal-review-repeat", "legal-review-repeat@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review-repeat", "business-review-repeat@example.com", UserRole.BUSINESS);
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.status").value("미제출"));
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
 
         assertThat(reviewRepository.findAll()).hasSize(2);
 
@@ -914,7 +914,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
-                .andExpect(jsonPath("$.data.items[0].status").value("미제출"));
+                .andExpect(jsonPath("$.data.items[0].status").value("PENDING"));
     }
 
     @Test
@@ -940,7 +940,7 @@ class AuthApprovalFlowIntegrationTest {
                 .department(department)
                 .reviewCycle(reviewCycle)
                 .build());
-        latestReview.submit(BusinessOpinion.유지, "최신 의견", Instant.now());
+        latestReview.submit(BusinessOpinion.MAINTAIN, "최신 의견", Instant.now());
         String businessToken = createActiveUserToken("business-latest-review", "business-latest-review@example.com", UserRole.BUSINESS);
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
@@ -948,14 +948,14 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "opinion": "포기",
+                                  "opinion": "ABANDON",
                                   "comment": "과거 요청을 변경하면 안 됩니다."
                                 }
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("OPINION_ALREADY_SUBMITTED"));
 
-        assertThat(previousReview.getStatus()).isEqualTo(ReviewStatus.미제출);
+        assertThat(previousReview.getStatus()).isEqualTo(ReviewStatus.PENDING);
         assertThat(previousReview.getOpinion()).isNull();
     }
 
@@ -979,7 +979,7 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "opinion": "유지"
+                                  "opinion": "MAINTAIN"
                                 }
                                 """))
                 .andExpect(status().isConflict())
@@ -1099,7 +1099,7 @@ class AuthApprovalFlowIntegrationTest {
                 .department(otherDepartment)
                 .reviewCycle(reviewCycle)
                 .build());
-        secondReview.submit(BusinessOpinion.유지, "유지 의견입니다.", Instant.now());
+        secondReview.submit(BusinessOpinion.MAINTAIN, "유지 의견입니다.", Instant.now());
 
         String legalToken = createActiveUserToken("legal-review-read", "legal-review-read@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review-read", "business-review-read@example.com", UserRole.BUSINESS);
@@ -1117,15 +1117,15 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(get("/reviews")
                         .header("Authorization", "Bearer " + legalToken)
-                        .param("status", "제출완료")
+                        .param("status", "SUBMITTED")
                         .param("departmentId", otherDepartment.getId().toString())
                         .param("patentId", secondPatent.getId().toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(secondReview.getId()))
-                .andExpect(jsonPath("$.data.items[0].opinion").value("유지"))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.items[0].comment").value("유지 의견입니다."))
-                .andExpect(jsonPath("$.data.items[0].status").value("제출완료"));
+                .andExpect(jsonPath("$.data.items[0].status").value("SUBMITTED"));
 
         mockMvc.perform(get("/reviews/{reviewId}", secondReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
@@ -1133,7 +1133,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.id").value(secondReview.getId()))
                 .andExpect(jsonPath("$.data.patentId").value(secondPatent.getId()))
                 .andExpect(jsonPath("$.data.departmentId").value(otherDepartment.getId()))
-                .andExpect(jsonPath("$.data.opinion").value("유지"))
+                .andExpect(jsonPath("$.data.opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
     }
 

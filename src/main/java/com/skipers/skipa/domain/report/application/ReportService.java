@@ -37,7 +37,7 @@ public class ReportService {
 
         Report report = reportRepository.save(Report.builder()
                 .patent(patent)
-                .status(ReportStatus.생성중)
+                .status(ReportStatus.GENERATING)
                 .build());
 
         return ReportCreateResponse.from(report);

@@ -70,7 +70,7 @@ public class BusinessReviewController {
      * @param request 의견 제출 요청
      * @return 의견이 반영된 사업부 검토 현황
      */
-    @Operation(summary = "사업부 검토 의견 제출", description = "사업부 사용자가 요청된 특허 검토에 유지 의견 또는 포기 의견을 제출합니다.")
+    @Operation(summary = "사업부 검토 의견 제출", description = "사업부 사용자가 요청된 특허 검토에 MAINTAIN 또는 ABANDON 의견을 제출합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @PostMapping("/{patentId}/opinions")
     public ApiResponse<BusinessReviewResponse> submit(

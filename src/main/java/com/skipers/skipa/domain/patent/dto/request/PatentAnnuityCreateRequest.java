@@ -20,8 +20,8 @@ public record PatentAnnuityCreateRequest(
         LocalDate paidDate,
 
         @NotBlank(message = "납부 상태는 필수입니다.")
-        @Pattern(regexp = "^(납부|미납|포기)$", message = "납부 상태는 납부/미납/포기 중 하나여야 합니다.")
-        @Schema(description = "납부 상태", example = "미납")
+        @Pattern(regexp = "^(PAID|UNPAID|ABANDONED)$", message = "납부 상태는 PAID/UNPAID/ABANDONED 중 하나여야 합니다.")
+        @Schema(description = "납부 상태", example = "UNPAID")
         String status,
 
         @Schema(description = "납부 금액", example = "1000000")

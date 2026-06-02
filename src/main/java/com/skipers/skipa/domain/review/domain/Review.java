@@ -55,14 +55,14 @@ public class Review extends BaseTimeEntity {
     private ReviewCycle reviewCycle;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "opinion", length = 20) // 사업부 의견(유지 의견/포기 의견)
+    @Column(name = "opinion", length = 20) // 사업부 의견(MAINTAIN/ABANDON)
     private BusinessOpinion opinion;
 
     @Column(name = "comment", columnDefinition = "text") // 의견 코멘트
     private String comment;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20) // 제출 상태(미제출/제출완료)
+    @Column(name = "status", nullable = false, length = 20) // 제출 상태(PENDING/SUBMITTED)
     private ReviewStatus status;
 
     @Column(name = "submitted_at") // 제출일시
@@ -87,7 +87,7 @@ public class Review extends BaseTimeEntity {
         this.reviewCycle = reviewCycle;
         this.opinion = opinion;
         this.comment = comment;
-        this.status = status != null ? status : ReviewStatus.미제출;
+        this.status = status != null ? status : ReviewStatus.PENDING;
         this.submittedAt = submittedAt;
         this.dueDate = dueDate != null ? dueDate : reviewCycle.getEndDate();
     }
@@ -95,7 +95,7 @@ public class Review extends BaseTimeEntity {
     public void submit(BusinessOpinion opinion, String comment, Instant submittedAt) {
         this.opinion = opinion;
         this.comment = comment;
-        this.status = ReviewStatus.제출완료;
+        this.status = ReviewStatus.SUBMITTED;
         this.submittedAt = submittedAt;
     }
 }
