@@ -54,7 +54,7 @@
 
 | Role | 설명 |
 | --- | --- |
-| `ADMIN` | 사용자 승인, 부서 관리, 특허 관리 |
+| `ADMIN` | 사용자 승인, 부서 관리, 전체 조회, 특허 기본 정보 관리 |
 | `LEGAL` | 특허 관리, 검토 요청, 검토 현황 조회, 보고서 관리 |
 | `BUSINESS` | 본인 부서 담당 특허 조회, 요청받은 검토 확인 및 의견 제출 |
 
@@ -143,7 +143,7 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 권리 상태 이력 조회 | `GET` | `/patents/{patentId}/legal-status` | 최신 등록순 목록 조회 | `LEGAL`, `BUSINESS` |
+| 권리 상태 이력 조회 | `GET` | `/patents/{patentId}/legal-status` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 권리 상태 이력 추가 | `POST` | `/patents/{patentId}/legal-status` | 권리 상태 수동 추가 | `LEGAL` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다.
@@ -152,7 +152,7 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 최신 등록순 목록 조회 | `LEGAL`, `BUSINESS` |
+| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 연차료 납부 이력 추가 | `POST` | `/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다.
@@ -162,8 +162,8 @@
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 검토 주기 생성 | `POST` | `/review-cycles` | 검토 주기 등록 | `LEGAL` |
-| 검토 주기 목록 조회 | `GET` | `/review-cycles` | 최근 시작일 순 목록 조회 | `LEGAL` |
-| 검토 주기 단일 조회 | `GET` | `/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `LEGAL` |
+| 검토 주기 목록 조회 | `GET` | `/review-cycles` | 최근 시작일 순 목록 조회 | `ADMIN`, `LEGAL` |
+| 검토 주기 단일 조회 | `GET` | `/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `ADMIN`, `LEGAL` |
 | 검토 주기 수정 | `PUT` | `/review-cycles/{reviewCycleId}` | 검토 주기 정보 수정 | `LEGAL` |
 | 검토 주기 삭제 | `DELETE` | `/review-cycles/{reviewCycleId}` | 미사용 검토 주기 삭제 | `LEGAL` |
 
@@ -182,8 +182,8 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 목록 조회 | `GET` | `/reviews` | `status`, `departmentId`, `patentId`, `page`, `size`로 조회 | `LEGAL` |
-| 검토 단일 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청과 의견 제출 정보 조회 | `LEGAL` |
+| 검토 목록 조회 | `GET` | `/reviews` | `status`, `departmentId`, `patentId`, `page`, `size`로 조회 | `ADMIN`, `LEGAL` |
+| 검토 단일 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청과 의견 제출 정보 조회 | `ADMIN`, `LEGAL` |
 
 ### 10. 사업부 검토 현황 - 사업부
 
@@ -202,18 +202,18 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `LEGAL`, `BUSINESS` |
+| 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 | `LEGAL` |
-| 보고서 단일 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 보고서 상세 조회 | `LEGAL`, `BUSINESS` |
-| 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | `GENERATING`, `COMPLETED`, `FAILED` 상태 조회 | `LEGAL`, `BUSINESS` |
+| 보고서 단일 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 보고서 상세 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | `GENERATING`, `COMPLETED`, `FAILED` 상태 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 보고서만 조회할 수 있습니다.
 
-### 12. 대시보드 - Legal
+### 12. 대시보드
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 재평가 진행 현황 | `GET` | `/dashboard/summary` | 진행률, 검토 대상, 평가, 의견 제출 건수 요약 | `LEGAL` |
-| 담당 부서 배정 현황 | `GET` | `/dashboard/assignment` | 미배정, 배정 요청, 배정 완료 건수 | `LEGAL` |
-| 특허 유형 분포 / 만료 현황 | `GET` | `/dashboard/distribution` | 특허 유형 분포 및 분기별 만료 현황 | `LEGAL` |
-| 사업부별 검토 현황 | `GET` | `/dashboard/departments` | 부서별 검토 대상, 제출 완료, 미제출 건수 | `LEGAL` |
+| 재평가 진행 현황 | `GET` | `/dashboard/summary` | 진행률, 검토 대상, 평가, 의견 제출 건수 요약 | `ADMIN`, `LEGAL` |
+| 담당 부서 배정 현황 | `GET` | `/dashboard/assignment` | 미배정, 배정 요청, 배정 완료 건수 | `ADMIN`, `LEGAL` |
+| 특허 유형 분포 / 만료 현황 | `GET` | `/dashboard/distribution` | 특허 유형 분포 및 분기별 만료 현황 | `ADMIN`, `LEGAL` |
+| 사업부별 검토 현황 | `GET` | `/dashboard/departments` | 부서별 검토 대상, 제출 완료, 미제출 건수 | `ADMIN`, `LEGAL` |

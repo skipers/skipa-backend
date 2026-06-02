@@ -55,7 +55,7 @@ public class PatentAnnuityController {
      * @return 연차료 납부 이력 목록 페이지
      */
     @Operation(summary = "연차료 납부 이력 조회", description = "특허의 연차료 납부 이력을 페이지 단위로 조회합니다.")
-    @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentAnnuityResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,

@@ -35,7 +35,7 @@ public class ReportController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reportService.create(patentId)));
     }
 
-    @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<ReportResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -45,7 +45,7 @@ public class ReportController {
         return ApiResponse.ok(PageResponse.from(reportService.getAll(userDetails.getUser(), patentId, pageable)));
     }
 
-    @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}")
     public ApiResponse<ReportResponse> get(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -55,7 +55,7 @@ public class ReportController {
         return ApiResponse.ok(reportService.get(userDetails.getUser(), patentId, reportId));
     }
 
-    @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}/status")
     public ApiResponse<ReportStatusResponse> getStatus(
             @AuthenticationPrincipal CustomUserDetails userDetails,

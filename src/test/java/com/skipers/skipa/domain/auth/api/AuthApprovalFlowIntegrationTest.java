@@ -15,6 +15,7 @@ import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -1151,6 +1152,131 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
+    }
+
+    @Test
+    void adminCanReadOperationalData() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Admin Read Patent")
+                .applicationNumber("APP-ADMIN-READ")
+                .currentDepartment(department)
+                .build());
+        Report report = reportRepository.save(Report.builder()
+                .patent(patent)
+                .status(ReportStatus.GENERATING)
+                .build());
+        Review review = reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .build());
+
+        mockMvc.perform(get("/patents/{patentId}/legal-status", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patents/{patentId}/annuities", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patents/{patentId}/reports", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), report.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", patent.getId(), report.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/review-cycles")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycle.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/reviews")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/reviews/{reviewId}", review.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminCannotPerformLegalOperationalWrites() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Admin Write Patent")
+                .applicationNumber("APP-ADMIN-WRITE")
+                .currentDepartment(department)
+                .build());
+
+        mockMvc.perform(post("/patents/{patentId}/legal-status", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "PUBLISHED",
+                                  "changedAt": "2026-06-02"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/patents/{patentId}/annuities", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "annuityYear": 1,
+                                  "status": "UNPAID"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/patents/{patentId}/reports", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/review-cycles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Admin Review Cycle",
+                                  "type": "AD_HOC",
+                                  "startDate": "2027-01-01",
+                                  "endDate": "2027-03-31"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(put("/review-cycles/{reviewCycleId}", reviewCycle.getId())
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Admin Updated Review Cycle",
+                                  "type": "AD_HOC",
+                                  "startDate": "2027-01-01",
+                                  "endDate": "2027-03-31"
+                                }
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycle.getId())
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden());
     }
 
     @Test
