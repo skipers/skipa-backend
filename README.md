@@ -290,15 +290,12 @@ src/main/java/com/skipers/skipa
 │   │   │   ├── Report.java
 │   │   │   └── ReportStatus.java
 │   │   ├── dto
-│   │   │   ├── request
-│   │   │   │   └── ReportCreateRequest.java
 │   │   │   └── response
 │   │   │       ├── ReportCreateResponse.java
 │   │   │       ├── ReportResponse.java
 │   │   │       └── ReportStatusResponse.java
 │   │   └── exception
-│   │       ├── ReportNotFoundException.java
-│   │       └── ReportGenerationFailedException.java
+│   │       └── ReportException.java
 │   │
 │   ├── review
 │   │   ├── api

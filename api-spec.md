@@ -1,5 +1,5 @@
 # API 명세서
-
+# 변경 날짜: 2026-06-01 (월)
 ## API 명세
 
 [api-spec_v1.md](API%20%EB%AA%85%EC%84%B8%EC%84%9C/api-spec_v1.md)
@@ -8,7 +8,7 @@
 
 | 항목 | 내용 |
 | --- | --- |
-| API 버전 | v2 |
+| API 버전 | v3 |
 | Base URL | `https://api.skipa.internal/v1` |
 | 인증 방식 | JWT Bearer Token (`Authorization: Bearer <token>`) |
 | 토큰 발급 | `POST /auth/login` 응답으로 access token 반환 |
@@ -126,12 +126,11 @@ json
 
 ### 4-2. 특허 담당 부서 (Patent Departments)
 
+특허 담당 부서는 별도 매핑 엔티티를 두지 않고, `patents.current_department_id`가 `departments.id`를 외래키로 참조하는 방식으로 관리합니다. 담당 부서 조회는 `GET /patents/{patentId}` 응답 필드로 확인합니다.
+
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 담당 부서 조회 | `GET` | `/patents/{patentId}/departments` | 해당 특허의 담당 부서 조회 | `LEGAL` |
-| 담당 부서 배정 | `POST` | `/patents/{patentId}/departments` | 담당 부서 신규 배정 | `LEGAL` |
-| 담당 부서 변경 | `PUT` | `/patents/{patentId}/departments/{deptId}` | 배정된 부서 변경 | `LEGAL` |
-| 담당 부서 해제 | `DELETE` | `/patents/{patentId}/departments/{deptId}` | 담당 부서 해제 | `LEGAL` |
+| 담당 부서 변경 | `PATCH` | `/patents/{patentId}/department` | 특허의 현재 담당 부서(`current_department_id`) 변경 | 미확정(구현값 우선): `ADMIN`, `LEGAL` |
 
 ---
 
@@ -203,9 +202,9 @@ Legal 팀은 사업부 검토 요청에 사용할 검토 주기를 관리합니�
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 해당 특허의 보고서 목록 조회 | `LEGAL`, `BUSINESS` |
-| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | 평가 보고서 생성 요청 (비동기) | `LEGAL` |
-| 보고서 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 보고서 presigned URL 반환 | `LEGAL`, `BUSINESS` |
+| 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 해당 특허의 보고서 목록 조회(page/size 기반) | `LEGAL`, `BUSINESS` |
+| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | 평가 보고서 생성 요청(비동기). 생성 직후 상태는 `생성중` | `LEGAL` |
+| 보고서 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 보고서 상세 조회(상태/평가완료시각/reportKey). presigned URL은 미확정 | `LEGAL`, `BUSINESS` |
 | 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | 생성 진행 상태 폴링 (생성중/완료/실패) | `LEGAL`, `BUSINESS` |
 
 ---
