@@ -7,6 +7,7 @@ import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import com.skipers.skipa.global.security.CustomUserDetails;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -27,6 +28,13 @@ public class ReportController {
 
     private final ReportService reportService;
 
+    /**
+     * 특허의 평가 보고서 생성을 요청한다.
+     *
+     * @param patentId 특허 ID
+     * @return 생성 요청된 평가 보고서
+     */
+    @Operation(summary = "평가 보고서 생성 요청", description = "특허의 평가 보고서 생성을 요청합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<ReportCreateResponse>> create(
@@ -35,6 +43,15 @@ public class ReportController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reportService.create(patentId)));
     }
 
+    /**
+     * 특허의 평가 보고서 목록을 조회한다(page/size 기반).
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param patentId 특허 ID
+     * @param pageable page/size 정보
+     * @return 평가 보고서 목록 페이지
+     */
+    @Operation(summary = "평가 보고서 목록 조회", description = "특허의 평가 보고서 목록을 페이지 단위로 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<ReportResponse>> getAll(
@@ -45,6 +62,15 @@ public class ReportController {
         return ApiResponse.ok(PageResponse.from(reportService.getAll(userDetails.getUser(), patentId, pageable)));
     }
 
+    /**
+     * 특허의 평가 보고서를 ID로 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param patentId 특허 ID
+     * @param reportId 평가 보고서 ID
+     * @return 평가 보고서
+     */
+    @Operation(summary = "평가 보고서 단일 조회", description = "평가 보고서 ID로 상세 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}")
     public ApiResponse<ReportResponse> get(
@@ -55,6 +81,15 @@ public class ReportController {
         return ApiResponse.ok(reportService.get(userDetails.getUser(), patentId, reportId));
     }
 
+    /**
+     * 특허의 평가 보고서 생성 상태를 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param patentId 특허 ID
+     * @param reportId 평가 보고서 ID
+     * @return 평가 보고서 생성 상태
+     */
+    @Operation(summary = "평가 보고서 생성 상태 조회", description = "평가 보고서의 생성 상태를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}/status")
     public ApiResponse<ReportStatusResponse> getStatus(
