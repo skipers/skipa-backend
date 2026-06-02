@@ -18,7 +18,7 @@ jobs:
       PROJECT: skala3-finalproj-class2-team8
       IMAGE_NAME: skipa-backend
       INFRA_REPO: skipers/skipa-infra
-      DEPLOYMENT_FILE: k8s/backend/deployment.yml
+      INFRA_PATH: k8s/backend
 
     steps:
       - name: Checkout backend repository
@@ -28,6 +28,7 @@ jobs:
         run: |
           SHORT_SHA=${GITHUB_SHA::7}
           echo "IMAGE_TAG=dev-${SHORT_SHA}" >> $GITHUB_ENV
+          echo "IMAGE_REPOSITORY=${REGISTRY}/${PROJECT}/${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:dev-${SHORT_SHA}" >> $GITHUB_ENV
           echo "LATEST_IMAGE=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:dev-latest" >> $GITHUB_ENV
 
@@ -70,34 +71,15 @@ jobs:
           token: ${{ secrets.INFRA_REPO_TOKEN }}
           path: skipa-infra
 
-      - name: Update backend deployment image tag
+      - name: Install Kustomize
         run: |
-          python - <<'PY'
-          import os
-          from pathlib import Path
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
 
-          deployment_file = Path("skipa-infra") / os.environ["DEPLOYMENT_FILE"]
-          image = os.environ["IMAGE"]
-
-          content = deployment_file.read_text()
-          old_prefix = "          image: amdp-registry.skala-ai.com/skala3-finalproj-class2-team8/skipa-backend:"
-          lines = content.splitlines()
-
-          updated = []
-          changed = False
-
-          for line in lines:
-              if line.startswith(old_prefix):
-                  updated.append(f"          image: {image}")
-                  changed = True
-              else:
-                  updated.append(line)
-
-          if not changed:
-              raise RuntimeError("Could not find backend image line in deployment manifest.")
-
-          deployment_file.write_text("\n".join(updated) + "\n")
-          PY
+      - name: Update backend image tag in kustomization
+        working-directory: skipa-infra/${{ env.INFRA_PATH }}
+        run: |
+          kustomize edit set image "${IMAGE_REPOSITORY}=${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 
       - name: Commit and push manifest update to infra repository
         run: |
@@ -111,6 +93,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add "${DEPLOYMENT_FILE}"
-          git commit -m "chore: update backend image tag to ${IMAGE_TAG} [skip ci]"
-          git push
+          git add "${INFRA_PATH}/kustomization.yml"
+          git commit -m "ci: update backend image tag to ${IMAGE_TAG} [skip ci]"
+          git push origin main
