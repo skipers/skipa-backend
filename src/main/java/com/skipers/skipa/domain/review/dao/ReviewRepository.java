@@ -46,12 +46,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"patent", "department"})
     Optional<Review> findFirstByPatentIdAndDepartmentIdOrderByIdDesc(Long patentId, Long departmentId);
 
-    Optional<Review> findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(
-            Long patentId,
-            Long departmentId,
-            ReviewStatus status
-    );
-
     boolean existsByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
 
     boolean existsByReviewCycleId(Long reviewCycleId);

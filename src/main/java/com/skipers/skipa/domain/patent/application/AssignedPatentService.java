@@ -56,7 +56,10 @@ public class AssignedPatentService {
             Long patentId,
             ReviewSubmitRequest request
     ) {
-        Review review = getPendingOwnedReview(user, patentId);
+        Review review = getOwnedReview(user, patentId);
+        if (review.getStatus() != ReviewStatus.미제출) {
+            throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
+        }
 
         BusinessOpinion opinion;
         try {
@@ -76,20 +79,6 @@ public class AssignedPatentService {
 
         return reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId)
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
-    }
-
-    private Review getPendingOwnedReview(User user, Long patentId) {
-        Long departmentId = getDepartmentId(user);
-        businessPatentAccessValidator.validate(user, patentId);
-
-        return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(
-                        patentId,
-                        departmentId,
-                        ReviewStatus.미제출
-                )
-                .orElseThrow(() -> reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId).isPresent()
-                        ? new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED)
-                        : new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
     }
 
     private Long getDepartmentId(User user) {

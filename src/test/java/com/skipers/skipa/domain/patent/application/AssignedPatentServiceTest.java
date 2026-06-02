@@ -129,7 +129,7 @@ class AssignedPatentServiceTest {
 
     @Test
     void submitUpdatesOpinionCommentStatusAndSubmittedAt() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(10L, 1L, ReviewStatus.미제출))
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
                 .thenReturn(Optional.of(review));
 
         AssignedPatentResponse response = assignedPatentService.submit(
@@ -149,8 +149,6 @@ class AssignedPatentServiceTest {
     @Test
     void submitRejectsAlreadySubmittedRequest() {
         review.submit(BusinessOpinion.유지, "기존 의견", java.time.Instant.now());
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(10L, 1L, ReviewStatus.미제출))
-                .thenReturn(Optional.empty());
         when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
                 .thenReturn(Optional.of(review));
 
@@ -166,7 +164,7 @@ class AssignedPatentServiceTest {
 
     @Test
     void submitRejectsInvalidOpinion() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(10L, 1L, ReviewStatus.미제출))
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
                 .thenReturn(Optional.of(review));
 
         assertReviewError(

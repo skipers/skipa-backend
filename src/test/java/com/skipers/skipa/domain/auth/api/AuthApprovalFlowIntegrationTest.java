@@ -870,6 +870,48 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void opinionSubmissionRejectsCompletedLatestReviewWithoutUpdatingOlderPendingReview() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Latest Review Patent")
+                .applicationNumber("APP-REVIEW-LATEST")
+                .currentDepartment(department)
+                .build());
+        ReviewCycle previousCycle = reviewCycleRepository.save(ReviewCycle.builder()
+                .name("2026년 1분기 미제출 재평가")
+                .type(ReviewCycleType.QUARTERLY)
+                .startDate(LocalDate.now().minusMonths(3))
+                .endDate(LocalDate.now().minusMonths(1))
+                .build());
+        Review previousReview = reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(previousCycle)
+                .build());
+        Review latestReview = reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .build());
+        latestReview.submit(BusinessOpinion.유지, "최신 의견", Instant.now());
+        String businessToken = createActiveUserToken("business-latest-review", "business-latest-review@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "opinion": "포기",
+                                  "comment": "과거 요청을 변경하면 안 됩니다."
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("OPINION_ALREADY_SUBMITTED"));
+
+        assertThat(previousReview.getStatus()).isEqualTo(ReviewStatus.미제출);
+        assertThat(previousReview.getOpinion()).isNull();
+    }
+
+    @Test
     void businessUserCanReadOnlyAssignedPatentHistory() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")
