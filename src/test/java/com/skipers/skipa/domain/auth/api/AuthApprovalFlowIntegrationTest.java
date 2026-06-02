@@ -906,6 +906,60 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void businessUserCanReadOnlyAssignedPatentReports() throws Exception {
+        Department otherDepartment = departmentRepository.save(Department.builder()
+                .name("제조")
+                .build());
+        Patent assignedPatent = patentRepository.save(Patent.builder()
+                .title("Assigned Report Patent")
+                .applicationNumber("APP-REPORT-OWN")
+                .currentDepartment(department)
+                .build());
+        Patent otherPatent = patentRepository.save(Patent.builder()
+                .title("Other Report Patent")
+                .applicationNumber("APP-REPORT-OTHER")
+                .currentDepartment(otherDepartment)
+                .build());
+        Report assignedReport = reportRepository.save(Report.builder()
+                .patent(assignedPatent)
+                .build());
+        Report otherReport = reportRepository.save(Report.builder()
+                .patent(otherPatent)
+                .build());
+        String businessToken = createActiveUserToken("business-report", "business-report@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents/{patentId}/reports", assignedPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].id").value(assignedReport.getId()));
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", assignedPatent.getId(), assignedReport.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(assignedReport.getId()));
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", assignedPatent.getId(), assignedReport.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(assignedReport.getId()));
+
+        mockMvc.perform(get("/patents/{patentId}/reports", otherPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", otherPatent.getId(), otherReport.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", otherPatent.getId(), otherReport.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+    }
+
+    @Test
     void legalUserCanReadAndFilterReviews() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")
