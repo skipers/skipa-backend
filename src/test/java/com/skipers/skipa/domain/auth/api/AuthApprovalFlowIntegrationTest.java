@@ -370,20 +370,30 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(get("/departments")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[?(@.id == %d)]".formatted(createdDepartmentId)).isEmpty());
+
+        mockMvc.perform(get("/departments/{departmentId}", createdDepartmentId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("INACTIVE"));
     }
 
     @Test
-    void assignedDepartmentCannotBeDeleted() throws Exception {
+    void assignedDepartmentCanBeDeactivatedWithoutRemovingReferences() throws Exception {
         createActiveUserToken("assigned-business", "assigned-business@example.com", UserRole.BUSINESS);
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
         mockMvc.perform(delete("/departments/{departmentId}", department.getId())
                         .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.error.code").value("DEPARTMENT_IN_USE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
 
         assertThat(departmentRepository.existsById(department.getId())).isTrue();
+        assertThat(departmentRepository.findById(department.getId()).orElseThrow().getStatus().name()).isEqualTo("INACTIVE");
     }
 
     @Test

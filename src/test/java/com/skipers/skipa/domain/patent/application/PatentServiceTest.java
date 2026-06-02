@@ -4,12 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.department.exception.DepartmentException;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
@@ -249,6 +251,21 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertPatentError(() -> patentService.update(1L, null), ErrorCode.PATENT_NOT_FOUND);
+    }
+
+    @Test
+    void changeDepartmentRejectsInactiveDepartment() {
+        Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
+        Department department = Department.builder().name("Telecom").build();
+        department.deactivate();
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department));
+
+        assertThatThrownBy(() -> patentService.changeDepartment(1L, new PatentDepartmentChangeRequest(10L)))
+                .isInstanceOfSatisfying(DepartmentException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.DEPARTMENT_INACTIVE));
+
+        assertThat(patent.getCurrentDepartment()).isNull();
     }
 
     @Test

@@ -39,6 +39,9 @@ public class AdminUserService {
 
             department = departmentRepository.findById(request.departmentId())
                     .orElseThrow(() -> new UserException(ErrorCode.DEPARTMENT_NOT_FOUND));
+            if (department.isInactive()) {
+                throw new UserException(ErrorCode.DEPARTMENT_INACTIVE);
+            }
         }
 
         user.approve(department);

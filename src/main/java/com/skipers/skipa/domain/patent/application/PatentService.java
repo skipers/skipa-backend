@@ -93,6 +93,9 @@ public class PatentService {
 
         Department department = departmentRepository.findById(request.departmentId())
                 .orElseThrow(() -> new DepartmentException(ErrorCode.DEPARTMENT_NOT_FOUND));
+        if (department.isInactive()) {
+            throw new DepartmentException(ErrorCode.DEPARTMENT_INACTIVE);
+        }
 
         patent.changeCurrentDepartment(department);
         return toDetailResponse(patent);

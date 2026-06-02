@@ -137,6 +137,20 @@ class AdminUserServiceTest {
         assertThat(pendingUser.getStatus()).isEqualTo(UserStatus.PENDING);
     }
 
+    @Test
+    void approveRejectsInactiveDepartment() {
+        department.deactivate();
+        when(userRepository.findById(1L)).thenReturn(Optional.of(pendingUser));
+        when(departmentRepository.findById(10L)).thenReturn(Optional.of(department));
+
+        assertErrorCode(
+                () -> adminUserService.approve(1L, new UserApproveRequest(10L)),
+                ErrorCode.DEPARTMENT_INACTIVE
+        );
+
+        assertThat(pendingUser.getStatus()).isEqualTo(UserStatus.PENDING);
+    }
+
     private void assertErrorCode(Runnable invocation, ErrorCode errorCode) {
         assertThatThrownBy(invocation::run)
                 .isInstanceOfSatisfying(UserException.class,

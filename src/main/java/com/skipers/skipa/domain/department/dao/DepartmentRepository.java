@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.department.dao;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.department.domain.DepartmentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,5 +21,7 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
     List<Department> findByNameContainingIgnoreCase(String keyword);
 
-    Page<Department> findByNameContainingIgnoreCase(String keyword, Pageable pageable);
+    Page<Department> findByStatus(DepartmentStatus status, Pageable pageable);
+
+    Page<Department> findByStatusAndNameContainingIgnoreCase(DepartmentStatus status, String keyword, Pageable pageable);
 }

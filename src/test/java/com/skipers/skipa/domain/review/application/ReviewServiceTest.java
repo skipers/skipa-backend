@@ -131,6 +131,20 @@ class ReviewServiceTest {
     }
 
     @Test
+    void createRejectsInactiveDepartment() {
+        department.deactivate();
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
+
+        assertError(
+                () -> reviewService.create(10L),
+                ReviewException.class,
+                ErrorCode.DEPARTMENT_INACTIVE
+        );
+        verify(reviewCycleRepository, never())
+                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any());
+    }
+
+    @Test
     void createRejectsMissingActiveReviewCycle() {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))

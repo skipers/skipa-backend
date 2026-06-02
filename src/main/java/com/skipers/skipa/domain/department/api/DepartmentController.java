@@ -92,12 +92,12 @@ public class DepartmentController {
     }
 
     /**
-     * 부서를 삭제한다.
+     * 부서를 비활성화한다.
      *
      * @param departmentId 부서 ID
      * @return 성공 응답
      */
-    @Operation(summary = "부서 삭제", description = "부서 ID에 해당하는 부서를 삭제합니다.")
+    @Operation(summary = "부서 비활성화", description = "부서 ID에 해당하는 부서를 비활성화합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {

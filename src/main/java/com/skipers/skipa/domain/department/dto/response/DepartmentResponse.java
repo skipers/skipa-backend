@@ -6,6 +6,7 @@ import java.time.Instant;
 public record DepartmentResponse(
         Long id,
         String name,
+        String status,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -14,6 +15,7 @@ public record DepartmentResponse(
         return new DepartmentResponse(
                 department.getId(),
                 department.getName(),
+                department.getStatus().name(),
                 department.getCreatedAt(),
                 department.getUpdatedAt()
         );

@@ -39,6 +39,9 @@ public class ReviewService {
         if (department == null) {
             throw new ReviewException(ErrorCode.PATENT_DEPARTMENT_NOT_ASSIGNED);
         }
+        if (department.isInactive()) {
+            throw new ReviewException(ErrorCode.DEPARTMENT_INACTIVE);
+        }
         LocalDate today = LocalDate.now();
         ReviewCycle reviewCycle = reviewCycleRepository
                 .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today)
