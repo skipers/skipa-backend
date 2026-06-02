@@ -13,6 +13,8 @@ import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -71,6 +73,9 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private ReviewCycleRepository reviewCycleRepository;
+
+    @Autowired
+    private ReportRepository reportRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -616,6 +621,9 @@ class AuthApprovalFlowIntegrationTest {
                 .applicationNumber("APP-ASSIGNED")
                 .currentDepartment(department)
                 .build());
+        Report report = reportRepository.save(Report.builder()
+                .patent(patent)
+                .build());
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
         mockMvc.perform(delete("/patents/{patentId}", patent.getId())
@@ -623,6 +631,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isOk());
 
         assertThat(departmentRepository.existsById(department.getId())).isTrue();
+        assertThat(reportRepository.existsById(report.getId())).isFalse();
         assertThat(patentRepository.existsById(patent.getId())).isFalse();
     }
 

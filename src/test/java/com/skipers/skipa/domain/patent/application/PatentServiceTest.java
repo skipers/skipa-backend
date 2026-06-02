@@ -12,6 +12,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
@@ -57,6 +58,9 @@ class PatentServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -221,10 +225,11 @@ class PatentServiceTest {
 
         patentService.delete(1L);
 
-        InOrder deletionOrder = inOrder(patentLegalStatusRepository, patentAnnuityRepository, reviewRepository, patentRepository);
+        InOrder deletionOrder = inOrder(patentLegalStatusRepository, patentAnnuityRepository, reviewRepository, reportRepository, patentRepository);
         deletionOrder.verify(patentLegalStatusRepository).deleteAllByPatentId(1L);
         deletionOrder.verify(patentAnnuityRepository).deleteAllByPatentId(1L);
         deletionOrder.verify(reviewRepository).deleteAllByPatentId(1L);
+        deletionOrder.verify(reportRepository).deleteAllByPatentId(1L);
         deletionOrder.verify(patentRepository).deleteById(1L);
     }
 
@@ -237,6 +242,7 @@ class PatentServiceTest {
         verify(patentLegalStatusRepository, never()).deleteAllByPatentId(1L);
         verify(patentAnnuityRepository, never()).deleteAllByPatentId(1L);
         verify(reviewRepository, never()).deleteAllByPatentId(1L);
+        verify(reportRepository, never()).deleteAllByPatentId(1L);
         verify(patentRepository, never()).deleteById(1L);
     }
 

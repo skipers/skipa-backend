@@ -15,6 +15,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -38,6 +39,7 @@ public class PatentService {
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
+    private final ReportRepository reportRepository;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -168,6 +170,7 @@ public class PatentService {
         patentLegalStatusRepository.deleteAllByPatentId(patentId); // 권리 상태 이력
         patentAnnuityRepository.deleteAllByPatentId(patentId); // 연차료 납부 이력
         reviewRepository.deleteAllByPatentId(patentId); // 사업부 검토
+        reportRepository.deleteAllByPatentId(patentId); // 평가 보고서
         patentRepository.deleteById(patentId);
     }
 
