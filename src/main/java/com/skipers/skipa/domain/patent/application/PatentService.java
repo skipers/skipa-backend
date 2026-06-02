@@ -17,6 +17,8 @@ import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.user.domain.User;
+import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class PatentService {
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
+    private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -95,6 +98,12 @@ public class PatentService {
         return toDetailResponse(patent);
     }
 
+    public PatentDetailResponse get(User user, Long patentId) {
+        businessPatentAccessValidator.validate(user, patentId);
+
+        return get(patentId);
+    }
+
     public PatentDetailResponse get(Long patentId) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
@@ -102,7 +111,7 @@ public class PatentService {
         return toDetailResponse(patent);
     }
 
-    public Page<PatentListResponse> getAll(String keyword, Pageable pageable) {
+    public Page<PatentListResponse> getAll(User user, String keyword, Pageable pageable) {
         String normalizedKeyword = normalizeKeyword(keyword);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -110,11 +119,11 @@ public class PatentService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        Page<PatentListResponse> result = normalizedKeyword == null
-                ? patentRepository.findAll(sortedPageable).map(PatentListResponse::from)
-                : patentRepository.findByTitleContainingIgnoreCase(normalizedKeyword, sortedPageable).map(PatentListResponse::from);
+        Page<Patent> patents = user.getRole() == UserRole.BUSINESS
+                ? findBusinessPatents(user, normalizedKeyword, sortedPageable)
+                : findPatents(normalizedKeyword, sortedPageable);
 
-        return result;
+        return patents.map(PatentListResponse::from);
     }
 
     @Transactional
@@ -181,6 +190,23 @@ public class PatentService {
 
         String normalized = keyword.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private Page<Patent> findBusinessPatents(User user, String keyword, Pageable pageable) {
+        if (user.getDepartment() == null) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+
+        Long departmentId = user.getDepartment().getId();
+        return keyword == null
+                ? patentRepository.findByCurrentDepartmentId(departmentId, pageable)
+                : patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(departmentId, keyword, pageable);
+    }
+
+    private Page<Patent> findPatents(String keyword, Pageable pageable) {
+        return keyword == null
+                ? patentRepository.findAll(pageable)
+                : patentRepository.findByTitleContainingIgnoreCase(keyword, pageable);
     }
 
     private String toJsonOrNull(List<String> value) {

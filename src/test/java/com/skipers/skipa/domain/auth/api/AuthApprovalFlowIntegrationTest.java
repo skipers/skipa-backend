@@ -452,11 +452,8 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + businessToken))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(get("/patents/{patentId}", 1L)
-                        .header("Authorization", "Bearer " + businessToken))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(0));
 
         mockMvc.perform(post("/patents")
                         .header("Authorization", "Bearer " + businessToken)
@@ -547,6 +544,47 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         assertThat(patentRepository.existsById(patentId)).isFalse();
+    }
+
+    @Test
+    void businessUserCanReadOnlyCurrentlyAssignedPatents() throws Exception {
+        Department otherDepartment = departmentRepository.save(Department.builder()
+                .name("제조")
+                .build());
+        Patent assignedPatent = patentRepository.save(Patent.builder()
+                .title("Assigned Patent")
+                .applicationNumber("APP-CURRENT-DEPT")
+                .currentDepartment(department)
+                .build());
+        Patent otherPatent = patentRepository.save(Patent.builder()
+                .title("Other Patent")
+                .applicationNumber("APP-OTHER-DEPT")
+                .currentDepartment(otherDepartment)
+                .build());
+        String businessToken = createActiveUserToken("business-patent-reader", "business-patent-reader@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("keyword", "assigned"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
+
+        mockMvc.perform(get("/patents/{patentId}", assignedPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(assignedPatent.getId()));
+
+        mockMvc.perform(get("/patents/{patentId}", otherPatent.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
     }
 
     @Test

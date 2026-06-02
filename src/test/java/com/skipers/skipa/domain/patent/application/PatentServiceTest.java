@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patent.application;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
+import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
@@ -13,6 +14,8 @@ import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.user.domain.User;
+import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -61,6 +65,9 @@ class PatentServiceTest {
 
     @Mock
     private ReportRepository reportRepository;
+
+    @Mock
+    private BusinessPatentAccessValidator businessPatentAccessValidator;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -138,7 +145,7 @@ class PatentServiceTest {
         Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
         when(patentRepository.findAll(sortedPageable)).thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
-        Page<?> result = patentService.getAll("  ", pageable);
+        Page<?> result = patentService.getAll(legalUser(), "  ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
         verify(patentRepository).findAll(sortedPageable);
@@ -152,10 +159,35 @@ class PatentServiceTest {
         when(patentRepository.findByTitleContainingIgnoreCase("patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
-        Page<?> result = patentService.getAll(" patent ", pageable);
+        Page<?> result = patentService.getAll(legalUser(), " patent ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
         verify(patentRepository).findByTitleContainingIgnoreCase("patent", sortedPageable);
+    }
+
+    @Test
+    void getAllForBusinessUserFiltersByDepartment() {
+        Department department = Department.builder().name("Telecom").build();
+        ReflectionTestUtils.setField(department, "id", 1L);
+        Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
+        Pageable pageable = PageRequest.of(0, 20);
+        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        when(patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable))
+                .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
+
+        Page<?> result = patentService.getAll(businessUser(department), " patent ", pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(patentRepository).findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable);
+        verify(patentRepository, never()).findByTitleContainingIgnoreCase("patent", sortedPageable);
+    }
+
+    @Test
+    void getAllRejectsBusinessUserWithoutDepartment() {
+        assertPatentError(
+                () -> patentService.getAll(businessUser(null), null, PageRequest.of(0, 20)),
+                ErrorCode.FORBIDDEN
+        );
     }
 
     @Test
@@ -276,6 +308,14 @@ class PatentServiceTest {
                 null,
                 null
         );
+    }
+
+    private User legalUser() {
+        return User.createActive("legal", "Legal", "legal@example.com", "password", UserRole.LEGAL, null);
+    }
+
+    private User businessUser(Department department) {
+        return User.createActive("business", "Business", "business@example.com", "password", UserRole.BUSINESS, department);
     }
 
     private PatentUpdateRequest updateRequest(String title, String applicationNumber) {

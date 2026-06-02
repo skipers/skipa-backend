@@ -14,4 +14,8 @@ public interface PatentRepository extends JpaRepository<Patent, Long> {
     Optional<Patent> findByApplicationNumber(String applicationNumber);
 
     Page<Patent> findByTitleContainingIgnoreCase(String keyword, Pageable pageable);
+
+    Page<Patent> findByCurrentDepartmentId(Long departmentId, Pageable pageable);
+
+    Page<Patent> findByCurrentDepartmentIdAndTitleContainingIgnoreCase(Long departmentId, String keyword, Pageable pageable);
 }
