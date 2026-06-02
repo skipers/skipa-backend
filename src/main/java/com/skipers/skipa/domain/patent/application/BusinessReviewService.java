@@ -1,7 +1,7 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.skipers.skipa.domain.patent.dto.response.AssignedPatentDetailResponse;
-import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -24,13 +24,13 @@ import java.time.LocalDate;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AssignedPatentService {
+public class BusinessReviewService {
 
     private final ReviewRepository reviewRepository;
     private final PatentService patentService;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
-    public Page<AssignedPatentResponse> getAll(User user, Pageable pageable) {
+    public Page<BusinessReviewResponse> getAll(User user, Pageable pageable) {
         Long departmentId = getDepartmentId(user);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -38,21 +38,21 @@ public class AssignedPatentService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findLatestAssignedByDepartmentId(departmentId, sortedPageable)
-                .map(AssignedPatentResponse::from);
+        return reviewRepository.findLatestBusinessReviewsByDepartmentId(departmentId, sortedPageable)
+                .map(BusinessReviewResponse::from);
     }
 
-    public AssignedPatentDetailResponse get(User user, Long patentId) {
+    public BusinessReviewDetailResponse get(User user, Long patentId) {
         Review review = getOwnedReview(user, patentId);
 
-        return AssignedPatentDetailResponse.of(
+        return BusinessReviewDetailResponse.of(
                 patentService.get(patentId),
                 review
         );
     }
 
     @Transactional
-    public AssignedPatentResponse submit(
+    public BusinessReviewResponse submit(
             User user,
             Long patentId,
             ReviewSubmitRequest request
@@ -74,7 +74,7 @@ public class AssignedPatentService {
 
         review.submit(opinion, request.comment(), Instant.now());
 
-        return AssignedPatentResponse.from(review);
+        return BusinessReviewResponse.from(review);
     }
 
     private Review getOwnedReview(User user, Long patentId) {

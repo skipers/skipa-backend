@@ -26,7 +26,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                     and latestReview.department.id = :departmentId
               )
             """)
-    Page<Review> findLatestAssignedByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
+    Page<Review> findLatestBusinessReviewsByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
     @Query("""

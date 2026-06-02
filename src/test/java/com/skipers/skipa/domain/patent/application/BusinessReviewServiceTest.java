@@ -10,7 +10,7 @@ import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.ReviewSubmitRequest;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.domain.patent.domain.Patent;
-import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AssignedPatentServiceTest {
+class BusinessReviewServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
@@ -50,7 +50,7 @@ class AssignedPatentServiceTest {
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
     @InjectMocks
-    private AssignedPatentService assignedPatentService;
+    private BusinessReviewService businessReviewService;
 
     private User businessUser;
     private Review review;
@@ -85,13 +85,13 @@ class AssignedPatentServiceTest {
     void getAllUsesAuthenticatedUsersDepartmentAndDescendingIdSort() {
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(reviewRepository.findLatestAssignedByDepartmentId(1L, sortedPageable))
+        when(reviewRepository.findLatestBusinessReviewsByDepartmentId(1L, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(assignedPatentService.getAll(businessUser, pageable).getContent())
-                .extracting(AssignedPatentResponse::id)
+        assertThat(businessReviewService.getAll(businessUser, pageable).getContent())
+                .extracting(BusinessReviewResponse::id)
                 .containsExactly(10L);
-        verify(reviewRepository).findLatestAssignedByDepartmentId(1L, sortedPageable);
+        verify(reviewRepository).findLatestBusinessReviewsByDepartmentId(1L, sortedPageable);
     }
 
     @Test
@@ -99,14 +99,14 @@ class AssignedPatentServiceTest {
         doThrow(new PatentException(ErrorCode.FORBIDDEN))
                 .when(businessPatentAccessValidator).validate(businessUser, 10L);
 
-        assertPatentError(() -> assignedPatentService.get(businessUser, 10L), ErrorCode.FORBIDDEN);
+        assertPatentError(() -> businessReviewService.get(businessUser, 10L), ErrorCode.FORBIDDEN);
     }
 
     @Test
     void getRejectsMissingSubmission() {
         when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L)).thenReturn(Optional.empty());
 
-        assertReviewError(() -> assignedPatentService.get(businessUser, 10L), ErrorCode.REVIEW_NOT_FOUND);
+        assertReviewError(() -> businessReviewService.get(businessUser, 10L), ErrorCode.REVIEW_NOT_FOUND);
     }
 
     @Test
@@ -121,10 +121,10 @@ class AssignedPatentServiceTest {
         );
 
         assertReviewError(
-                () -> assignedPatentService.getAll(legalUser, PageRequest.of(0, 20)),
+                () -> businessReviewService.getAll(legalUser, PageRequest.of(0, 20)),
                 ErrorCode.FORBIDDEN
         );
-        verify(reviewRepository, never()).findLatestAssignedByDepartmentId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(reviewRepository, never()).findLatestBusinessReviewsByDepartmentId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -132,7 +132,7 @@ class AssignedPatentServiceTest {
         when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
                 .thenReturn(Optional.of(review));
 
-        AssignedPatentResponse response = assignedPatentService.submit(
+        BusinessReviewResponse response = businessReviewService.submit(
                 businessUser,
                 10L,
                 new ReviewSubmitRequest("유지", "유지 요청")
@@ -153,7 +153,7 @@ class AssignedPatentServiceTest {
                 .thenReturn(Optional.of(review));
 
         assertReviewError(
-                () -> assignedPatentService.submit(
+                () -> businessReviewService.submit(
                         businessUser,
                         10L,
                         new ReviewSubmitRequest("포기", "변경 의견")
@@ -168,7 +168,7 @@ class AssignedPatentServiceTest {
                 .thenReturn(Optional.of(review));
 
         assertReviewError(
-                () -> assignedPatentService.submit(
+                () -> businessReviewService.submit(
                         businessUser,
                         10L,
                         new ReviewSubmitRequest("보류", null)
@@ -189,7 +189,7 @@ class AssignedPatentServiceTest {
                 .thenReturn(Optional.of(expiredReview));
 
         assertReviewError(
-                () -> assignedPatentService.submit(
+                () -> businessReviewService.submit(
                         businessUser,
                         10L,
                         new ReviewSubmitRequest("유지", null)
