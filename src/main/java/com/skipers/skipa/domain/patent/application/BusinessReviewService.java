@@ -1,7 +1,7 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.skipers.skipa.domain.patent.dto.response.AssignedPatentDetailResponse;
-import com.skipers.skipa.domain.patent.dto.response.AssignedPatentResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -19,17 +19,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AssignedPatentService {
+public class BusinessReviewService {
 
     private final ReviewRepository reviewRepository;
     private final PatentService patentService;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
-    public Page<AssignedPatentResponse> getAll(User user, Pageable pageable) {
+    public Page<BusinessReviewResponse> getAll(User user, Pageable pageable) {
         Long departmentId = getDepartmentId(user);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -37,26 +38,32 @@ public class AssignedPatentService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findLatestAssignedByDepartmentId(departmentId, sortedPageable)
-                .map(AssignedPatentResponse::from);
+        return reviewRepository.findLatestBusinessReviewsByDepartmentId(departmentId, sortedPageable)
+                .map(BusinessReviewResponse::from);
     }
 
-    public AssignedPatentDetailResponse get(User user, Long patentId) {
+    public BusinessReviewDetailResponse get(User user, Long patentId) {
         Review review = getOwnedReview(user, patentId);
 
-        return AssignedPatentDetailResponse.of(
+        return BusinessReviewDetailResponse.of(
                 patentService.get(patentId),
                 review
         );
     }
 
     @Transactional
-    public AssignedPatentResponse submit(
+    public BusinessReviewResponse submit(
             User user,
             Long patentId,
             ReviewSubmitRequest request
     ) {
-        Review review = getPendingOwnedReview(user, patentId);
+        Review review = getOwnedReview(user, patentId);
+        if (review.getStatus() != ReviewStatus.PENDING) {
+            throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
+        }
+        if (review.getDueDate().isBefore(LocalDate.now())) {
+            throw new ReviewException(ErrorCode.REVIEW_DEADLINE_EXPIRED);
+        }
 
         BusinessOpinion opinion;
         try {
@@ -67,7 +74,7 @@ public class AssignedPatentService {
 
         review.submit(opinion, request.comment(), Instant.now());
 
-        return AssignedPatentResponse.from(review);
+        return BusinessReviewResponse.from(review);
     }
 
     private Review getOwnedReview(User user, Long patentId) {
@@ -76,20 +83,6 @@ public class AssignedPatentService {
 
         return reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId)
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
-    }
-
-    private Review getPendingOwnedReview(User user, Long patentId) {
-        Long departmentId = getDepartmentId(user);
-        businessPatentAccessValidator.validate(user, patentId);
-
-        return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(
-                        patentId,
-                        departmentId,
-                        ReviewStatus.미제출
-                )
-                .orElseThrow(() -> reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId).isPresent()
-                        ? new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED)
-                        : new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
     }
 
     private Long getDepartmentId(User user) {

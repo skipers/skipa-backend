@@ -2,11 +2,11 @@ package com.skipers.skipa.domain.department.application;
 
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.department.domain.DepartmentStatus;
 import com.skipers.skipa.domain.department.dto.request.DepartmentCreateRequest;
 import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
-import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,8 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
-    private final UserRepository userRepository;
-
     @Transactional
     public DepartmentResponse create(DepartmentCreateRequest request) {
         String name = request.name();
@@ -55,8 +53,9 @@ public class DepartmentService {
         );
 
         Page<DepartmentResponse> result = normalizedKeyword == null
-                ? departmentRepository.findAll(sortedPageable).map(DepartmentResponse::from)
-                : departmentRepository.findByNameContainingIgnoreCase(normalizedKeyword, sortedPageable).map(DepartmentResponse::from);
+                ? departmentRepository.findByStatus(DepartmentStatus.ACTIVE, sortedPageable).map(DepartmentResponse::from)
+                : departmentRepository.findByStatusAndNameContainingIgnoreCase(DepartmentStatus.ACTIVE, normalizedKeyword, sortedPageable)
+                        .map(DepartmentResponse::from);
 
         return result;
     }
@@ -78,15 +77,10 @@ public class DepartmentService {
 
     @Transactional
     public void delete(Long departmentId) {
-        if (!departmentRepository.existsById(departmentId)) {
-            throw new DepartmentException(ErrorCode.DEPARTMENT_NOT_FOUND);
-        }
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new DepartmentException(ErrorCode.DEPARTMENT_NOT_FOUND));
 
-        if (userRepository.existsByDepartmentId(departmentId)) {
-            throw new DepartmentException(ErrorCode.DEPARTMENT_IN_USE);
-        }
-
-        departmentRepository.deleteById(departmentId);
+        department.deactivate();
     }
 
     private String normalizeKeyword(String keyword) {

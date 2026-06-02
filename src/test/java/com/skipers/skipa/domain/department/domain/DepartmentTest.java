@@ -32,7 +32,18 @@ class DepartmentTest {
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.name()).isEqualTo("Telecom");
+        assertThat(response.status()).isEqualTo("ACTIVE");
         assertThat(response.createdAt()).isEqualTo(createdAt);
         assertThat(response.updatedAt()).isEqualTo(updatedAt);
+    }
+
+    @Test
+    void deactivateChangesDepartmentStatus() {
+        Department department = Department.builder().name("Telecom").build();
+
+        department.deactivate();
+
+        assertThat(department.getStatus()).isEqualTo(DepartmentStatus.INACTIVE);
+        assertThat(department.isInactive()).isTrue();
     }
 }

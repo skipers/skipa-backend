@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
@@ -26,7 +28,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                     and latestReview.department.id = :departmentId
               )
             """)
-    Page<Review> findLatestAssignedByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
+    Page<Review> findLatestBusinessReviewsByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
 
     @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
     @Query("""
@@ -46,13 +48,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"patent", "department"})
     Optional<Review> findFirstByPatentIdAndDepartmentIdOrderByIdDesc(Long patentId, Long departmentId);
 
-    Optional<Review> findFirstByPatentIdAndDepartmentIdAndStatusOrderByIdDesc(
-            Long patentId,
-            Long departmentId,
-            ReviewStatus status
-    );
-
     boolean existsByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
+
+    List<Review> findAllByReviewCycleIdAndPatentIdIn(Long reviewCycleId, Collection<Long> patentIds);
 
     boolean existsByReviewCycleId(Long reviewCycleId);
 

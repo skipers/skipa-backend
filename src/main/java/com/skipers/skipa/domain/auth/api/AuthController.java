@@ -29,7 +29,7 @@ public class AuthController {
      * 가입 후 계정은 PENDING 상태로 저장되며, admin 승인 후 로그인이 가능하다.
      *
      * @param request 로그인 ID, 비밀번호, 이름, 이메일, 역할
-    * @return 가입된 사용자 정보
+     * @return 가입된 사용자 정보
      */
     @Operation(summary = "회원가입", description = "사용자 정보를 입력받아 승인 대기 상태의 계정을 생성합니다.")
     @SecurityRequirements

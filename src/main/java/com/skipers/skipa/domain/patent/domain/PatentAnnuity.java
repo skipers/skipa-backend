@@ -44,7 +44,7 @@ public class PatentAnnuity extends BaseTimeEntity {
     private LocalDate paidDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20) // 납부 상태(납부/미납/포기)
+    @Column(name = "status", nullable = false, length = 20) // 납부 상태(PAID/UNPAID/ABANDONED)
     private PatentAnnuityStatus status;
 
     @Column(name = "amount") // 납부 금액

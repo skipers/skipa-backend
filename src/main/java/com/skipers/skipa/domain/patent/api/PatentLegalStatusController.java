@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/patents/{patentId}/legal-status") // 권리 상태 이력
+@RequestMapping("/patents/{patentId}/legal-status")
 public class PatentLegalStatusController {
 
     private final PatentLegalStatusService patentLegalStatusService;
@@ -55,7 +55,7 @@ public class PatentLegalStatusController {
      * @return 권리 상태 이력 목록 페이지
      */
     @Operation(summary = "권리 상태 이력 조회", description = "특허의 권리 상태 이력을 페이지 단위로 조회합니다.")
-    @PreAuthorize("hasAnyRole('LEGAL', 'BUSINESS')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentLegalStatusResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,

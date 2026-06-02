@@ -2,11 +2,11 @@ package com.skipers.skipa.domain.department.application;
 
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.department.domain.DepartmentStatus;
 import com.skipers.skipa.domain.department.dto.request.DepartmentCreateRequest;
 import com.skipers.skipa.domain.department.dto.request.DepartmentUpdateRequest;
 import com.skipers.skipa.domain.department.dto.response.DepartmentResponse;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
-import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,9 +35,6 @@ class DepartmentServiceTest {
 
     @Mock
     private DepartmentRepository departmentRepository;
-
-    @Mock
-    private UserRepository userRepository;
 
     @InjectMocks
     private DepartmentService departmentService;
@@ -87,26 +84,31 @@ class DepartmentServiceTest {
     void getAllWithoutKeywordUsesPagedFindAll() {
         Pageable pageable = PageRequest.of(0, 20);
         Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "name"));
-        when(departmentRepository.findAll(sortedPageable)).thenReturn(new PageImpl<>(List.of(department), sortedPageable, 1));
+        when(departmentRepository.findByStatus(DepartmentStatus.ACTIVE, sortedPageable))
+                .thenReturn(new PageImpl<>(List.of(department), sortedPageable, 1));
 
         Page<DepartmentResponse> result = departmentService.getAll("  ", pageable);
 
         assertThat(result.getContent()).extracting(DepartmentResponse::name).containsExactly("Telecom");
-        verify(departmentRepository).findAll(sortedPageable);
-        verify(departmentRepository, never()).findByNameContainingIgnoreCase(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(departmentRepository).findByStatus(DepartmentStatus.ACTIVE, sortedPageable);
+        verify(departmentRepository, never()).findByStatusAndNameContainingIgnoreCase(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test
     void getAllWithKeywordNormalizesAndSearchesByName() {
         Pageable pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
         Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.ASC, "name"));
-        when(departmentRepository.findByNameContainingIgnoreCase("tele", sortedPageable))
+        when(departmentRepository.findByStatusAndNameContainingIgnoreCase(DepartmentStatus.ACTIVE, "tele", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(department), sortedPageable, 1));
 
         Page<DepartmentResponse> result = departmentService.getAll(" tele ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(departmentRepository).findByNameContainingIgnoreCase("tele", sortedPageable);
+        verify(departmentRepository).findByStatusAndNameContainingIgnoreCase(DepartmentStatus.ACTIVE, "tele", sortedPageable);
     }
 
     @Test
@@ -154,27 +156,14 @@ class DepartmentServiceTest {
     }
 
     @Test
-    void deleteRemovesExistingDepartmentAndRejectsMissingId() {
-        when(departmentRepository.existsById(1L)).thenReturn(true);
-        when(departmentRepository.existsById(2L)).thenReturn(false);
+    void deleteDeactivatesExistingDepartmentAndRejectsMissingId() {
+        when(departmentRepository.findById(1L)).thenReturn(Optional.of(department));
+        when(departmentRepository.findById(2L)).thenReturn(Optional.empty());
 
         departmentService.delete(1L);
 
-        verify(userRepository).existsByDepartmentId(1L);
-        verify(departmentRepository).deleteById(1L);
+        assertThat(department.getStatus()).isEqualTo(DepartmentStatus.INACTIVE);
         assertDepartmentError(() -> departmentService.delete(2L), ErrorCode.DEPARTMENT_NOT_FOUND);
-        verify(userRepository, never()).existsByDepartmentId(2L);
-        verify(departmentRepository, never()).deleteById(2L);
-    }
-
-    @Test
-    void deleteRejectsDepartmentAssignedToUser() {
-        when(departmentRepository.existsById(1L)).thenReturn(true);
-        when(userRepository.existsByDepartmentId(1L)).thenReturn(true);
-
-        assertDepartmentError(() -> departmentService.delete(1L), ErrorCode.DEPARTMENT_IN_USE);
-
-        verify(departmentRepository, never()).deleteById(1L);
     }
 
     private void assertDepartmentError(Runnable invocation, ErrorCode errorCode) {

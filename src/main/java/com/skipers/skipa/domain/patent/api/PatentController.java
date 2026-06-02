@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
+import com.skipers.skipa.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -54,10 +56,13 @@ public class PatentController {
      * @return 특허
      */
     @Operation(summary = "특허 단일 조회", description = "특허 ID로 상세 정보를 조회합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{patentId}")
-    public ApiResponse<PatentDetailResponse> get(@PathVariable Long patentId) {
-        return ApiResponse.ok(patentService.get(patentId));
+    public ApiResponse<PatentDetailResponse> get(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId
+    ) {
+        return ApiResponse.ok(patentService.get(userDetails.getUser(), patentId));
     }
 
     /**
@@ -68,13 +73,14 @@ public class PatentController {
      * @return 특허 목록 페이지
      */
     @Operation(summary = "특허 목록 조회", description = "특허 목록을 페이지 단위로 조회합니다. 특허명으로 검색할 수 있습니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentListResponse>> getAll(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) String keyword,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(PageResponse.from(patentService.getAll(keyword, pageable)));
+        return ApiResponse.ok(PageResponse.from(patentService.getAll(userDetails.getUser(), keyword, pageable)));
     }
 
     /**

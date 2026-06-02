@@ -5,26 +5,31 @@ import com.skipers.skipa.domain.review.domain.Review;
 import java.time.Instant;
 import java.time.LocalDate;
 
-public record AssignedPatentDetailResponse(
-        PatentDetailResponse patent,
+public record BusinessReviewResponse(
+        Long id,
+        String title,
+        String applicationNumber,
         String opinion,
         String comment,
         String status,
         Instant submittedAt,
+        Instant createdAt,
+        Instant updatedAt,
         Instant reviewRequestedAt,
         LocalDate dueDate
 ) {
 
-    public static AssignedPatentDetailResponse of(
-            PatentDetailResponse patent,
-            Review review
-    ) {
-        return new AssignedPatentDetailResponse(
-                patent,
+    public static BusinessReviewResponse from(Review review) {
+        return new BusinessReviewResponse(
+                review.getPatent().getId(),
+                review.getPatent().getTitle(),
+                review.getPatent().getApplicationNumber(),
                 review.getOpinion() != null ? review.getOpinion().name() : null,
                 review.getComment(),
                 review.getStatus().name(),
                 review.getSubmittedAt(),
+                review.getPatent().getCreatedAt(),
+                review.getPatent().getUpdatedAt(),
                 review.getCreatedAt(),
                 review.getDueDate()
         );
