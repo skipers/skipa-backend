@@ -10,6 +10,8 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
+import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
+import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.global.exception.BusinessException;
@@ -171,6 +173,102 @@ class ReviewServiceTest {
                 ErrorCode.DUPLICATE_REVIEW_REQUEST
         );
         verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void createBulkCreatesEligibleReviewsAndReturnsSkippedReasons() {
+        Patent unassignedPatent = Patent.builder()
+                .title("Unassigned Patent")
+                .applicationNumber("APP-2")
+                .build();
+        ReflectionTestUtils.setField(unassignedPatent, "id", 20L);
+        Department inactiveDepartment = Department.builder().name("비활성 부서").build();
+        ReflectionTestUtils.setField(inactiveDepartment, "id", 2L);
+        inactiveDepartment.deactivate();
+        Patent inactiveDepartmentPatent = Patent.builder()
+                .title("Inactive Department Patent")
+                .applicationNumber("APP-3")
+                .currentDepartment(inactiveDepartment)
+                .build();
+        ReflectionTestUtils.setField(inactiveDepartmentPatent, "id", 30L);
+        Patent duplicatePatent = Patent.builder()
+                .title("Duplicate Patent")
+                .applicationNumber("APP-4")
+                .currentDepartment(department)
+                .build();
+        ReflectionTestUtils.setField(duplicatePatent, "id", 40L);
+        Review duplicateReview = Review.builder()
+                .patent(duplicatePatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .build();
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(patentRepository.findAllById(List.of(10L, 20L, 30L, 40L, 99L)))
+                .thenReturn(List.of(patent, unassignedPatent, inactiveDepartmentPatent, duplicatePatent));
+        when(reviewRepository.findAllByReviewCycleIdAndPatentIdIn(
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.anyCollection()
+        )).thenReturn(List.of(duplicateReview));
+
+        BulkReviewCreateResponse response = reviewService.createBulk(
+                new BulkReviewCreateRequest(List.of(10L, 20L, 30L, 40L, 99L, 10L))
+        );
+
+        assertThat(response.reviewCycleId()).isEqualTo(1L);
+        assertThat(response.createdCount()).isEqualTo(1);
+        assertThat(response.skippedCount()).isEqualTo(4);
+        assertThat(response.items())
+                .extracting(BulkReviewCreateResponse.Item::patentId)
+                .containsExactly(10L, 20L, 30L, 40L, 99L);
+        assertThat(response.items())
+                .extracting(BulkReviewCreateResponse.Item::status)
+                .containsExactly("CREATED", "SKIPPED", "SKIPPED", "SKIPPED", "SKIPPED");
+        assertThat(response.items())
+                .extracting(BulkReviewCreateResponse.Item::reason)
+                .containsExactly(
+                        null,
+                        "PATENT_DEPARTMENT_NOT_ASSIGNED",
+                        "DEPARTMENT_INACTIVE",
+                        "DUPLICATE_REVIEW_REQUEST",
+                        "PATENT_NOT_FOUND"
+                );
+        verify(reviewRepository).saveAll(org.mockito.ArgumentMatchers.argThat(reviews -> {
+            java.util.Iterator<Review> iterator = reviews.iterator();
+            return iterator.hasNext()
+                    && iterator.next().getPatent().getId().equals(10L)
+                    && !iterator.hasNext();
+        }));
+    }
+
+    @Test
+    void createBulkRejectsMissingActiveReviewCycle() {
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        assertError(
+                () -> reviewService.createBulk(new BulkReviewCreateRequest(List.of(10L))),
+                ReviewException.class,
+                ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND
+        );
+
+        verify(patentRepository, never()).findAllById(any());
+        verify(reviewRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void createBulkSkipsMissingPatentsWithoutQueryingExistingReviews() {
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(patentRepository.findAllById(List.of(99L))).thenReturn(List.of());
+
+        BulkReviewCreateResponse response = reviewService.createBulk(new BulkReviewCreateRequest(List.of(99L)));
+
+        assertThat(response.createdCount()).isZero();
+        assertThat(response.skippedCount()).isEqualTo(1);
+        assertThat(response.items().get(0).reason()).isEqualTo("PATENT_NOT_FOUND");
+        verify(reviewRepository, never()).findAllByReviewCycleIdAndPatentIdIn(any(), any());
+        verify(reviewRepository, never()).saveAll(any());
     }
 
     @Test

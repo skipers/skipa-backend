@@ -1,10 +1,13 @@
 package com.skipers.skipa.domain.review.api;
 
 import com.skipers.skipa.domain.review.application.ReviewService;
+import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
+import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -34,6 +38,21 @@ public class ReviewController {
     @PostMapping("/patents/{patentId}/reviews")
     public ResponseEntity<ApiResponse<ReviewResponse>> create(@PathVariable Long patentId) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reviewService.create(patentId)));
+    }
+
+    /**
+     * 여러 특허를 담당 부서에 검토 요청한다.
+     *
+     * @param request 특허 ID 목록
+     * @return 생성 및 건너뜀 결과
+     */
+    @Operation(summary = "사업부 검토 일괄 요청", description = "Legal 팀이 여러 특허를 담당 부서에 검토 요청합니다.")
+    @PreAuthorize("hasRole('LEGAL')")
+    @PostMapping("/reviews/bulk")
+    public ResponseEntity<ApiResponse<BulkReviewCreateResponse>> createBulk(
+            @Valid @RequestBody BulkReviewCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reviewService.createBulk(request)));
     }
 
     /**

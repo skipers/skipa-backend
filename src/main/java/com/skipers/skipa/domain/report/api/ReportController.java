@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/patents/{patentId}/reports") // 평가 보고서
+@RequestMapping("/patents/{patentId}/reports")
 public class ReportController {
 
     private final ReportService reportService;

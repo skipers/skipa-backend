@@ -882,6 +882,60 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void legalUserCanCreateBulkReviewRequestsWithPerPatentResults() throws Exception {
+        Patent eligiblePatent = patentRepository.save(Patent.builder()
+                .title("Bulk Eligible Patent")
+                .applicationNumber("APP-BULK-ELIGIBLE")
+                .currentDepartment(department)
+                .build());
+        Patent duplicatePatent = patentRepository.save(Patent.builder()
+                .title("Bulk Duplicate Patent")
+                .applicationNumber("APP-BULK-DUPLICATE")
+                .currentDepartment(department)
+                .build());
+        Patent unassignedPatent = patentRepository.save(Patent.builder()
+                .title("Bulk Unassigned Patent")
+                .applicationNumber("APP-BULK-UNASSIGNED")
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(duplicatePatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .build());
+        String legalToken = createActiveUserToken("legal-review-bulk", "legal-review-bulk@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(post("/reviews/bulk")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "patentIds": [%d, %d, %d, 999999, %d]
+                                }
+                                """.formatted(
+                                eligiblePatent.getId(),
+                                duplicatePatent.getId(),
+                                unassignedPatent.getId(),
+                                eligiblePatent.getId()
+                        )))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
+                .andExpect(jsonPath("$.data.createdCount").value(1))
+                .andExpect(jsonPath("$.data.skippedCount").value(3))
+                .andExpect(jsonPath("$.data.items.length()").value(4))
+                .andExpect(jsonPath("$.data.items[0].patentId").value(eligiblePatent.getId()))
+                .andExpect(jsonPath("$.data.items[0].status").value("CREATED"))
+                .andExpect(jsonPath("$.data.items[1].reason").value("DUPLICATE_REVIEW_REQUEST"))
+                .andExpect(jsonPath("$.data.items[2].reason").value("PATENT_DEPARTMENT_NOT_ASSIGNED"))
+                .andExpect(jsonPath("$.data.items[3].reason").value("PATENT_NOT_FOUND"));
+
+        assertThat(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
+                reviewCycle.getId(),
+                eligiblePatent.getId(),
+                department.getId()
+        )).isTrue();
+    }
+
+    @Test
     void reviewRequestCreationAllowsNewRequestAfterPreviousSubmission() throws Exception {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Repeated Review Patent")
@@ -1246,6 +1300,16 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/reviews/bulk")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "patentIds": [%d]
+                                }
+                                """.formatted(patent.getId())))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(post("/review-cycles")

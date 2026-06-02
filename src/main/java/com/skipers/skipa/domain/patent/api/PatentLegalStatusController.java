@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/patents/{patentId}/legal-status") // 권리 상태 이력
+@RequestMapping("/patents/{patentId}/legal-status")
 public class PatentLegalStatusController {
 
     private final PatentLegalStatusService patentLegalStatusService;

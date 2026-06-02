@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/patents/{patentId}/annuities") // 연차료 납부 이력
+@RequestMapping("/patents/{patentId}/annuities")
 public class PatentAnnuityController {
 
     private final PatentAnnuityService patentAnnuityService;
