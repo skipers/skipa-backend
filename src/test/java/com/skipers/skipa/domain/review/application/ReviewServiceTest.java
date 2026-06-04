@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -38,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ReviewServiceTest {
@@ -50,6 +52,9 @@ class ReviewServiceTest {
 
     @Mock
     private PatentRepository patentRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
 
     @InjectMocks
     private ReviewService reviewService;
@@ -78,6 +83,7 @@ class ReviewServiceTest {
                 .currentDepartment(department)
                 .build();
         ReflectionTestUtils.setField(patent, "id", 10L);
+        lenient().when(reportRepository.findFirstByPatentIdOrderByIdDesc(any())).thenReturn(Optional.empty());
     }
 
     @Test

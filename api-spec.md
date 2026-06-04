@@ -173,19 +173,20 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성 | `LEGAL` |
+| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성. 최신 평가 보고서가 있으면 `reportId`로 함께 연결 | `LEGAL` |
 | 검토 일괄 요청 전송 | `POST` | `/reviews/bulk` | 여러 특허에 검토 요청 생성. 생성 불가 특허는 사유와 함께 건너뜀 | `LEGAL` |
 
 검토 요청의 회신 기한은 검토 주기 종료일입니다.
 동일한 검토 주기, 특허, 부서 조합은 중복 요청할 수 없습니다.
 일괄 요청은 최대 100건까지 처리하며, 특허별 결과를 `CREATED` 또는 `SKIPPED`로 반환합니다.
+검토 응답에는 참고한 평가 보고서 ID인 `reportId`가 포함됩니다. 연결할 평가 보고서가 없으면 `null`입니다.
 
 ### 9. 사업부 검토 - Legal 모니터링
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 목록 조회 | `GET` | `/reviews` | `status`, `departmentId`, `patentId`, `page`, `size`로 조회 | `ADMIN`, `LEGAL` |
-| 검토 단일 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청과 의견 제출 정보 조회 | `ADMIN`, `LEGAL` |
+| 검토 목록 조회 | `GET` | `/reviews` | `status`, `departmentId`, `patentId`, `page`, `size`로 조회. 각 항목에 `reportId` 포함 | `ADMIN`, `LEGAL` |
+| 검토 단일 조회 | `GET` | `/reviews/{reviewId}` | 검토 요청과 의견 제출 정보 조회. 응답에 `reportId` 포함 | `ADMIN`, `LEGAL` |
 
 ### 10. 사업부 검토 현황 - 사업부
 
