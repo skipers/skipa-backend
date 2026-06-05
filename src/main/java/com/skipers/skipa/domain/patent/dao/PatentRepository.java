@@ -4,6 +4,8 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,7 +27,19 @@ public interface PatentRepository extends JpaRepository<Patent, Long> {
 
     long countByCurrentDepartmentIsNotNull();
 
-    List<Patent> findByTechFieldIsNotNull();
+    @Query("""
+            select p.techField
+            from Patent p
+            where p.techField is not null
+              and trim(p.techField) <> ''
+            """)
+    List<String> findAllTechFields();
 
-    List<Patent> findByExpiryDateIsNotNullAndExpiryDateGreaterThanEqual(LocalDate expiryDate);
+    @Query("""
+            select p.expiryDate
+            from Patent p
+            where p.expiryDate is not null
+              and p.expiryDate >= :expiryDate
+            """)
+    List<LocalDate> findAllExpiryDatesFrom(@Param("expiryDate") LocalDate expiryDate);
 }

@@ -119,9 +119,16 @@ class DashboardServiceTest {
                 .techField("배터리")
                 .expiryDate(LocalDate.of(2026, 5, 21))
                 .build();
-        when(patentRepository.findByTechFieldIsNotNull()).thenReturn(List.of(patentA, patentB, patentC));
-        when(patentRepository.findByExpiryDateIsNotNullAndExpiryDateGreaterThanEqual(LocalDate.now()))
-                .thenReturn(List.of(patentA, patentB, patentC));
+        when(patentRepository.findAllTechFields()).thenReturn(List.of(
+                patentA.getTechField(),
+                patentB.getTechField(),
+                patentC.getTechField()
+        ));
+        when(patentRepository.findAllExpiryDatesFrom(LocalDate.now())).thenReturn(List.of(
+                patentA.getExpiryDate(),
+                patentB.getExpiryDate(),
+                patentC.getExpiryDate()
+        ));
 
         var response = dashboardService.getDistribution();
 

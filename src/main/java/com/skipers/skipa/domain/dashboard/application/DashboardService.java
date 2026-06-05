@@ -5,7 +5,6 @@ import com.skipers.skipa.domain.dashboard.dto.response.DashboardDepartmentsRespo
 import com.skipers.skipa.domain.dashboard.dto.response.DashboardDistributionResponse;
 import com.skipers.skipa.domain.dashboard.dto.response.DashboardSummaryResponse;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
-import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
@@ -50,8 +49,7 @@ public class DashboardService {
     }
 
     public DashboardDistributionResponse getDistribution() {
-        List<DashboardDistributionResponse.TechFieldItem> byTechField = patentRepository.findByTechFieldIsNotNull().stream()
-                .map(Patent::getTechField)
+        List<DashboardDistributionResponse.TechFieldItem> byTechField = patentRepository.findAllTechFields().stream()
                 .filter(this::hasText)
                 .collect(java.util.stream.Collectors.groupingBy(
                         String::trim,
@@ -64,8 +62,7 @@ public class DashboardService {
                 .toList();
 
         List<DashboardDistributionResponse.ExpiryQuarterItem> byExpiryQuarter = patentRepository
-                .findByExpiryDateIsNotNullAndExpiryDateGreaterThanEqual(LocalDate.now()).stream()
-                .map(Patent::getExpiryDate)
+                .findAllExpiryDatesFrom(LocalDate.now()).stream()
                 .collect(java.util.stream.Collectors.groupingBy(
                         this::toQuarterLabel,
                         java.util.TreeMap::new,
