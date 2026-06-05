@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
@@ -57,6 +58,15 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findAllByReviewCycleIdAndPatentIdIn(Long reviewCycleId, Collection<Long> patentIds);
 
     boolean existsByReviewCycleId(Long reviewCycleId);
+
+    long countByReviewCycleId(Long reviewCycleId);
+
+    long countByReviewCycleIdAndStatus(Long reviewCycleId, ReviewStatus status);
+
+    long countByReviewCycleIdAndStatusAndDueDateBefore(Long reviewCycleId, ReviewStatus status, LocalDate dueDate);
+
+    @EntityGraph(attributePaths = {"department"})
+    List<Review> findAllByReviewCycleId(Long reviewCycleId);
 
     void deleteAllByPatentId(Long patentId);
 }

@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface PatentRepository extends JpaRepository<Patent, Long> {
@@ -18,4 +20,12 @@ public interface PatentRepository extends JpaRepository<Patent, Long> {
     Page<Patent> findByCurrentDepartmentId(Long departmentId, Pageable pageable);
 
     Page<Patent> findByCurrentDepartmentIdAndTitleContainingIgnoreCase(Long departmentId, String keyword, Pageable pageable);
+
+    long countByCurrentDepartmentIsNull();
+
+    long countByCurrentDepartmentIsNotNull();
+
+    List<Patent> findByTechFieldIsNotNull();
+
+    List<Patent> findByExpiryDateIsNotNullAndExpiryDateGreaterThanEqual(LocalDate expiryDate);
 }
