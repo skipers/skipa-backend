@@ -236,23 +236,6 @@
 | `kpi.reviewing` | `number` | 현재 활성 검토 주기의 `PENDING` 건수 |
 | `kpi.decided` | `number` | 현재 활성 검토 주기의 `SUBMITTED` 건수 |
 
-**Response 예시**
-
-```json
-{
-  "success": true,
-  "data": {
-    "progressRate": 60,
-    "delayed": 2,
-    "kpi": {
-      "requested": 10,
-      "reviewing": 4,
-      "decided": 6
-    }
-  }
-}
-```
-
 #### 12-2. `GET /dashboard/assignment`
 
 특허 담당 부서 배정 현황 요약입니다.
@@ -262,19 +245,6 @@
 | `unassigned` | `number` | 현재 담당 부서가 없는 특허 건수 |
 | `assigned` | `number` | 현재 담당 부서가 지정된 특허 건수 |
 | `completed` | `number` | 현재 활성 검토 주기 기준 `SUBMITTED` 건수 |
-
-**Response 예시**
-
-```json
-{
-  "success": true,
-  "data": {
-    "unassigned": 3,
-    "assigned": 7,
-    "completed": 5
-  }
-}
-```
 
 #### 12-3. `GET /dashboard/distribution`
 
@@ -289,36 +259,6 @@
 | `byExpiryQuarter[].quarter` | `string` | 분기 라벨 (`YYYYQn`) |
 | `byExpiryQuarter[].count` | `number` | 해당 분기의 만료 예정 특허 건수 |
 
-**Response 예시**
-
-```json
-{
-  "success": true,
-  "data": {
-    "byTechField": [
-      {
-        "name": "반도체",
-        "count": 12
-      },
-      {
-        "name": "배터리",
-        "count": 8
-      }
-    ],
-    "byExpiryQuarter": [
-      {
-        "quarter": "2026Q3",
-        "count": 5
-      },
-      {
-        "quarter": "2026Q4",
-        "count": 7
-      }
-    ]
-  }
-}
-```
-
 #### 12-4. `GET /dashboard/departments`
 
 현재 활성 검토 주기 기준 사업부별 검토 진행 현황입니다.
@@ -332,23 +272,3 @@
 | `items[].reviewing` | `number` | 해당 부서의 `PENDING` 건수 |
 | `items[].decided` | `number` | 해당 부서의 `SUBMITTED` 건수 |
 | `items[].progressRate` | `number` | 해당 부서의 제출 완료 비율(%) |
-
-**Response 예시**
-
-```json
-{
-  "success": true,
-  "data": {
-    "items": [
-      {
-        "departmentId": 1,
-        "departmentName": "반도체 사업부",
-        "assigned": 12,
-        "reviewing": 5,
-        "decided": 7,
-        "progressRate": 58
-      }
-    ]
-  }
-}
-```
