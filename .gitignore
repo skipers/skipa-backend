@@ -30,6 +30,7 @@ replay_pid*
 
 # Build output
 /build/
+/bin/
 out/
 target/
 
@@ -41,16 +42,6 @@ gradle-app.setting
 # Maven
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
-
-# Spring Boot
-application-local.yml
-application-local.yaml
-application-dev.yml
-application-dev.yaml
-application-prod.yml
-application-prod.yaml
-application-secret.yml
-application-secret.yaml
 
 # Environment variables
 .env
@@ -98,3 +89,9 @@ jacoco.exec
 
 # Generated files
 generated/
+
+# My Private Files
+SKIPA Database.png
+*_work.md
+PROJECT_STRUCTURE.md
+ERD.md

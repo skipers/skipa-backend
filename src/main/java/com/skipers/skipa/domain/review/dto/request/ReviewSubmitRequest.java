@@ -1,0 +1,16 @@
+package com.skipers.skipa.domain.review.dto.request;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
+public record ReviewSubmitRequest(
+
+        @NotBlank(message = "사업부 의견은 필수입니다.")
+        @Pattern(regexp = "^(MAINTAIN|ABANDON)$", message = "사업부 의견은 MAINTAIN/ABANDON 중 하나여야 합니다.")
+        @Schema(description = "사업부 의견", example = "MAINTAIN")
+        String opinion,
+
+        @Schema(description = "의견 코멘트", example = "핵심 특허로 판단되어 유지를 요청합니다.")
+        String comment
+) {}
