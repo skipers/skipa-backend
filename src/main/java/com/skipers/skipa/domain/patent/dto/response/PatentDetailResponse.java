@@ -41,11 +41,7 @@ public record PatentDetailResponse(
         Instant updatedAt
 ) {
 
-    public static PatentDetailResponse from(
-            Patent patent,
-            List<String> relatedProducts,
-            List<String> keywords
-    ) {
+    public static PatentDetailResponse from(Patent patent) {
         Long currentDepartmentId = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getId();
         String currentDepartmentName = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getName();
 
@@ -70,14 +66,14 @@ public record PatentDetailResponse(
                 patent.getManagementNumber(),
                 patent.getBusinessField(),
                 patent.getTechField(),
-                relatedProducts,
+                patent.getRelatedProducts(),
                 patent.getFilingCountry(),
                 patent.getIsJointApplication(),
                 patent.getJointApplicant(),
                 patent.getInitialDepartment(),
                 currentDepartmentId,
                 currentDepartmentName,
-                keywords,
+                patent.getKeywords(),
                 patent.getOverview(),
                 patent.getCoreContent(),
                 patent.getCreatedAt(),
