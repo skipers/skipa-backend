@@ -16,7 +16,7 @@ jobs:
 
     env:
       REGISTRY: amdp-registry.skala-ai.com
-      PROJECT: skala3-finalproj-class2-team8
+      PROJECT: skala26a-ai2
       IMAGE_NAME: skipa-backend
       INFRA_REPO: skipers/skipa-infra
       INFRA_PATH: k8s/backend

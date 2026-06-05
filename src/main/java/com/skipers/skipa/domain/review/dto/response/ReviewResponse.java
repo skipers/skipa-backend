@@ -30,7 +30,7 @@ public record ReviewResponse(
                 review.getPatent().getId(),
                 review.getPatent().getTitle(),
                 review.getPatent().getApplicationNumber(),
-                review.getReport() != null ? review.getReport().getId() : null,
+                review.getReport() == null ? null : review.getReport().getId(),
                 review.getDepartment().getId(),
                 review.getDepartment().getName(),
                 review.getReviewCycle().getId(),

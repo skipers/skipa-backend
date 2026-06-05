@@ -41,12 +41,12 @@ class PatentTest {
                 "management",
                 "business",
                 "tech",
-                "[\"Product\"]",
+                List.of("Product"),
                 "KR",
                 true,
                 "Joint Applicant",
                 "Initial Department",
-                "[\"Keyword\"]",
+                List.of("Keyword"),
                 "Overview",
                 "Core Content"
         );
@@ -70,12 +70,12 @@ class PatentTest {
         assertThat(patent.getManagementNumber()).isEqualTo("management");
         assertThat(patent.getBusinessField()).isEqualTo("business");
         assertThat(patent.getTechField()).isEqualTo("tech");
-        assertThat(patent.getRelatedProducts()).isEqualTo("[\"Product\"]");
+        assertThat(patent.getRelatedProducts()).containsExactly("Product");
         assertThat(patent.getFilingCountry()).isEqualTo("KR");
         assertThat(patent.getIsJointApplication()).isTrue();
         assertThat(patent.getJointApplicant()).isEqualTo("Joint Applicant");
         assertThat(patent.getInitialDepartment()).isEqualTo("Initial Department");
-        assertThat(patent.getKeywords()).isEqualTo("[\"Keyword\"]");
+        assertThat(patent.getKeywords()).containsExactly("Keyword");
         assertThat(patent.getOverview()).isEqualTo("Overview");
         assertThat(patent.getCoreContent()).isEqualTo("Core Content");
     }
@@ -98,11 +98,10 @@ class PatentTest {
         ReflectionTestUtils.setField(patent, "updatedAt", updatedAt);
         ReflectionTestUtils.setField(currentDepartment, "id", 10L);
 
-        PatentDetailResponse detailResponse = PatentDetailResponse.from(
-                patent,
-                List.of("Product"),
-                List.of("Keyword")
-        );
+        ReflectionTestUtils.setField(patent, "relatedProducts", List.of("Product"));
+        ReflectionTestUtils.setField(patent, "keywords", List.of("Keyword"));
+
+        PatentDetailResponse detailResponse = PatentDetailResponse.from(patent);
         PatentListResponse listResponse = PatentListResponse.from(patent);
 
         assertThat(detailResponse.id()).isEqualTo(1L);

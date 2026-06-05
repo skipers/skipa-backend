@@ -7,8 +7,11 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Getter
@@ -83,8 +86,9 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "tech_field", length = 200) // 관련기술 분야
     private String techField;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "related_products") // 관련제품
-    private String relatedProducts;
+    private List<String> relatedProducts;
 
     @Column(name = "filing_country", length = 100) // 출원국가
     private String filingCountry;
@@ -102,8 +106,9 @@ public class Patent extends BaseTimeEntity {
     @JoinColumn(name = "current_department_id")
     private Department currentDepartment;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "keywords") // 키워드
-    private String keywords;
+    private List<String> keywords;
 
     @Column(name = "overview", columnDefinition = "text") // 개요
     private String overview;
@@ -132,13 +137,13 @@ public class Patent extends BaseTimeEntity {
             String managementNumber,
             String businessField,
             String techField,
-            String relatedProducts,
+            List<String> relatedProducts,
             String filingCountry,
             Boolean isJointApplication,
             String jointApplicant,
             String initialDepartment,
             Department currentDepartment,
-            String keywords,
+            List<String> keywords,
             String overview,
             String coreContent
     ) {
@@ -192,12 +197,12 @@ public class Patent extends BaseTimeEntity {
             String managementNumber,
             String businessField,
             String techField,
-            String relatedProducts,
+            List<String> relatedProducts,
             String filingCountry,
             Boolean isJointApplication,
             String jointApplicant,
             String initialDepartment,
-            String keywords,
+            List<String> keywords,
             String overview,
             String coreContent
     ) {

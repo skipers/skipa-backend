@@ -55,7 +55,7 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "review_cycle_id", nullable = false)
     private ReviewCycle reviewCycle;
 
-    @ManyToOne(fetch = FetchType.LAZY) // 참고한 평가 보고서(N) : (1) 사업부 검토
+    @ManyToOne(fetch = FetchType.LAZY) // 참고 보고서(N) : (1) 사업부 검토
     @JoinColumn(name = "report_id")
     private Report report;
 

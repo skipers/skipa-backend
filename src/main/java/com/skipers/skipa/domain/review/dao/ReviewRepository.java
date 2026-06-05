@@ -30,7 +30,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             """)
     Page<Review> findLatestBusinessReviewsByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
 
-    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
     @Query("""
             select review
             from Review review
@@ -45,8 +45,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"patent", "department"})
+    @EntityGraph(attributePaths = {"patent", "department", "report"})
     Optional<Review> findFirstByPatentIdAndDepartmentIdOrderByIdDesc(Long patentId, Long departmentId);
+
+    @Override
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
+    Optional<Review> findById(Long id);
 
     boolean existsByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
 
