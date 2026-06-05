@@ -1,7 +1,5 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
@@ -18,14 +16,12 @@ import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
-import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -71,9 +67,6 @@ class PatentServiceTest {
     @Mock
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
-    @Spy
-    private ObjectMapper objectMapper = new ObjectMapper();
-
     @InjectMocks
     private PatentService patentService;
 
@@ -108,36 +101,10 @@ class PatentServiceTest {
     }
 
     @Test
-    void createRejectsValuesThatCannotBeSerializedAsJson() throws Exception {
-        doThrow(new JsonProcessingException("cannot serialize") {
-        }).when(objectMapper).writeValueAsString(any());
-
-        assertThatThrownBy(() -> patentService.create(createRequest("Patent", "APP-1")))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
-
-        verify(patentRepository, never()).save(any());
-    }
-
-    @Test
     void getRejectsMissingPatent() {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertPatentError(() -> patentService.get(1L), ErrorCode.PATENT_NOT_FOUND);
-    }
-
-    @Test
-    void getReturnsInternalErrorWhenStoredListJsonIsInvalid() {
-        Patent patent = Patent.builder()
-                .title("Patent")
-                .applicationNumber("APP-1")
-                .relatedProducts("not-json")
-                .build();
-        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
-
-        assertThatThrownBy(() -> patentService.get(1L))
-                .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INTERNAL_ERROR));
     }
 
     @Test

@@ -1,7 +1,5 @@
 package com.skipers.skipa.domain.patent.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
@@ -19,7 +17,6 @@ import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
-import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -43,8 +40,6 @@ public class PatentService {
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
-    private final ObjectMapper objectMapper;
-
     @Transactional
     public PatentDetailResponse create(PatentCreateRequest request) {
         String applicationNumber = request.applicationNumber();
@@ -73,12 +68,12 @@ public class PatentService {
                 .managementNumber(request.managementNumber())
                 .businessField(request.businessField())
                 .techField(request.techField())
-                .relatedProducts(toJsonOrNull(request.relatedProducts()))
+                .relatedProducts(request.relatedProducts())
                 .filingCountry(request.filingCountry())
                 .isJointApplication(request.isJointApplication())
                 .jointApplicant(request.jointApplicant())
                 .initialDepartment(request.initialDepartment())
-                .keywords(toJsonOrNull(request.keywords()))
+                .keywords(request.keywords())
                 .overview(request.overview())
                 .coreContent(request.coreContent())
                 .build());
@@ -160,12 +155,12 @@ public class PatentService {
                 request.managementNumber(),
                 request.businessField(),
                 request.techField(),
-                toJsonOrNull(request.relatedProducts()),
+                request.relatedProducts(),
                 request.filingCountry(),
                 request.isJointApplication(),
                 request.jointApplicant(),
                 request.initialDepartment(),
-                toJsonOrNull(request.keywords()),
+                request.keywords(),
                 request.overview(),
                 request.coreContent()
         );
@@ -212,35 +207,7 @@ public class PatentService {
                 : patentRepository.findByTitleContainingIgnoreCase(keyword, pageable);
     }
 
-    private String toJsonOrNull(List<String> value) {
-        if (value == null) {
-            return null;
-        }
-
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    private List<String> fromJsonOrNull(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        try {
-            return objectMapper.readerForListOf(String.class).readValue(value);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR);
-        }
-    }
-
     private PatentDetailResponse toDetailResponse(Patent patent) {
-        return PatentDetailResponse.from(
-                patent,
-                fromJsonOrNull(patent.getRelatedProducts()),
-                fromJsonOrNull(patent.getKeywords())
-        );
+        return PatentDetailResponse.from(patent);
     }
 }
