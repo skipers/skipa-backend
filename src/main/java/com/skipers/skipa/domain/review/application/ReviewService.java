@@ -4,6 +4,8 @@ import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -39,6 +41,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final ReviewCycleRepository reviewCycleRepository;
     private final PatentRepository patentRepository;
+    private final ReportRepository reportRepository;
 
     @Transactional
     public ReviewResponse create(Long patentId) {
@@ -55,7 +58,12 @@ public class ReviewService {
             throw new ReviewException(ErrorCode.DUPLICATE_REVIEW_REQUEST);
         }
 
-        Review review = reviewRepository.save(createReview(patent, department, reviewCycle));
+        Review review = reviewRepository.save(createReview(
+                patent,
+                department,
+                reviewCycle,
+                findLatestReport(patent.getId())
+        ));
 
         return ReviewResponse.from(review);
     }
@@ -99,7 +107,12 @@ public class ReviewService {
                 continue;
             }
 
-            reviews.add(createReview(patent, department, reviewCycle));
+            reviews.add(createReview(
+                    patent,
+                    department,
+                    reviewCycle,
+                    findLatestReport(patentId)
+            ));
             items.add(BulkReviewCreateResponse.Item.created(patentId));
         }
 
@@ -162,12 +175,17 @@ public class ReviewService {
                 .orElseThrow(() -> new ReviewException(ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND));
     }
 
-    private Review createReview(Patent patent, Department department, ReviewCycle reviewCycle) {
+    private Review createReview(Patent patent, Department department, ReviewCycle reviewCycle, Report report) {
         return Review.builder()
                 .patent(patent)
                 .department(department)
                 .reviewCycle(reviewCycle)
+                .report(report)
                 .build();
+    }
+
+    private Report findLatestReport(Long patentId) {
+        return reportRepository.findFirstByPatentIdOrderByIdDesc(patentId).orElse(null);
     }
 
     private String reviewKey(Long patentId, Long departmentId) {
