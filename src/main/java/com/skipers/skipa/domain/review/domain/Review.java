@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.review.domain;
 
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -54,6 +55,10 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "review_cycle_id", nullable = false)
     private ReviewCycle reviewCycle;
 
+    @ManyToOne(fetch = FetchType.LAZY) // 참고한 평가 보고서(N) : (1) 사업부 검토
+    @JoinColumn(name = "report_id")
+    private Report report;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "opinion", length = 20) // 사업부 의견(MAINTAIN/ABANDON)
     private BusinessOpinion opinion;
@@ -76,6 +81,7 @@ public class Review extends BaseTimeEntity {
             Patent patent,
             Department department,
             ReviewCycle reviewCycle,
+            Report report,
             BusinessOpinion opinion,
             String comment,
             ReviewStatus status,
@@ -85,6 +91,7 @@ public class Review extends BaseTimeEntity {
         this.patent = patent;
         this.department = department;
         this.reviewCycle = reviewCycle;
+        this.report = report;
         this.opinion = opinion;
         this.comment = comment;
         this.status = status != null ? status : ReviewStatus.PENDING;

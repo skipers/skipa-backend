@@ -11,6 +11,8 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     Page<Report> findByPatentId(Long patentId, Pageable pageable);
 
+    Optional<Report> findFirstByPatentIdOrderByIdDesc(Long patentId);
+
     Optional<Report> findByIdAndPatentId(Long id, Long patentId);
 
     void deleteAllByPatentId(Long patentId);
