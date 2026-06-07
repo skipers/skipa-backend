@@ -1080,7 +1080,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
     "id": 7,
     "patentId": 1,
     "status": "COMPLETED",
-    "url": "https://minio.skipa.internal/skipa-reports/reports/7/report.html?...",
+    "url": "https://minio.skipa.internal/skipa/reports/7/report.html?...",
     "evaluatedAt": "2026-05-01T09:00:00Z",
     "createdAt": "2026-05-01T08:55:00Z"
   }

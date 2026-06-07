@@ -153,7 +153,7 @@ class ReportServiceTest {
         report.complete("reports/1/report.html", null);
         when(reportRepository.findByIdAndPatentId(1L, 10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.html"))
-                .thenReturn("https://minio.example.com/skipa-reports/reports/1/report.html?X-Amz-Signature=abc");
+                .thenReturn("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
 
         ReportDetailResponse response = reportService.get(null, 10L, 1L);
 
@@ -161,7 +161,7 @@ class ReportServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo("COMPLETED");
-        assertThat(response.url()).isEqualTo("https://minio.example.com/skipa-reports/reports/1/report.html?X-Amz-Signature=abc");
+        assertThat(response.url()).isEqualTo("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
         assertThat(ReportDetailResponse.class.getRecordComponents())
                 .extracting(recordComponent -> recordComponent.getName())
                 .doesNotContain("reportKey");
