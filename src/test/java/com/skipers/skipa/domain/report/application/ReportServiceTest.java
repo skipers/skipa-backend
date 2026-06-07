@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
+import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.domain.report.exception.ReportException;
@@ -22,7 +23,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
@@ -36,8 +40,63 @@ class ReportServiceTest {
     @Mock
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
+    @Mock
+    private ReportGenerationPublisher reportGenerationPublisher;
+
     @InjectMocks
     private ReportService reportService;
+
+    @Test
+    void createSavesGeneratingReportAndPublishesMessage() {
+        Patent patent = Patent.builder()
+                .title("Patent")
+                .applicationNumber("APP-1")
+                .build();
+        ReflectionTestUtils.setField(patent, "id", 10L);
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
+        when(reportRepository.save(any(Report.class))).thenAnswer(invocation -> {
+            Report report = invocation.getArgument(0);
+            ReflectionTestUtils.setField(report, "id", 1L);
+            return report;
+        });
+
+        ReportCreateResponse response = reportService.create(10L);
+
+        assertThat(response.id()).isEqualTo(1L);
+        assertThat(response.patentId()).isEqualTo(10L);
+        assertThat(response.status()).isEqualTo("GENERATING");
+        verify(reportGenerationPublisher).publish(1L, 10L);
+    }
+
+    @Test
+    void createRejectsMissingPatentWithoutPublishingMessage() {
+        when(patentRepository.findById(10L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportService.create(10L))
+                .isInstanceOf(com.skipers.skipa.domain.patent.exception.PatentException.class);
+
+        verify(reportRepository, never()).save(any());
+        verify(reportGenerationPublisher, never()).publish(any(), any());
+    }
+
+    @Test
+    void createFailsWhenPublisherFails() {
+        Patent patent = Patent.builder()
+                .title("Patent")
+                .applicationNumber("APP-1")
+                .build();
+        ReflectionTestUtils.setField(patent, "id", 10L);
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
+        when(reportRepository.save(any(Report.class))).thenAnswer(invocation -> {
+            Report report = invocation.getArgument(0);
+            ReflectionTestUtils.setField(report, "id", 1L);
+            return report;
+        });
+        doThrow(new RuntimeException("RabbitMQ unavailable"))
+                .when(reportGenerationPublisher).publish(1L, 10L);
+
+        assertReportError(() -> reportService.create(10L), ErrorCode.EXTERNAL_SERVICE_ERROR);
+    }
 
     @Test
     void completeStoresReportKeyAndMarksReportCompleted() {

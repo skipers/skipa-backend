@@ -16,6 +16,12 @@ spring:
       pageable:
         max-page-size: 100
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
   jpa:
     open-in-view: false
     properties:
@@ -34,3 +40,8 @@ jwt:
 app:
   internal:
     api-key: ${INTERNAL_API_KEY:}
+  rabbitmq:
+    report:
+      exchange: ${REPORT_EXCHANGE:skipa.report.exchange}
+      queue: ${REPORT_GENERATE_QUEUE:skipa.report.generate}
+      routing-key: ${REPORT_GENERATE_ROUTING_KEY:report.generate}

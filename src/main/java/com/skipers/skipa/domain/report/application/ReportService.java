@@ -31,6 +31,7 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final PatentRepository patentRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final ReportGenerationPublisher reportGenerationPublisher;
 
     @Transactional
     public ReportCreateResponse create(Long patentId) {
@@ -41,6 +42,8 @@ public class ReportService {
                 .patent(patent)
                 .status(ReportStatus.GENERATING)
                 .build());
+
+        publishReportGenerationMessage(report);
 
         return ReportCreateResponse.from(report);
     }
@@ -97,5 +100,13 @@ public class ReportService {
         report.fail();
 
         return ReportStatusResponse.from(report);
+    }
+
+    private void publishReportGenerationMessage(Report report) {
+        try {
+            reportGenerationPublisher.publish(report.getId(), report.getPatent().getId());
+        } catch (RuntimeException e) {
+            throw new ReportException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+        }
     }
 }
