@@ -34,7 +34,8 @@ public class SecurityConfig {
             "/h2-console/**",
             "/auth/login",
             "/auth/refresh",
-            "/auth/register"
+            "/auth/register",
+            "/internal/**"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
