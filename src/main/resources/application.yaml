@@ -30,3 +30,7 @@ jwt:
   expiration:
     access: 600000       # 10분
     refresh: 604800000   # 7일
+
+app:
+  internal:
+    api-key: ${INTERNAL_API_KEY:}

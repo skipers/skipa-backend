@@ -26,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Transactional
 class InternalReportControllerIntegrationTest {
 
+    private static final String INTERNAL_API_KEY = "test-internal-api-key";
+
     private MockMvc mockMvc;
 
     @Autowired
@@ -49,6 +51,7 @@ class InternalReportControllerIntegrationTest {
         Report report = saveGeneratingReport("APP-COMPLETE");
 
         mockMvc.perform(patch("/internal/reports/{reportId}/complete", report.getId())
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -70,6 +73,7 @@ class InternalReportControllerIntegrationTest {
         Report report = saveGeneratingReport("APP-BLANK");
 
         mockMvc.perform(patch("/internal/reports/{reportId}/complete", report.getId())
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -90,6 +94,7 @@ class InternalReportControllerIntegrationTest {
         Report report = saveGeneratingReport("APP-FAIL");
 
         mockMvc.perform(patch("/internal/reports/{reportId}/fail", report.getId())
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -108,10 +113,40 @@ class InternalReportControllerIntegrationTest {
     @Test
     void callbackRejectsMissingReport() throws Exception {
         mockMvc.perform(patch("/internal/reports/{reportId}/fail", 999999L)
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REPORT_NOT_FOUND"));
+    }
+
+    @Test
+    void callbackRejectsMissingInternalApiKey() throws Exception {
+        Report report = saveGeneratingReport("APP-NO-KEY");
+
+        mockMvc.perform(patch("/internal/reports/{reportId}/fail", report.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+        Report unchangedReport = reportRepository.findById(report.getId()).orElseThrow();
+        assertThat(unchangedReport.getStatus()).isEqualTo(ReportStatus.GENERATING);
+    }
+
+    @Test
+    void callbackRejectsInvalidInternalApiKey() throws Exception {
+        Report report = saveGeneratingReport("APP-BAD-KEY");
+
+        mockMvc.perform(patch("/internal/reports/{reportId}/fail", report.getId())
+                        .header("X-Internal-Api-Key", "wrong-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
+
+        Report unchangedReport = reportRepository.findById(report.getId()).orElseThrow();
+        assertThat(unchangedReport.getStatus()).isEqualTo(ReportStatus.GENERATING);
     }
 
     private Report saveGeneratingReport(String applicationNumber) {

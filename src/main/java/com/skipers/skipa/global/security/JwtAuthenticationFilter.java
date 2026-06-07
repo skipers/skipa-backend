@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/auth/login",
             "/auth/register"
     );
+    private static final String INTERNAL_PATH_PREFIX = "/internal/";
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
@@ -33,7 +34,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return FILTER_EXCLUDED_PATHS.contains(request.getServletPath());
+        String path = resolvePath(request);
+        return FILTER_EXCLUDED_PATHS.contains(path)
+                || path.startsWith(INTERNAL_PATH_PREFIX);
     }
 
     @Override
@@ -82,5 +85,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         return null;
+    }
+
+    private String resolvePath(HttpServletRequest request) {
+        if (StringUtils.hasText(request.getServletPath())) {
+            return request.getServletPath();
+        }
+
+        return request.getRequestURI();
     }
 }
