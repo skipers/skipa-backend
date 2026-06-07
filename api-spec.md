@@ -9,6 +9,7 @@
 | Base URL | `https://api.skipa.internal` |
 | URL 버전 prefix | 없음 |
 | 인증 방식 | JWT Bearer Token (`Authorization: Bearer <token>`) |
+| 내부 API 인증 방식 | Internal API Key (`X-Internal-Api-Key: <secret>`) |
 | 토큰 발급 | `POST /auth/login` |
 | 토큰 만료 | access token 10분 / refresh token 7일 |
 
@@ -48,6 +49,7 @@
 | 403 | `FORBIDDEN` | 권한 없음 |
 | 404 | `NOT_FOUND` | 리소스 없음 |
 | 409 | `CONFLICT` | 중복 또는 상태 충돌 |
+| 502 | `EXTERNAL_SERVICE_ERROR` | 외부 시스템 연동 실패 |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 
 ## 역할
@@ -967,11 +969,15 @@
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록. AI 서버가 비동기 처리 | `LEGAL` |
-| 보고서 단일 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 보고서 상세 및 S3 presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 후 RabbitMQ 메시지 발행 | `LEGAL` |
+| 보고서 단일 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 완료된 보고서 상세 및 MinIO presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | `GENERATING` 상태 polling용 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 생성 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/complete` | AI Worker가 생성 완료 및 `reportKey` 전달 | Internal API Key |
+| 보고서 생성 실패 콜백 | `PATCH` | `/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 보고서만 조회할 수 있습니다.
+프론트는 MinIO object key를 직접 받지 않고, 백엔드가 생성한 presigned URL만 사용합니다.
+AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 저장한 뒤 내부 콜백 API를 호출합니다.
 
 ---
 
@@ -1008,7 +1014,7 @@
 }
 ```
 
-**에러**: `UNAUTHORIZED`(401), `NOT_FOUND`(404)
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
 
 ---
 
@@ -1016,18 +1022,37 @@
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
-요청 Body 없음. 호출 즉시 `GENERATING` 상태의 보고서가 등록되며, 응답의 `reportId`로 상태 polling을 시작합니다.
+요청 Body 없음. 호출 즉시 `GENERATING` 상태의 보고서가 등록되며, 백엔드는 RabbitMQ에 보고서 생성 요청 메시지를 발행합니다.
+프론트는 응답의 `reportId`로 상태 polling을 시작합니다.
+
+**RabbitMQ 메시지 예시**
+
+```json
+{
+  "type": "REPORT_GENERATE",
+  "reportId": 8001,
+  "patentId": 1001
+}
+```
+
+RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 보고서 생성 상태가 시작되지 않습니다.
 
 **응답 예시**
 
 ```json
 {
   "success": true,
-  "data": { "reportId": 8, "status": "GENERATING" }
+  "data": {
+    "reportId": 8,
+    "patentId": 1,
+    "status": "GENERATING",
+    "createdAt": "2026-06-07T08:55:00Z",
+    "updatedAt": "2026-06-07T08:55:00Z"
+  }
 }
 ```
 
-**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `EXTERNAL_SERVICE_ERROR`(502 — RabbitMQ 발행 실패)
 
 ---
 
@@ -1042,7 +1067,7 @@
 | id | long | 보고서 ID |
 | patentId | long | 특허 ID |
 | status | string | `GENERATING` / `COMPLETED` / `FAILED` |
-| url | string | S3 presigned URL. `COMPLETED` 상태에서만 포함 |
+| url | string | MinIO presigned URL. `COMPLETED` 상태에서만 포함 |
 | evaluatedAt | datetime | 평가 기준 일시 |
 | createdAt | datetime | 생성 요청 일시 |
 
@@ -1055,14 +1080,16 @@
     "id": 7,
     "patentId": 1,
     "status": "COMPLETED",
-    "url": "https://s3.ap-northeast-2.amazonaws.com/skipa-reports/patents/1/report-7.html?...",
+    "url": "https://minio.skipa.internal/skipa-reports/reports/7/report.html?...",
     "evaluatedAt": "2026-05-01T09:00:00Z",
     "createdAt": "2026-05-01T08:55:00Z"
   }
 }
 ```
 
-**에러**: `UNAUTHORIZED`(401), `NOT_FOUND`(404)
+`GENERATING` 또는 `FAILED` 상태의 보고서는 URL을 반환하지 않으며 `CONFLICT`를 반환합니다.
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `CONFLICT`(409 — 보고서 생성 미완료)
 
 ---
 
@@ -1077,18 +1104,110 @@
 | Name | Type | Description |
 | --- | --- | --- |
 | reportId | long | 보고서 ID |
+| patentId | long | 특허 ID |
 | status | string | `GENERATING` (polling 계속) / `COMPLETED` (단일 조회로 URL 획득) / `FAILED` (재시도) |
+| evaluatedAt | datetime | 완료 일시. 완료 전에는 `null` |
+| updatedAt | datetime | 마지막 상태 변경 일시 |
 
 **응답 예시**
 
 ```json
 {
   "success": true,
-  "data": { "reportId": 8, "status": "GENERATING" }
+  "data": {
+    "reportId": 8,
+    "patentId": 1,
+    "status": "GENERATING",
+    "evaluatedAt": null,
+    "updatedAt": "2026-06-07T08:55:00Z"
+  }
 }
 ```
 
-**에러**: `UNAUTHORIZED`(401), `NOT_FOUND`(404)
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `PATCH /internal/reports/{reportId}/complete`
+
+AI Worker가 보고서 생성 완료 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| reportKey | string | * | MinIO object key. 전체 URL이 아닌 object key만 전달 |
+
+**요청 예시**
+
+```json
+{
+  "reportKey": "reports/8001/report.html"
+}
+```
+
+**처리**
+
+- `reportKey` 저장
+- 보고서 상태를 `COMPLETED`로 변경
+- `evaluatedAt`에 완료 시각 기록
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "reportId": 8001,
+    "status": "COMPLETED"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
+
+---
+
+#### `PATCH /internal/reports/{reportId}/fail`
+
+AI Worker가 보고서 생성 실패 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| errorMessage | string | N | 실패 사유. 저장 또는 로그 용도 |
+
+**요청 예시**
+
+```json
+{
+  "errorMessage": "AI report generation failed"
+}
+```
+
+**처리**
+
+- 보고서 상태를 `FAILED`로 변경
+- 실패 사유는 서버 로그 또는 별도 저장 필드가 있는 경우 저장
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "reportId": 8001,
+    "status": "FAILED"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
 
 ---
 
