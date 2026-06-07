@@ -44,6 +44,7 @@ public enum ErrorCode {
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "보고서를 찾을 수 없습니다."),
     REPORT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "REPORT_GENERATION_FAILED", "보고서 생성에 실패했습니다."),
     REPORT_NOT_COMPLETED(HttpStatus.CONFLICT, "REPORT_NOT_COMPLETED", "아직 생성이 완료되지 않은 보고서입니다."),
+    REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "REPORT_ALREADY_PROCESSED", "이미 처리된 보고서입니다."),
 
     // Review
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_NOT_FOUND", "사업부 검토를 찾을 수 없습니다."),

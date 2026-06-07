@@ -21,6 +21,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -73,6 +75,26 @@ public class ReportService {
 
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        return ReportStatusResponse.from(report);
+    }
+
+    @Transactional
+    public ReportStatusResponse complete(Long reportId, String reportKey) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.complete(reportKey, Instant.now());
+
+        return ReportStatusResponse.from(report);
+    }
+
+    @Transactional
+    public ReportStatusResponse fail(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.fail();
 
         return ReportStatusResponse.from(report);
     }
