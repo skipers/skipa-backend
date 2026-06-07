@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.domain.report.exception.ReportException;
@@ -21,6 +22,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -29,6 +32,8 @@ public class ReportService {
     private final ReportRepository reportRepository;
     private final PatentRepository patentRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final ReportGenerationPublisher reportGenerationPublisher;
+    private final ReportStorageService reportStorageService;
 
     @Transactional
     public ReportCreateResponse create(Long patentId) {
@@ -39,6 +44,8 @@ public class ReportService {
                 .patent(patent)
                 .status(ReportStatus.GENERATING)
                 .build());
+
+        publishReportGenerationMessage(report);
 
         return ReportCreateResponse.from(report);
     }
@@ -59,13 +66,17 @@ public class ReportService {
         return reportRepository.findByPatentId(patentId, sortedPageable).map(ReportResponse::from);
     }
 
-    public ReportResponse get(User user, Long patentId, Long reportId) {
+    public ReportDetailResponse get(User user, Long patentId, Long reportId) {
         businessPatentAccessValidator.validate(user, patentId);
 
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        return ReportResponse.from(report);
+        if (!report.isCompleted()) {
+            throw new ReportException(ErrorCode.REPORT_NOT_COMPLETED);
+        }
+
+        return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()));
     }
 
     public ReportStatusResponse getStatus(User user, Long patentId, Long reportId) {
@@ -75,5 +86,33 @@ public class ReportService {
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
         return ReportStatusResponse.from(report);
+    }
+
+    @Transactional
+    public ReportStatusResponse complete(Long reportId, String reportKey) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.complete(reportKey, Instant.now());
+
+        return ReportStatusResponse.from(report);
+    }
+
+    @Transactional
+    public ReportStatusResponse fail(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.fail();
+
+        return ReportStatusResponse.from(report);
+    }
+
+    private void publishReportGenerationMessage(Report report) {
+        try {
+            reportGenerationPublisher.publish(report.getId(), report.getPatent().getId());
+        } catch (RuntimeException e) {
+            throw new ReportException(ErrorCode.EXTERNAL_SERVICE_ERROR, e);
+        }
     }
 }

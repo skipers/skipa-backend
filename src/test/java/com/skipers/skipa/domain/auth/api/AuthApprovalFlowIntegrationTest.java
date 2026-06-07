@@ -14,6 +14,8 @@ import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
+import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.user.dao.UserRepository;
@@ -30,6 +32,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -39,6 +42,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.nullValue;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -83,6 +87,12 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private JwtProvider jwtProvider;
+
+    @MockitoBean
+    private ReportGenerationPublisher reportGenerationPublisher;
+
+    @MockitoBean
+    private ReportStorageService reportStorageService;
 
     private Department department;
     private ReviewCycle reviewCycle;
@@ -1094,11 +1104,16 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         Report assignedReport = reportRepository.save(Report.builder()
                 .patent(assignedPatent)
+                .reportKey("reports/assigned/report.html")
+                .status(ReportStatus.COMPLETED)
+                .evaluatedAt(Instant.parse("2026-06-07T08:55:00Z"))
                 .build());
         Report otherReport = reportRepository.save(Report.builder()
                 .patent(otherPatent)
                 .build());
         String businessToken = createActiveUserToken("business-report", "business-report@example.com", UserRole.BUSINESS);
+        when(reportStorageService.generatePresignedUrl("reports/assigned/report.html"))
+                .thenReturn("https://minio.example.com/reports/assigned/report.html?signature=abc");
 
         mockMvc.perform(get("/patents/{patentId}/reports", assignedPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
@@ -1108,7 +1123,8 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", assignedPatent.getId(), assignedReport.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(assignedReport.getId()));
+                .andExpect(jsonPath("$.data.id").value(assignedReport.getId()))
+                .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/assigned/report.html?signature=abc"));
 
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", assignedPatent.getId(), assignedReport.getId())
                         .header("Authorization", "Bearer " + businessToken))
@@ -1218,13 +1234,17 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         Report report = reportRepository.save(Report.builder()
                 .patent(patent)
-                .status(ReportStatus.GENERATING)
+                .reportKey("reports/admin/report.html")
+                .status(ReportStatus.COMPLETED)
+                .evaluatedAt(Instant.parse("2026-06-07T08:55:00Z"))
                 .build());
         Review review = reviewRepository.save(Review.builder()
                 .patent(patent)
                 .department(department)
                 .reviewCycle(reviewCycle)
                 .build());
+        when(reportStorageService.generatePresignedUrl("reports/admin/report.html"))
+                .thenReturn("https://minio.example.com/reports/admin/report.html?signature=abc");
 
         mockMvc.perform(get("/patents/{patentId}/legal-status", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
@@ -1240,7 +1260,8 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), report.getId())
                         .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/admin/report.html?signature=abc"));
 
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", patent.getId(), report.getId())
                         .header("Authorization", "Bearer " + adminToken))
