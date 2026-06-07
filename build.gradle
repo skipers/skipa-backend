@@ -20,6 +20,7 @@ repositories {
 ext {
 	jjwtVersion = '0.13.0'
 	springdocVersion = '3.0.3'
+	minioVersion = '9.0.1'
 }
 
 dependencies {
@@ -44,6 +45,9 @@ dependencies {
 
 	// OpenAPI / Swagger
 	implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+	// Object Storage
+	implementation "io.minio:minio:${minioVersion}"
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'

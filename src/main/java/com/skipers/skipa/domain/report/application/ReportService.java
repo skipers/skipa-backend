@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.domain.report.exception.ReportException;
@@ -32,6 +33,7 @@ public class ReportService {
     private final PatentRepository patentRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final ReportGenerationPublisher reportGenerationPublisher;
+    private final ReportStorageService reportStorageService;
 
     @Transactional
     public ReportCreateResponse create(Long patentId) {
@@ -64,13 +66,17 @@ public class ReportService {
         return reportRepository.findByPatentId(patentId, sortedPageable).map(ReportResponse::from);
     }
 
-    public ReportResponse get(User user, Long patentId, Long reportId) {
+    public ReportDetailResponse get(User user, Long patentId, Long reportId) {
         businessPatentAccessValidator.validate(user, patentId);
 
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        return ReportResponse.from(report);
+        if (!report.isCompleted()) {
+            throw new ReportException(ErrorCode.REPORT_NOT_COMPLETED);
+        }
+
+        return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()));
     }
 
     public ReportStatusResponse getStatus(User user, Long patentId, Long reportId) {
@@ -106,7 +112,7 @@ public class ReportService {
         try {
             reportGenerationPublisher.publish(report.getId(), report.getPatent().getId());
         } catch (RuntimeException e) {
-            throw new ReportException(ErrorCode.EXTERNAL_SERVICE_ERROR);
+            throw new ReportException(ErrorCode.EXTERNAL_SERVICE_ERROR, e);
         }
     }
 }

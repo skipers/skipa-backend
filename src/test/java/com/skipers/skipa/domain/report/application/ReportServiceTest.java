@@ -7,7 +7,7 @@ import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
-import com.skipers.skipa.domain.report.dto.response.ReportResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.domain.report.exception.ReportException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -42,6 +42,9 @@ class ReportServiceTest {
 
     @Mock
     private ReportGenerationPublisher reportGenerationPublisher;
+
+    @Mock
+    private ReportStorageService reportStorageService;
 
     @InjectMocks
     private ReportService reportService;
@@ -145,20 +148,34 @@ class ReportServiceTest {
     }
 
     @Test
-    void getDoesNotExposeReportKey() {
+    void getReturnsPresignedUrlWithoutExposingReportKey() {
         Report report = report(1L, 10L);
         report.complete("reports/1/report.html", null);
         when(reportRepository.findByIdAndPatentId(1L, 10L)).thenReturn(Optional.of(report));
+        when(reportStorageService.generatePresignedUrl("reports/1/report.html"))
+                .thenReturn("https://minio.example.com/skipa-reports/reports/1/report.html?X-Amz-Signature=abc");
 
-        ReportResponse response = reportService.get(null, 10L, 1L);
+        ReportDetailResponse response = reportService.get(null, 10L, 1L);
 
         verify(businessPatentAccessValidator).validate(null, 10L);
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo("COMPLETED");
-        assertThat(ReportResponse.class.getRecordComponents())
+        assertThat(response.url()).isEqualTo("https://minio.example.com/skipa-reports/reports/1/report.html?X-Amz-Signature=abc");
+        assertThat(ReportDetailResponse.class.getRecordComponents())
                 .extracting(recordComponent -> recordComponent.getName())
                 .doesNotContain("reportKey");
+    }
+
+    @Test
+    void getRejectsReportThatIsNotCompleted() {
+        Report report = report(1L, 10L);
+        when(reportRepository.findByIdAndPatentId(1L, 10L)).thenReturn(Optional.of(report));
+
+        assertReportError(() -> reportService.get(null, 10L, 1L), ErrorCode.REPORT_NOT_COMPLETED);
+
+        verify(businessPatentAccessValidator).validate(null, 10L);
+        verify(reportStorageService, never()).generatePresignedUrl(any());
     }
 
     private Report report(Long reportId, Long patentId) {

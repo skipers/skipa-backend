@@ -45,3 +45,10 @@ app:
       exchange: ${REPORT_EXCHANGE:skipa.report.exchange}
       queue: ${REPORT_GENERATE_QUEUE:skipa.report.generate}
       routing-key: ${REPORT_GENERATE_ROUTING_KEY:report.generate}
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    access-key: ${MINIO_ACCESS_KEY:minioadmin}
+    secret-key: ${MINIO_SECRET_KEY:minioadmin}
+    bucket: ${MINIO_REPORT_BUCKET:skipa-reports}
+    region: ${MINIO_REGION:us-east-1}
+    presigned-url-expiry-seconds: ${MINIO_PRESIGNED_URL_EXPIRY_SECONDS:600}
