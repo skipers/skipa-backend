@@ -220,20 +220,11 @@ JWT_SECRET=your-base64-encoded-secret
 INTERNAL_API_KEY=your-internal-api-key
 SPRING_PROFILES_ACTIVE=local
 LOCAL_SEED_PASSWORD=1234
-
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USERNAME=guest
-RABBITMQ_PASSWORD=guest
-
-MINIO_ENDPOINT=http://localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
 ```
 
 ### 2. 로컬 실행
 
-보고서 생성 요청과 완료 보고서 조회까지 로컬에서 확인하려면 RabbitMQ와 MinIO도 함께 실행되어 있어야 합니다.
+`local` profile은 Redis, RabbitMQ, MinIO 없이 실행하는 것을 기본으로 합니다. 로컬에서 보고서 생성 요청은 큐 발행 없이 통과하며, 실제 AI Worker/MinIO 연동 검증은 배포 또는 별도 연동 환경에서 확인합니다.
 
 처음 한 번, 또는 로컬 DB 파일을 삭제한 뒤 다시 시작할 때 파일 DB를 생성합니다.
 
