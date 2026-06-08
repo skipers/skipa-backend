@@ -1,4 +1,8 @@
 package com.skipers.skipa.domain.auth.dto.request;
 
-public class TokenRefreshRequest {
+import jakarta.validation.constraints.NotBlank;
+
+public record TokenRefreshRequest(
+        @NotBlank String refreshToken
+) {
 }

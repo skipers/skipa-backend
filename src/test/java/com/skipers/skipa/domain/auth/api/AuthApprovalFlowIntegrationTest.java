@@ -217,6 +217,71 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void commonAuthApisReturnMeRefreshAccessTokenAndLogout() throws Exception {
+        Long userId = registerBusinessUser();
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "business-new",
+                                  "password": "password"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode loginData = objectMapper.readTree(loginResult.getResponse().getContentAsString()).path("data");
+        String accessToken = loginData.path("accessToken").textValue();
+        String refreshToken = loginData.path("refreshToken").textValue();
+
+        mockMvc.perform(get("/auth/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.id").value(userId))
+                .andExpect(jsonPath("$.data.user.loginId").value("business-new"))
+                .andExpect(jsonPath("$.data.user.role").value("BUSINESS"))
+                .andExpect(jsonPath("$.data.user.departmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.user.departmentName").value(department.getName()));
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(nullValue()));
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void approvalRequiresAdminAndReturnsRequestAndDomainErrors() throws Exception {
         Long userId = registerBusinessUser();
         String legalToken = createActiveUserToken("legal-approver", "legal-approver@example.com", UserRole.LEGAL);
