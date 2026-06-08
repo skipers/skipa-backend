@@ -12,4 +12,9 @@ public class LocalPatentExtractStorageService implements PatentExtractStorageSer
     public String generateUploadPresignedUrl(String objectKey) {
         return "http://localhost:9000/skipa/%s?local=true".formatted(objectKey);
     }
+
+    @Override
+    public boolean exists(String objectKey) {
+        return true;
+    }
 }
