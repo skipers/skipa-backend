@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.patentextract.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractJobStatusResponse;
@@ -61,6 +62,24 @@ public class PatentExtractJobService {
         }
 
         return PatentExtractResultResponse.from(job);
+    }
+
+    @Transactional
+    public PatentExtractJobStatusResponse complete(Long extractJobId, JsonNode result) {
+        PatentExtractJob job = getJob(extractJobId);
+
+        job.complete(result, null);
+
+        return PatentExtractJobStatusResponse.from(job);
+    }
+
+    @Transactional
+    public PatentExtractJobStatusResponse fail(Long extractJobId, String errorMessage) {
+        PatentExtractJob job = getJob(extractJobId);
+
+        job.fail(errorMessage);
+
+        return PatentExtractJobStatusResponse.from(job);
     }
 
     private PatentExtractJob getJob(Long extractJobId) {

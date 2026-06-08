@@ -179,6 +179,87 @@ class PatentExtractJobServiceTest {
         assertPatentExtractError(() -> patentExtractJobService.getResult(1L), ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND);
     }
 
+    @Test
+    void completeStoresResultAndMarksJobCompleted() {
+        PatentExtractJob job = analyzingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        PatentExtractJobStatusResponse response = patentExtractJobService.complete(
+                1L,
+                objectMapper.createObjectNode()
+                        .put("title", "Patent")
+                        .put("overview", "Overview")
+        );
+
+        assertThat(response.extractJobId()).isEqualTo(1L);
+        assertThat(response.status()).isEqualTo(PatentExtractJobStatus.COMPLETED.name());
+        assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.COMPLETED);
+        assertThat(job.getResultJson().get("title").asText()).isEqualTo("Patent");
+        assertThat(job.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void completeRejectsMissingJob() {
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertPatentExtractError(
+                () -> patentExtractJobService.complete(1L, objectMapper.createObjectNode().put("title", "Patent")),
+                ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND
+        );
+    }
+
+    @Test
+    void completeRejectsNullResult() {
+        PatentExtractJob job = analyzingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        assertPatentExtractError(() -> patentExtractJobService.complete(1L, null), ErrorCode.INVALID_REQUEST);
+
+        assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.ANALYZING);
+    }
+
+    @Test
+    void completeRejectsJobThatIsNotAnalyzing() {
+        PatentExtractJob job = uploadPendingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        assertPatentExtractError(
+                () -> patentExtractJobService.complete(1L, objectMapper.createObjectNode().put("title", "Patent")),
+                ErrorCode.PATENT_EXTRACT_ALREADY_PROCESSED
+        );
+    }
+
+    @Test
+    void failStoresErrorMessageAndMarksJobFailed() {
+        PatentExtractJob job = analyzingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        PatentExtractJobStatusResponse response = patentExtractJobService.fail(1L, "AI extraction failed");
+
+        assertThat(response.extractJobId()).isEqualTo(1L);
+        assertThat(response.status()).isEqualTo(PatentExtractJobStatus.FAILED.name());
+        assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.FAILED);
+        assertThat(job.getErrorMessage()).isEqualTo("AI extraction failed");
+        assertThat(job.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void failRejectsMissingJob() {
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertPatentExtractError(() -> patentExtractJobService.fail(1L, "AI extraction failed"), ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND);
+    }
+
+    @Test
+    void failRejectsAlreadyCompletedJob() {
+        PatentExtractJob job = completedJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        assertPatentExtractError(() -> patentExtractJobService.fail(1L, "retry failed"), ErrorCode.PATENT_EXTRACT_ALREADY_PROCESSED);
+
+        assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.COMPLETED);
+    }
+
     private PatentExtractJob uploadPendingJob(Long extractJobId) {
         PatentExtractJob job = PatentExtractJob.createUploadPending();
         ReflectionTestUtils.setField(job, "id", extractJobId);
@@ -187,9 +268,14 @@ class PatentExtractJobServiceTest {
     }
 
     private PatentExtractJob completedJob(Long extractJobId) {
+        PatentExtractJob job = analyzingJob(extractJobId);
+        job.complete(objectMapper.createObjectNode().put("title", "Patent"), null);
+        return job;
+    }
+
+    private PatentExtractJob analyzingJob(Long extractJobId) {
         PatentExtractJob job = uploadPendingJob(extractJobId);
         job.markUploadCompleted(null);
-        job.complete(objectMapper.createObjectNode().put("title", "Patent"), null);
         return job;
     }
 
