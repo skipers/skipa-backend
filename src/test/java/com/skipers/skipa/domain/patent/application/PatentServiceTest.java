@@ -30,6 +30,7 @@ import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.global.exception.ErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -56,6 +57,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class PatentServiceTest {
@@ -92,6 +94,12 @@ class PatentServiceTest {
 
     @InjectMocks
     private PatentService patentService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(any()))
+                .thenReturn(Optional.empty());
+    }
 
     @Test
     void createPreservesTitleAndApplicationNumber() {
@@ -188,6 +196,33 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertPatentError(() -> patentService.get(1L), ErrorCode.PATENT_NOT_FOUND);
+    }
+
+    @Test
+    void getReturnsLatestLegalStatusInDetailResponse() {
+        Patent patent = patent(
+                1L,
+                "Patent",
+                "APP-DETAIL",
+                "반도체",
+                "KR",
+                LocalDate.now().plusYears(1),
+                department("통신", 1L)
+        );
+        PatentLegalStatus latestStatus = legalStatus(
+                20L,
+                patent,
+                PatentLegalStatusType.REGISTERED,
+                LocalDate.now()
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(1L))
+                .thenReturn(Optional.of(latestStatus));
+
+        PatentDetailResponse response = patentService.get(1L);
+
+        assertThat(response.latestLegalStatus()).isEqualTo("REGISTERED");
+        assertThat(response.currentDepartmentName()).isEqualTo("통신");
     }
 
     @Test

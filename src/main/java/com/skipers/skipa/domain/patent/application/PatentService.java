@@ -654,7 +654,11 @@ public class PatentService {
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {
-        return PatentDetailResponse.from(patent);
+        String latestLegalStatus = patentLegalStatusRepository
+                .findFirstByPatentIdOrderByChangedAtDescIdDesc(patent.getId())
+                .map(legalStatus -> legalStatus.getStatus().name())
+                .orElse(null);
+        return PatentDetailResponse.of(patent, latestLegalStatus);
     }
 
     private static class DepartmentCountAccumulator {

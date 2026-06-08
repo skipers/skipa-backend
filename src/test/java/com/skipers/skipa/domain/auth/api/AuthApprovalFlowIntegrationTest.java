@@ -602,7 +602,8 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
-                .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "));
+                .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "))
+                .andExpect(jsonPath("$.data.latestLegalStatus").value(nullValue()));
 
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + adminToken)
