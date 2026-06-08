@@ -11,8 +11,11 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
+import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
@@ -72,6 +75,9 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private PatentRepository patentRepository;
+
+    @Autowired
+    private PatentLegalStatusRepository patentLegalStatusRepository;
 
     @Autowired
     private ReviewRepository reviewRepository;
@@ -671,6 +677,42 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void patentStatsAllowAdminAndLegalOnly() throws Exception {
+        Patent chipPatent = patentRepository.save(Patent.builder()
+                .title("Chip Stats Patent")
+                .applicationNumber("APP-STATS-CHIP")
+                .techField("반도체")
+                .filingCountry("KR")
+                .expiryDate(LocalDate.now().plusDays(30))
+                .currentDepartment(department)
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(chipPatent)
+                .status(PatentLegalStatusType.REGISTERED)
+                .changedAt(LocalDate.now())
+                .build());
+        String legalToken = createActiveUserToken("legal-patent-stats", "legal-patent-stats@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-patent-stats", "business-patent-stats@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents/stats"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/patents/stats")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/patents/stats")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.byLegalStatus.REGISTERED").value(1))
+                .andExpect(jsonPath("$.data.expiring.in3Months").value(1))
+                .andExpect(jsonPath("$.data.byTechField[0].name").value("반도체"))
+                .andExpect(jsonPath("$.data.byFilingCountry[0].country").value("KR"))
+                .andExpect(jsonPath("$.data.byDepartment[0].departmentId").value(department.getId()));
     }
 
     @Test
