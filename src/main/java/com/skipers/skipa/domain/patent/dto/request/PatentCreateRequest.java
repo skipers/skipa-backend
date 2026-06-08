@@ -69,6 +69,9 @@ public record PatentCreateRequest(
         @Schema(description = "원문 파일 키", example = "patents/original/xxx.pdf")
         String originalPdfKey,
 
+        @Schema(description = "특허 추출 작업 ID. 값이 있으면 추출 작업의 임시 PDF를 최종 경로로 복사합니다.", example = "1")
+        Long extractJobId,
+
         @Size(max = 50, message = "관리번호는 50자 이하여야 합니다.")
         @Schema(description = "관리번호", example = "MNG-2026-0001")
         String managementNumber,

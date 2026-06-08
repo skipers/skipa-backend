@@ -1,7 +1,9 @@
 package com.skipers.skipa.domain.report.domain;
 
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.report.exception.ReportException;
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
+import com.skipers.skipa.global.exception.ErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,5 +53,33 @@ public class Report extends BaseTimeEntity {
         this.reportKey = reportKey;
         this.status = status != null ? status : ReportStatus.GENERATING;
         this.evaluatedAt = evaluatedAt;
+    }
+
+    public void complete(String reportKey, Instant evaluatedAt) {
+        validateGenerating();
+
+        if (reportKey == null || reportKey.isBlank()) {
+            throw new ReportException(ErrorCode.INVALID_REQUEST);
+        }
+
+        this.reportKey = reportKey;
+        this.status = ReportStatus.COMPLETED;
+        this.evaluatedAt = evaluatedAt != null ? evaluatedAt : Instant.now();
+    }
+
+    public void fail() {
+        validateGenerating();
+
+        this.status = ReportStatus.FAILED;
+    }
+
+    public boolean isCompleted() {
+        return status == ReportStatus.COMPLETED;
+    }
+
+    private void validateGenerating() {
+        if (status != ReportStatus.GENERATING) {
+            throw new ReportException(ErrorCode.REPORT_ALREADY_PROCESSED);
+        }
     }
 }

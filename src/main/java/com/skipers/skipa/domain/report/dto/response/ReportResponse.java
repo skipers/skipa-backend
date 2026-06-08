@@ -7,7 +7,6 @@ import java.time.Instant;
 public record ReportResponse(
         Long id,
         Long patentId,
-        String reportKey,
         String status,
         Instant evaluatedAt,
         Instant createdAt,
@@ -18,7 +17,6 @@ public record ReportResponse(
         return new ReportResponse(
                 report.getId(),
                 report.getPatent().getId(),
-                report.getReportKey(),
                 report.getStatus().name(),
                 report.getEvaluatedAt(),
                 report.getCreatedAt(),
@@ -26,4 +24,3 @@ public record ReportResponse(
         );
     }
 }
-

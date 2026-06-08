@@ -3,7 +3,9 @@ package com.skipers.skipa.domain.review.api;
 import com.skipers.skipa.domain.review.application.ReviewService;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewStatsResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -61,6 +64,7 @@ public class ReviewController {
      * @param status 제출 상태(선택)
      * @param departmentId 부서 ID(선택)
      * @param patentId 특허 ID(선택)
+     * @param checked 회신 확인 여부(선택)
      * @param pageable page/size 정보
      * @return 사업부 검토 목록 페이지
      */
@@ -71,9 +75,28 @@ public class ReviewController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long patentId,
+            @RequestParam(required = false) Boolean checked,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(PageResponse.from(reviewService.getAll(status, departmentId, patentId, pageable)));
+        return ApiResponse.ok(PageResponse.from(reviewService.getAll(
+                status,
+                departmentId,
+                patentId,
+                checked,
+                pageable
+        )));
+    }
+
+    /**
+     * 현재 활성 주기 기준 사업부 검토 통계를 조회한다.
+     *
+     * @return 사업부 검토 통계
+     */
+    @Operation(summary = "사업부 검토 통계 조회", description = "현재 활성 주기 기준 사업부 검토 통계를 조회합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @GetMapping("/reviews/stats")
+    public ApiResponse<ReviewStatsResponse> getStats() {
+        return ApiResponse.ok(reviewService.getStats());
     }
 
     /**
@@ -87,5 +110,18 @@ public class ReviewController {
     @GetMapping("/reviews/{reviewId}")
     public ApiResponse<ReviewResponse> get(@PathVariable Long reviewId) {
         return ApiResponse.ok(reviewService.get(reviewId));
+    }
+
+    /**
+     * Legal 팀이 제출된 사업부 회신을 확인 처리한다.
+     *
+     * @param reviewId 사업부 검토 ID
+     * @return 확인 처리 결과
+     */
+    @Operation(summary = "사업부 검토 회신 확인", description = "Legal 팀이 제출된 사업부 회신을 확인 처리합니다.")
+    @PreAuthorize("hasRole('LEGAL')")
+    @PatchMapping("/reviews/{reviewId}/confirm")
+    public ApiResponse<ReviewConfirmResponse> confirm(@PathVariable Long reviewId) {
+        return ApiResponse.ok(reviewService.confirm(reviewId));
     }
 }

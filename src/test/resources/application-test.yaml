@@ -22,3 +22,14 @@ spring:
 jwt:
   # Non-production key used only for application context and authentication tests.
   secret: c2tpcGEtdGVzdC1qd3Qtc2VjcmV0LWtleS0zMi1ieXRlcy0xMjM0NTY=
+
+app:
+  internal:
+    api-key: test-internal-api-key
+  minio:
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: skipa
+    region: us-east-1
+    presigned-url-expiry-seconds: 600

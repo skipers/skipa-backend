@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.report.api;
 
 import com.skipers.skipa.domain.report.application.ReportService;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.global.response.ApiResponse;
@@ -73,7 +74,7 @@ public class ReportController {
     @Operation(summary = "평가 보고서 단일 조회", description = "평가 보고서 ID로 상세 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}")
-    public ApiResponse<ReportResponse> get(
+    public ApiResponse<ReportDetailResponse> get(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long patentId,
             @PathVariable Long reportId

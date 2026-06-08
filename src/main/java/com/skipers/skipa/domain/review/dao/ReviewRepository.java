@@ -37,11 +37,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             where (:status is null or review.status = :status)
               and (:departmentId is null or review.department.id = :departmentId)
               and (:patentId is null or review.patent.id = :patentId)
+              and (:checked is null or review.checked = :checked)
             """)
     Page<Review> findAllByFilters(
             @Param("status") ReviewStatus status,
             @Param("departmentId") Long departmentId,
             @Param("patentId") Long patentId,
+            @Param("checked") Boolean checked,
             Pageable pageable
     );
 
@@ -55,6 +57,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     boolean existsByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
 
     List<Review> findAllByReviewCycleIdAndPatentIdIn(Long reviewCycleId, Collection<Long> patentIds);
+
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
+    List<Review> findAllByReviewCycleId(Long reviewCycleId);
 
     boolean existsByReviewCycleId(Long reviewCycleId);
 

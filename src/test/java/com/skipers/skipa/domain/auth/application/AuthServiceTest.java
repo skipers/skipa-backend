@@ -2,7 +2,10 @@ package com.skipers.skipa.domain.auth.application;
 
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
 import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
+import com.skipers.skipa.domain.auth.dto.request.TokenRefreshRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
+import com.skipers.skipa.domain.auth.dto.response.MeResponse;
+import com.skipers.skipa.domain.auth.dto.response.TokenRefreshResponse;
 import com.skipers.skipa.domain.auth.exception.AuthException;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
@@ -41,6 +44,9 @@ class AuthServiceTest {
     @Mock
     private JwtProvider jwtProvider;
 
+    @Mock
+    private RefreshTokenStore refreshTokenStore;
+
     @InjectMocks
     private AuthService authService;
 
@@ -74,6 +80,56 @@ class AuthServiceTest {
         assertThat(response.user().loginId()).isEqualTo("user_01");
         assertThat(response.user().role()).isEqualTo("BUSINESS");
         assertThat(response.user().departmentId()).isNull();
+        verify(refreshTokenStore).save(
+                org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.eq("refresh-token"),
+                org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    @Test
+    void meReturnsCurrentUserInformation() {
+        MeResponse response = authService.me(user);
+
+        assertThat(response.user().id()).isEqualTo(1L);
+        assertThat(response.user().loginId()).isEqualTo("user_01");
+        assertThat(response.user().role()).isEqualTo("BUSINESS");
+        assertThat(response.user().departmentId()).isNull();
+        assertThat(response.user().departmentName()).isNull();
+    }
+
+    @Test
+    void refreshReturnsNewAccessTokenWhenStoredTokenMatches() {
+        when(jwtProvider.getUserId("refresh-token")).thenReturn(1L);
+        when(refreshTokenStore.matches(1L, "refresh-token")).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(jwtProvider.createAccessToken(1L, UserRole.BUSINESS)).thenReturn("new-access-token");
+
+        TokenRefreshResponse response = authService.refresh(new TokenRefreshRequest("refresh-token"));
+
+        verify(jwtProvider).validateRefreshToken("refresh-token");
+        assertThat(response.accessToken()).isEqualTo("new-access-token");
+    }
+
+    @Test
+    void refreshRejectsTokenMissingFromStore() {
+        when(jwtProvider.getUserId("refresh-token")).thenReturn(1L);
+        when(refreshTokenStore.matches(1L, "refresh-token")).thenReturn(false);
+
+        assertErrorCode(
+                () -> authService.refresh(new TokenRefreshRequest("refresh-token")),
+                ErrorCode.INVALID_TOKEN
+        );
+
+        verify(userRepository, never()).findById(org.mockito.ArgumentMatchers.any());
+        verify(jwtProvider, never()).createAccessToken(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void logoutDeletesCurrentUsersRefreshToken() {
+        authService.logout(user);
+
+        verify(refreshTokenStore).delete(1L);
     }
 
     @Test

@@ -12,6 +12,7 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "FORBIDDEN", "접근 권한이 없습니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "NOT_FOUND", "요청한 리소스를 찾을 수 없습니다."),
     CONFLICT(HttpStatus.CONFLICT, "CONFLICT", "요청한 리소스의 상태가 충돌합니다."),
+    EXTERNAL_SERVICE_ERROR(HttpStatus.BAD_GATEWAY, "EXTERNAL_SERVICE_ERROR", "외부 시스템 연동에 실패했습니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "서버 내부 오류가 발생했습니다."),
 
     // Auth
@@ -36,6 +37,9 @@ public enum ErrorCode {
     DUPLICATE_APPLICATION_NUMBER(HttpStatus.CONFLICT, "DUPLICATE_APPLICATION_NUMBER", "이미 등록된 출원번호입니다."),
     PATENT_DEPARTMENT_NOT_ASSIGNED(HttpStatus.CONFLICT, "PATENT_DEPARTMENT_NOT_ASSIGNED", "특허 담당 부서가 배정되지 않았습니다."),
     PATENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DOCUMENT_NOT_FOUND", "특허 문서를 찾을 수 없습니다."),
+    PATENT_EXTRACT_JOB_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_EXTRACT_JOB_NOT_FOUND", "특허 추출 작업을 찾을 수 없습니다."),
+    PATENT_EXTRACT_NOT_COMPLETED(HttpStatus.CONFLICT, "PATENT_EXTRACT_NOT_COMPLETED", "아직 추출이 완료되지 않은 작업입니다."),
+    PATENT_EXTRACT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "PATENT_EXTRACT_ALREADY_PROCESSED", "이미 처리된 특허 추출 작업입니다."),
     PATENT_DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_DEPARTMENT_NOT_FOUND", "특허 담당 부서 정보를 찾을 수 없습니다."),
     PATENT_LEGAL_STATUS_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_LEGAL_STATUS_NOT_FOUND", "특허 권리 상태 이력을 찾을 수 없습니다."),
     PATENT_ANNUITY_NOT_FOUND(HttpStatus.NOT_FOUND, "PATENT_ANNUITY_NOT_FOUND", "특허 연차료를 찾을 수 없습니다."),
@@ -44,6 +48,7 @@ public enum ErrorCode {
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT_NOT_FOUND", "보고서를 찾을 수 없습니다."),
     REPORT_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "REPORT_GENERATION_FAILED", "보고서 생성에 실패했습니다."),
     REPORT_NOT_COMPLETED(HttpStatus.CONFLICT, "REPORT_NOT_COMPLETED", "아직 생성이 완료되지 않은 보고서입니다."),
+    REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "REPORT_ALREADY_PROCESSED", "이미 처리된 보고서입니다."),
 
     // Review
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_NOT_FOUND", "사업부 검토를 찾을 수 없습니다."),

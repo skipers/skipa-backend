@@ -131,4 +131,8 @@ public class JwtProvider {
     public String getJti(String token) {
         return parseToken(token).getId();
     }
+
+    public long getRefreshTokenExpirationMillis() {
+        return refreshTokenExpiration;
+    }
 }
