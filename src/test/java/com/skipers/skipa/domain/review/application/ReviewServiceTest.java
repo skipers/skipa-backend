@@ -7,13 +7,16 @@ import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
+import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewStatsResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -27,6 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
 import java.time.LocalDate;
 
 import org.springframework.data.domain.PageImpl;
@@ -108,6 +112,7 @@ class ReviewServiceTest {
         assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate());
         assertThat(response.opinion()).isNull();
         assertThat(response.submittedAt()).isNull();
+        assertThat(response.checked()).isFalse();
     }
 
     @Test
@@ -282,23 +287,23 @@ class ReviewServiceTest {
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
         Review review = review();
-        when(reviewRepository.findAllByFilters(ReviewStatus.PENDING, 1L, 10L, sortedPageable))
+        when(reviewRepository.findAllByFilters(ReviewStatus.PENDING, 1L, 10L, false, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll("PENDING", 1L, 10L, pageable).getContent())
+        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
-        verify(reviewRepository).findAllByFilters(ReviewStatus.PENDING, 1L, 10L, sortedPageable);
+        verify(reviewRepository).findAllByFilters(ReviewStatus.PENDING, 1L, 10L, false, sortedPageable);
     }
 
     @Test
     void getAllRejectsInvalidStatus() {
         assertError(
-                () -> reviewService.getAll("대기", null, null, PageRequest.of(0, 20)),
+                () -> reviewService.getAll("대기", null, null, null, PageRequest.of(0, 20)),
                 ReviewException.class,
                 ErrorCode.INVALID_REQUEST
         );
-        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any());
+        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -315,6 +320,126 @@ class ReviewServiceTest {
 
         assertError(
                 () -> reviewService.get(100L),
+                ReviewException.class,
+                ErrorCode.REVIEW_NOT_FOUND
+        );
+    }
+
+    @Test
+    void getStatsAggregatesActiveReviewCycleReviews() {
+        Department otherDepartment = Department.builder().name("제조").build();
+        ReflectionTestUtils.setField(otherDepartment, "id", 2L);
+        Patent batteryPatent = Patent.builder()
+                .title("Battery Patent")
+                .applicationNumber("APP-BATTERY")
+                .techField("배터리")
+                .currentDepartment(otherDepartment)
+                .build();
+        ReflectionTestUtils.setField(batteryPatent, "id", 20L);
+        Review requestedReview = Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.PENDING)
+                .dueDate(LocalDate.now())
+                .build();
+        Review overdueReview = Review.builder()
+                .patent(batteryPatent)
+                .department(otherDepartment)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.PENDING)
+                .dueDate(LocalDate.now().minusDays(1))
+                .build();
+        Review maintainReview = Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.SUBMITTED)
+                .opinion(BusinessOpinion.MAINTAIN)
+                .submittedAt(Instant.now())
+                .checked(false)
+                .build();
+        Review abandonReview = Review.builder()
+                .patent(batteryPatent)
+                .department(otherDepartment)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.SUBMITTED)
+                .opinion(BusinessOpinion.ABANDON)
+                .submittedAt(Instant.now())
+                .checked(true)
+                .build();
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.findAllByReviewCycleId(1L))
+                .thenReturn(List.of(requestedReview, overdueReview, maintainReview, abandonReview));
+        when(patentRepository.countByCurrentDepartmentIsNull()).thenReturn(1L);
+
+        ReviewStatsResponse response = reviewService.getStats();
+
+        assertThat(response.reviewCycleId()).isEqualTo(1L);
+        assertThat(response.reviewCycleName()).isEqualTo("2026년 2분기 정기 재평가");
+        assertThat(response.total()).isEqualTo(5);
+        assertThat(response.unassigned()).isEqualTo(1);
+        assertThat(response.requested()).isEqualTo(1);
+        assertThat(response.overdue()).isEqualTo(1);
+        assertThat(response.done()).isEqualTo(2);
+        assertThat(response.unread()).isEqualTo(1);
+        assertThat(response.maintain()).isEqualTo(1);
+        assertThat(response.abandon()).isEqualTo(1);
+        assertThat(response.progressRate()).isEqualTo(40.0);
+        assertThat(response.byDepartment())
+                .extracting(ReviewStatsResponse.DepartmentStats::departmentName)
+                .containsExactly("제조", "통신");
+        assertThat(response.byTechField())
+                .extracting(ReviewStatsResponse.TechFieldStats::name)
+                .containsExactly("미분류", "배터리");
+    }
+
+    @Test
+    void getStatsRejectsMissingActiveReviewCycle() {
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        assertError(
+                reviewService::getStats,
+                ReviewException.class,
+                ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND
+        );
+
+        verify(reviewRepository, never()).findAllByReviewCycleId(any());
+        verify(patentRepository, never()).countByCurrentDepartmentIsNull();
+    }
+
+    @Test
+    void confirmMarksSubmittedReviewAsChecked() {
+        Review review = review();
+        review.submit(BusinessOpinion.MAINTAIN, "유지", Instant.now());
+        when(reviewRepository.findById(100L)).thenReturn(Optional.of(review));
+
+        ReviewConfirmResponse response = reviewService.confirm(100L);
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.checked()).isTrue();
+        assertThat(review.isChecked()).isTrue();
+    }
+
+    @Test
+    void confirmRejectsPendingReview() {
+        when(reviewRepository.findById(100L)).thenReturn(Optional.of(review()));
+
+        assertError(
+                () -> reviewService.confirm(100L),
+                ReviewException.class,
+                ErrorCode.INVALID_REVIEW_STATUS
+        );
+    }
+
+    @Test
+    void confirmRejectsMissingReview() {
+        when(reviewRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertError(
+                () -> reviewService.confirm(100L),
                 ReviewException.class,
                 ErrorCode.REVIEW_NOT_FOUND
         );

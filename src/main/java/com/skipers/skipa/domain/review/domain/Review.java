@@ -76,6 +76,9 @@ public class Review extends BaseTimeEntity {
     @Column(name = "due_date", nullable = false) // 회신 기한
     private LocalDate dueDate;
 
+    @Column(name = "checked", nullable = false) // Legal 팀 회신 확인 여부
+    private boolean checked;
+
     @Builder
     private Review(
             Patent patent,
@@ -86,7 +89,8 @@ public class Review extends BaseTimeEntity {
             String comment,
             ReviewStatus status,
             Instant submittedAt,
-            LocalDate dueDate
+            LocalDate dueDate,
+            Boolean checked
     ) {
         this.patent = patent;
         this.department = department;
@@ -97,6 +101,7 @@ public class Review extends BaseTimeEntity {
         this.status = status != null ? status : ReviewStatus.PENDING;
         this.submittedAt = submittedAt;
         this.dueDate = dueDate != null ? dueDate : reviewCycle.getEndDate();
+        this.checked = checked != null && checked;
     }
 
     public void submit(BusinessOpinion opinion, String comment, Instant submittedAt) {
@@ -104,5 +109,10 @@ public class Review extends BaseTimeEntity {
         this.comment = comment;
         this.status = ReviewStatus.SUBMITTED;
         this.submittedAt = submittedAt;
+        this.checked = false;
+    }
+
+    public void confirm() {
+        this.checked = true;
     }
 }

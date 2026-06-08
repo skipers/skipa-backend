@@ -24,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final Set<String> FILTER_EXCLUDED_PATHS = Set.of(
             "/auth/login",
+            "/auth/refresh",
             "/auth/register"
     );
     private static final String INTERNAL_PATH_PREFIX = "/internal/";

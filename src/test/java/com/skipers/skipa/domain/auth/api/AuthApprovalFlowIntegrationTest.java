@@ -11,8 +11,11 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
+import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
+import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
@@ -72,6 +75,9 @@ class AuthApprovalFlowIntegrationTest {
 
     @Autowired
     private PatentRepository patentRepository;
+
+    @Autowired
+    private PatentLegalStatusRepository patentLegalStatusRepository;
 
     @Autowired
     private ReviewRepository reviewRepository;
@@ -214,6 +220,71 @@ class AuthApprovalFlowIntegrationTest {
         assertThat(approvedUser.getDepartment()).isNull();
 
         loginAndGetAccessToken("legal-new", "password");
+    }
+
+    @Test
+    void commonAuthApisReturnMeRefreshAccessTokenAndLogout() throws Exception {
+        Long userId = registerBusinessUser();
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
+
+        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "departmentId": %d
+                                }
+                                """.formatted(department.getId())))
+                .andExpect(status().isOk());
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "loginId": "business-new",
+                                  "password": "password"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode loginData = objectMapper.readTree(loginResult.getResponse().getContentAsString()).path("data");
+        String accessToken = loginData.path("accessToken").textValue();
+        String refreshToken = loginData.path("refreshToken").textValue();
+
+        mockMvc.perform(get("/auth/me")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.id").value(userId))
+                .andExpect(jsonPath("$.data.user.loginId").value("business-new"))
+                .andExpect(jsonPath("$.data.user.role").value("BUSINESS"))
+                .andExpect(jsonPath("$.data.user.departmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.user.departmentName").value(department.getName()));
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.accessToken").isString())
+                .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
+
+        mockMvc.perform(post("/auth/logout")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value(nullValue()));
+
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "refreshToken": "%s"
+                                }
+                                """.formatted(refreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -531,7 +602,8 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
-                .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "));
+                .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "))
+                .andExpect(jsonPath("$.data.latestLegalStatus").value(nullValue()));
 
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + adminToken)
@@ -606,6 +678,98 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void patentStatsAllowAdminAndLegalOnly() throws Exception {
+        Patent chipPatent = patentRepository.save(Patent.builder()
+                .title("Chip Stats Patent")
+                .applicationNumber("APP-STATS-CHIP")
+                .techField("반도체")
+                .filingCountry("KR")
+                .expiryDate(LocalDate.now().plusDays(30))
+                .currentDepartment(department)
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(chipPatent)
+                .status(PatentLegalStatusType.REGISTERED)
+                .changedAt(LocalDate.now())
+                .build());
+        String legalToken = createActiveUserToken("legal-patent-stats", "legal-patent-stats@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-patent-stats", "business-patent-stats@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents/stats"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/patents/stats")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/patents/stats")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.byLegalStatus.REGISTERED").value(1))
+                .andExpect(jsonPath("$.data.expiring.in3Months").value(1))
+                .andExpect(jsonPath("$.data.byTechField[0].name").value("반도체"))
+                .andExpect(jsonPath("$.data.byFilingCountry[0].country").value("KR"))
+                .andExpect(jsonPath("$.data.byDepartment[0].departmentId").value(department.getId()));
+    }
+
+    @Test
+    void patentListSupportsLegalScreenFiltersAndExpandedFields() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Filtered Patent")
+                .applicationNumber("APP-LIST-FILTER")
+                .registrationNumber("REG-LIST-FILTER")
+                .applicationDate(LocalDate.now().minusYears(1))
+                .expiryDate(LocalDate.now().plusYears(1))
+                .techField("반도체")
+                .businessField("메모리")
+                .overview("특허 개요")
+                .keywords(java.util.List.of("공정", "소자"))
+                .citationCount(7)
+                .filingCountry("KR")
+                .currentDepartment(department)
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(patent)
+                .status(PatentLegalStatusType.REGISTERED)
+                .changedAt(LocalDate.now())
+                .build());
+        Review review = reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .build());
+        review.submit(BusinessOpinion.MAINTAIN, "유지", Instant.now());
+        String legalToken = createActiveUserToken("legal-patent-list", "legal-patent-list@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("departmentId", department.getId().toString())
+                        .param("reviewStatus", "done")
+                        .param("decision", "MAINTAIN")
+                        .param("status", "REGISTERED")
+                        .param("filingCountry", "KR")
+                        .param("techField", "반도체")
+                        .param("sort", "expiryDate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
+                .andExpect(jsonPath("$.data.items[0].registrationNumber").value("REG-LIST-FILTER"))
+                .andExpect(jsonPath("$.data.items[0].latestLegalStatus").value("REGISTERED"))
+                .andExpect(jsonPath("$.data.items[0].techField").value("반도체"))
+                .andExpect(jsonPath("$.data.items[0].businessField").value("메모리"))
+                .andExpect(jsonPath("$.data.items[0].overview").value("특허 개요"))
+                .andExpect(jsonPath("$.data.items[0].keywords[0]").value("공정"))
+                .andExpect(jsonPath("$.data.items[0].citationCount").value(7))
+                .andExpect(jsonPath("$.data.items[0].filingCountry").value("KR"))
+                .andExpect(jsonPath("$.data.items[0].currentDepartmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.items[0].currentDepartmentName").value(department.getName()))
+                .andExpect(jsonPath("$.data.items[0].reviewStatus").value("done"))
+                .andExpect(jsonPath("$.data.items[0].decision").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.items[0].isOverdue").value(false));
     }
 
     @Test
@@ -1155,10 +1319,12 @@ class AuthApprovalFlowIntegrationTest {
         Patent firstPatent = patentRepository.save(Patent.builder()
                 .title("First Review Patent")
                 .applicationNumber("APP-REVIEW-FIRST")
+                .currentDepartment(department)
                 .build());
         Patent secondPatent = patentRepository.save(Patent.builder()
                 .title("Second Review Patent")
                 .applicationNumber("APP-REVIEW-SECOND")
+                .currentDepartment(otherDepartment)
                 .build());
         Review firstReview = reviewRepository.save(Review.builder()
                 .patent(firstPatent)
@@ -1189,6 +1355,7 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/reviews")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "SUBMITTED")
+                        .param("checked", "false")
                         .param("departmentId", otherDepartment.getId().toString())
                         .param("patentId", secondPatent.getId().toString()))
                 .andExpect(status().isOk())
@@ -1196,7 +1363,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(secondReview.getId()))
                 .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.items[0].comment").value("유지 의견입니다."))
-                .andExpect(jsonPath("$.data.items[0].status").value("SUBMITTED"));
+                .andExpect(jsonPath("$.data.items[0].status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.data.items[0].checked").value(false));
 
         mockMvc.perform(get("/reviews/{reviewId}", secondReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
@@ -1205,7 +1373,56 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.patentId").value(secondPatent.getId()))
                 .andExpect(jsonPath("$.data.departmentId").value(otherDepartment.getId()))
                 .andExpect(jsonPath("$.data.opinion").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.checked").value(false))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
+
+        mockMvc.perform(get("/reviews/stats")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.requested").value(1))
+                .andExpect(jsonPath("$.data.done").value(1))
+                .andExpect(jsonPath("$.data.unread").value(1))
+                .andExpect(jsonPath("$.data.maintain").value(1))
+                .andExpect(jsonPath("$.data.progressRate").value(50.0))
+                .andExpect(jsonPath("$.data.byDepartment[0].departmentId").value(otherDepartment.getId()))
+                .andExpect(jsonPath("$.data.byTechField[0].maintain").value(1));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(secondReview.getId()))
+                .andExpect(jsonPath("$.data.checked").value(true));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.checked").value(true));
+
+        mockMvc.perform(get("/reviews")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("checked", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(0));
+
+        mockMvc.perform(get("/reviews")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("checked", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].checked").value(true));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", firstReview.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REVIEW_STATUS"));
     }
 
     @Test
@@ -1219,6 +1436,11 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
         mockMvc.perform(get("/reviews/{reviewId}", 999999L)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", 999999L)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));

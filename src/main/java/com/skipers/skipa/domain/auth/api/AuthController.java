@@ -3,15 +3,21 @@ package com.skipers.skipa.domain.auth.api;
 import com.skipers.skipa.domain.auth.application.AuthService;
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
 import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
+import com.skipers.skipa.domain.auth.dto.request.TokenRefreshRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
+import com.skipers.skipa.domain.auth.dto.response.MeResponse;
+import com.skipers.skipa.domain.auth.dto.response.TokenRefreshResponse;
 import com.skipers.skipa.domain.user.dto.response.UserResponse;
 import com.skipers.skipa.global.response.ApiResponse;
+import com.skipers.skipa.global.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,5 +56,25 @@ public class AuthController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    @Operation(summary = "내 정보 조회", description = "현재 로그인한 사용자 정보를 반환합니다.")
+    @GetMapping("/me")
+    public ApiResponse<MeResponse> me(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ApiResponse.ok(authService.me(userDetails.getUser()));
+    }
+
+    @Operation(summary = "액세스 토큰 재발급", description = "refresh token으로 access token을 재발급합니다.")
+    @SecurityRequirements
+    @PostMapping("/refresh")
+    public ApiResponse<TokenRefreshResponse> refresh(@Valid @RequestBody TokenRefreshRequest request) {
+        return ApiResponse.ok(authService.refresh(request));
+    }
+
+    @Operation(summary = "로그아웃", description = "현재 로그인한 사용자의 refresh token을 폐기합니다.")
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        authService.logout(userDetails.getUser());
+        return ApiResponse.ok();
     }
 }

@@ -34,6 +34,7 @@ public record PatentDetailResponse(
         String initialDepartment,
         Long currentDepartmentId,
         String currentDepartmentName,
+        String latestLegalStatus,
         List<String> keywords,
         String overview,
         String coreContent,
@@ -42,6 +43,10 @@ public record PatentDetailResponse(
 ) {
 
     public static PatentDetailResponse from(Patent patent) {
+        return of(patent, null);
+    }
+
+    public static PatentDetailResponse of(Patent patent, String latestLegalStatus) {
         Long currentDepartmentId = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getId();
         String currentDepartmentName = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getName();
 
@@ -73,6 +78,7 @@ public record PatentDetailResponse(
                 patent.getInitialDepartment(),
                 currentDepartmentId,
                 currentDepartmentName,
+                latestLegalStatus,
                 patent.getKeywords(),
                 patent.getOverview(),
                 patent.getCoreContent(),
