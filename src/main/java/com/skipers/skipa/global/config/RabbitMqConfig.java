@@ -35,6 +35,25 @@ public class RabbitMqConfig {
     }
 
     @Bean
+    public TopicExchange patentExtractExchange(@Value("${app.rabbitmq.patent-extract.exchange}") String exchangeName) {
+        return new TopicExchange(exchangeName, true, false);
+    }
+
+    @Bean
+    public Queue patentExtractQueue(@Value("${app.rabbitmq.patent-extract.queue}") String queueName) {
+        return new Queue(queueName, true);
+    }
+
+    @Bean
+    public Binding patentExtractBinding(
+            Queue patentExtractQueue,
+            TopicExchange patentExtractExchange,
+            @Value("${app.rabbitmq.patent-extract.routing-key}") String routingKey
+    ) {
+        return BindingBuilder.bind(patentExtractQueue).to(patentExtractExchange).with(routingKey);
+    }
+
+    @Bean
     public MessageConverter jsonMessageConverter() {
         return new JacksonJsonMessageConverter();
     }

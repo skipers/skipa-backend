@@ -1,6 +1,6 @@
 # API 명세서
 
-변경 날짜: 2026-06-07
+변경 날짜: 2026-06-08
 
 ## 기본 정보
 
@@ -69,6 +69,7 @@
 | 부서 상태 | `ACTIVE`, `INACTIVE` |
 | 권리 상태 | `PUBLISHED`, `REGISTERED`, `REJECTED`, `ABANDONED`, `EXPIRED`, `INVALIDATED`, `WITHDRAWN` |
 | 연차료 납부 상태 | `PAID`, `UNPAID`, `ABANDONED` |
+| 특허 추출 작업 상태 | `UPLOAD_PENDING`, `ANALYZING`, `COMPLETED`, `FAILED` |
 | 보고서 생성 상태 | `GENERATING`, `COMPLETED`, `FAILED` |
 | 검토 주기 유형 | `QUARTERLY`, `AD_HOC` |
 | 검토 제출 상태 | `PENDING`, `SUBMITTED` |
@@ -582,6 +583,8 @@
 | keywords | array | N | 주요 키워드 목록 |
 | overview | string | N | 특허 개요 |
 | coreContent | string | N | 핵심 내용 |
+| originalPdfKey | string | N | 기존 원문 PDF object key. `extractJobId`가 없을 때 그대로 저장 |
+| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{applicationNumber}/patent.pdf`로 복사하고 최종 key를 저장 |
 
 **응답 예시**
 
@@ -592,7 +595,7 @@
 }
 ```
 
-**에러**: `INVALID_REQUEST`(400), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `CONFLICT`(409 — 동일 출원번호 중복)
+**에러**: `INVALID_REQUEST`(400), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404 — 추출 작업 없음), `CONFLICT`(409 — 동일 출원번호 중복 또는 추출 미완료), `EXTERNAL_SERVICE_ERROR`(502 — MinIO 복사 실패)
 
 ---
 
@@ -623,39 +626,36 @@
 
 ---
 
-### 4-1. 특허 문서
+### 4-1. 특허 원문 PDF 추출 작업
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| PDF 메타데이터 추출 | `POST` | `/patents/extract` | 특허 등록 전 PDF 업로드 → 기본 정보 자동 추출 | `LEGAL` |
-| PDF 업로드 | `POST` | `/patents/{patentId}/documents` | 등록된 특허의 원문 PDF 업로드 | `LEGAL` |
-| 문서 삭제 | `DELETE` | `/patents/{patentId}/documents` | 원문 PDF 삭제 | `LEGAL` |
+| PDF 업로드 URL 발급 | `POST` | `/patent-extract-jobs/upload-url` | 추출 작업 생성 후 MinIO PUT presigned URL 반환 | `ADMIN`, `LEGAL` |
+| PDF 업로드 완료 | `POST` | `/patent-extract-jobs/{extractJobId}/upload-complete` | PDF 존재 확인 후 RabbitMQ 메시지 발행 | `ADMIN`, `LEGAL` |
+| 추출 작업 상태 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/status` | 프론트 polling용 상태 조회 | `ADMIN`, `LEGAL` |
+| 추출 결과 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/result` | 완료된 추출 결과 JSON 조회 | `ADMIN`, `LEGAL` |
+| 추출 완료 콜백 | `PATCH` | `/internal/patent-extract-jobs/{extractJobId}/complete` | AI Worker가 추출 결과 전달 | Internal API Key |
+| 추출 실패 콜백 | `PATCH` | `/internal/patent-extract-jobs/{extractJobId}/fail` | AI Worker가 추출 실패 전달 | Internal API Key |
 
 ---
 
-#### `POST /patents/extract`
+#### `POST /patent-extract-jobs/upload-url`
 
-특허 신규 등록 전 PDF를 업로드하면 기본 정보를 자동 추출합니다. 추출 실패 필드는 `null`로 반환됩니다.
+특허 신규 등록 전 원문 PDF를 업로드하기 위한 presigned URL을 발급합니다. 호출 즉시 `UPLOAD_PENDING` 상태의 `patent_extract_jobs` 레코드가 생성됩니다.
 
-**헤더**: `Authorization: Bearer {accessToken}`, `Content-Type: multipart/form-data`
+**헤더**: `Authorization: Bearer {accessToken}`
 
-**요청**
-
-| Name | Type | Required | Description |
-| --- | --- | --- | --- |
-| file | File | * | 특허 원문 PDF 파일 |
+요청 Body 없음.
 
 **응답**
 
 | Name | Type | Description |
 | --- | --- | --- |
-| title | string | 발명의 명칭. 추출 실패 시 `null` |
-| applicationNumber | string | 출원번호. 추출 실패 시 `null` |
-| registrationNumber | string | 등록번호. 추출 실패 시 `null` |
-| applicationDate | string | 출원일 (`yyyy-MM-dd`). 추출 실패 시 `null` |
-| ipcCode | string | IPC 코드. 추출 실패 시 `null` |
-| applicant | string | 출원인명. 추출 실패 시 `null` |
-| inventor | string | 발명자명. 추출 실패 시 `null` |
+| extractJobId | long | 추출 작업 ID |
+| objectKey | string | 임시 PDF object key. `patents/extract-jobs/{extractJobId}/patent.pdf` |
+| uploadUrl | string | MinIO PUT presigned URL |
+| expiresInSeconds | integer | URL 만료 시간(초) |
+| status | string | `UPLOAD_PENDING` |
 
 **응답 예시**
 
@@ -663,18 +663,198 @@
 {
   "success": true,
   "data": {
+    "extractJobId": 9001,
+    "objectKey": "patents/extract-jobs/9001/patent.pdf",
+    "uploadUrl": "https://minio.skipa.internal/skipa/patents/extract-jobs/9001/patent.pdf?...",
+    "expiresInSeconds": 600,
+    "status": "UPLOAD_PENDING",
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:00:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `EXTERNAL_SERVICE_ERROR`(502 — presigned URL 발급 실패)
+
+---
+
+#### `POST /patent-extract-jobs/{extractJobId}/upload-complete`
+
+프론트가 presigned URL로 PDF 업로드를 완료한 뒤 호출합니다. 백엔드는 MinIO object 존재 여부를 확인하고, 성공 시 작업 상태를 `ANALYZING`으로 변경한 뒤 RabbitMQ에 추출 요청 메시지를 발행합니다.
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+요청 Body 없음.
+
+**RabbitMQ 메시지 예시**
+
+```json
+{
+  "type": "PATENT_EXTRACT",
+  "extractJobId": 9001,
+  "objectKey": "patents/extract-jobs/9001/patent.pdf"
+}
+```
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "extractJobId": 9001,
+    "objectKey": "patents/extract-jobs/9001/patent.pdf",
+    "status": "ANALYZING",
+    "errorMessage": null,
+    "uploadedAt": "2026-06-08T01:02:00Z",
+    "completedAt": null,
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:02:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404 — 추출 작업 또는 PDF 없음), `CONFLICT`(409 — 이미 처리된 작업), `EXTERNAL_SERVICE_ERROR`(502 — RabbitMQ 발행 실패)
+
+---
+
+#### `GET /patent-extract-jobs/{extractJobId}/status`
+
+프론트 polling용 API입니다. `COMPLETED` 또는 `FAILED` 응답 시 polling을 종료합니다.
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| extractJobId | long | 추출 작업 ID |
+| objectKey | string | 임시 PDF object key |
+| status | string | `UPLOAD_PENDING` / `ANALYZING` / `COMPLETED` / `FAILED` |
+| errorMessage | string | 실패 사유. 실패가 아니면 `null` |
+| uploadedAt | datetime | 업로드 완료 처리 시각 |
+| completedAt | datetime | 완료 또는 실패 처리 시각 |
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `GET /patent-extract-jobs/{extractJobId}/result`
+
+완료된 추출 작업의 결과 JSON을 조회합니다. 프론트는 `result`를 특허 등록 폼에 자동 입력하고, 사용자가 수정한 뒤 `POST /patents`로 최종 생성합니다.
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "extractJobId": 9001,
+    "objectKey": "patents/extract-jobs/9001/patent.pdf",
+    "status": "COMPLETED",
+    "result": {
+      "title": "반도체 패키지 구조",
+      "applicationNumber": "10-2026-0000000",
+      "registrationNumber": "10-1234567",
+      "applicationDate": "2020-05-26",
+      "ipcCode": "H01L 21/00",
+      "applicant": "SK하이닉스",
+      "inventor": "홍길동",
+      "keywords": ["패키지", "반도체"],
+      "overview": "특허 개요",
+      "coreContent": "특허 핵심 내용"
+    },
+    "completedAt": "2026-06-08T01:05:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `CONFLICT`(409 — 추출 미완료)
+
+---
+
+#### `PATCH /internal/patent-extract-jobs/{extractJobId}/complete`
+
+AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| result | object | * | AI 추출 결과 JSON. `patent_extract_jobs.result_json`에 저장 |
+
+**요청 예시**
+
+```json
+{
+  "result": {
     "title": "반도체 패키지 구조",
     "applicationNumber": "10-2026-0000000",
     "registrationNumber": "10-1234567",
     "applicationDate": "2020-05-26",
     "ipcCode": "H01L 21/00",
     "applicant": "SK하이닉스",
-    "inventor": "홍길동"
+    "inventor": "홍길동",
+    "keywords": ["패키지", "반도체"],
+    "overview": "특허 개요",
+    "coreContent": "특허 핵심 내용"
   }
 }
 ```
 
-**에러**: `INVALID_REQUEST`(400 — 파일 누락 또는 파싱 실패), `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "extractJobId": 9001,
+    "status": "COMPLETED"
+  }
+}
+```
+
+**에러**: `INVALID_REQUEST`(400 — result 누락), `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 완료 가능한 상태가 아님)
+
+---
+
+#### `PATCH /internal/patent-extract-jobs/{extractJobId}/fail`
+
+AI Worker가 PDF 분석 실패 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| errorMessage | string | N | 실패 사유 |
+
+**요청 예시**
+
+```json
+{
+  "errorMessage": "AI patent extraction failed"
+}
+```
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "extractJobId": 9001,
+    "status": "FAILED"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
 
 ---
 

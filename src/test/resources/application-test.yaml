@@ -26,3 +26,10 @@ jwt:
 app:
   internal:
     api-key: test-internal-api-key
+  minio:
+    endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: skipa
+    region: us-east-1
+    presigned-url-expiry-seconds: 600
