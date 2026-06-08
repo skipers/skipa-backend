@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -29,7 +30,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PatentExtractJobServiceTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
     private PatentExtractJobRepository patentExtractJobRepository;
@@ -160,7 +162,8 @@ class PatentExtractJobServiceTest {
         assertThat(response.extractJobId()).isEqualTo(1L);
         assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
         assertThat(response.status()).isEqualTo(PatentExtractJobStatus.COMPLETED.name());
-        assertThat(response.result().get("title").asText()).isEqualTo("Patent");
+        assertThat(response.result()).isInstanceOfSatisfying(java.util.Map.class,
+                result -> assertThat(result.get("title")).isEqualTo("Patent"));
         assertThat(response.completedAt()).isNotNull();
     }
 

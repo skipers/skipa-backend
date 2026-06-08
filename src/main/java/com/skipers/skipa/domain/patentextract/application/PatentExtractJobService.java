@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.patentextract.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractJobStatusResponse;
@@ -21,6 +22,7 @@ public class PatentExtractJobService {
     private final PatentExtractJobRepository patentExtractJobRepository;
     private final PatentExtractStorageService patentExtractStorageService;
     private final PatentExtractPublisher patentExtractPublisher;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.minio.presigned-url-expiry-seconds}")
     private int presignedUrlExpirySeconds;
@@ -61,7 +63,7 @@ public class PatentExtractJobService {
             throw new PatentExtractException(ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
         }
 
-        return PatentExtractResultResponse.from(job);
+        return PatentExtractResultResponse.of(job, toResponseResult(job.getResultJson()));
     }
 
     @Transactional
@@ -85,6 +87,27 @@ public class PatentExtractJobService {
     private PatentExtractJob getJob(Long extractJobId) {
         return patentExtractJobRepository.findById(extractJobId)
                 .orElseThrow(() -> new PatentExtractException(ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND));
+    }
+
+    private JsonNode normalizeResultJson(JsonNode resultJson) {
+        if (resultJson == null || !resultJson.isTextual()) {
+            return resultJson;
+        }
+
+        try {
+            return objectMapper.readTree(resultJson.asText());
+        } catch (Exception e) {
+            return resultJson;
+        }
+    }
+
+    private Object toResponseResult(JsonNode resultJson) {
+        JsonNode normalizedResultJson = normalizeResultJson(resultJson);
+        if (normalizedResultJson == null || normalizedResultJson.isNull()) {
+            return null;
+        }
+
+        return objectMapper.convertValue(normalizedResultJson, Object.class);
     }
 
     private String buildTemporaryPdfObjectKey(Long extractJobId) {

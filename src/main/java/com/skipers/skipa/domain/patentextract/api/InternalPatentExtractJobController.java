@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.patentextract.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patentextract.application.PatentExtractJobService;
 import com.skipers.skipa.domain.patentextract.dto.request.PatentExtractCompleteRequest;
 import com.skipers.skipa.domain.patentextract.dto.request.PatentExtractFailRequest;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalPatentExtractJobController {
 
     private final PatentExtractJobService patentExtractJobService;
+    private final ObjectMapper objectMapper;
 
     @PatchMapping("/{extractJobId}/complete")
     public ApiResponse<PatentExtractCallbackResponse> complete(
@@ -26,7 +28,7 @@ public class InternalPatentExtractJobController {
             @Valid @RequestBody PatentExtractCompleteRequest request
     ) {
         return ApiResponse.ok(PatentExtractCallbackResponse.from(
-                patentExtractJobService.complete(extractJobId, request.result())
+                patentExtractJobService.complete(extractJobId, objectMapper.valueToTree(request.result()))
         ));
     }
 
