@@ -58,6 +58,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     List<Review> findAllByReviewCycleIdAndPatentIdIn(Long reviewCycleId, Collection<Long> patentIds);
 
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
+    List<Review> findAllByReviewCycleId(Long reviewCycleId);
+
     boolean existsByReviewCycleId(Long reviewCycleId);
 
     void deleteAllByPatentId(Long patentId);

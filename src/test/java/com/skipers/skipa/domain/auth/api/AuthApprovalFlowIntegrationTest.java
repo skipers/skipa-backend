@@ -1220,10 +1220,12 @@ class AuthApprovalFlowIntegrationTest {
         Patent firstPatent = patentRepository.save(Patent.builder()
                 .title("First Review Patent")
                 .applicationNumber("APP-REVIEW-FIRST")
+                .currentDepartment(department)
                 .build());
         Patent secondPatent = patentRepository.save(Patent.builder()
                 .title("Second Review Patent")
                 .applicationNumber("APP-REVIEW-SECOND")
+                .currentDepartment(otherDepartment)
                 .build());
         Review firstReview = reviewRepository.save(Review.builder()
                 .patent(firstPatent)
@@ -1274,6 +1276,19 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.checked").value(false))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
+
+        mockMvc.perform(get("/reviews/stats")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
+                .andExpect(jsonPath("$.data.total").value(2))
+                .andExpect(jsonPath("$.data.requested").value(1))
+                .andExpect(jsonPath("$.data.done").value(1))
+                .andExpect(jsonPath("$.data.unread").value(1))
+                .andExpect(jsonPath("$.data.maintain").value(1))
+                .andExpect(jsonPath("$.data.progressRate").value(50.0))
+                .andExpect(jsonPath("$.data.byDepartment[0].departmentId").value(otherDepartment.getId()))
+                .andExpect(jsonPath("$.data.byTechField[0].maintain").value(1));
 
         mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
                         .header("Authorization", "Bearer " + businessToken))

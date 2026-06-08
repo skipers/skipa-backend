@@ -18,4 +18,6 @@ public interface PatentRepository extends JpaRepository<Patent, Long> {
     Page<Patent> findByCurrentDepartmentId(Long departmentId, Pageable pageable);
 
     Page<Patent> findByCurrentDepartmentIdAndTitleContainingIgnoreCase(Long departmentId, String keyword, Pageable pageable);
+
+    long countByCurrentDepartmentIsNull();
 }

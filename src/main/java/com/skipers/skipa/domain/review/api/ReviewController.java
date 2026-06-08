@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewStatsResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -84,6 +85,18 @@ public class ReviewController {
                 checked,
                 pageable
         )));
+    }
+
+    /**
+     * 현재 활성 주기 기준 사업부 검토 통계를 조회한다.
+     *
+     * @return 사업부 검토 통계
+     */
+    @Operation(summary = "사업부 검토 통계 조회", description = "현재 활성 주기 기준 사업부 검토 통계를 조회합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @GetMapping("/reviews/stats")
+    public ApiResponse<ReviewStatsResponse> getStats() {
+        return ApiResponse.ok(reviewService.getStats());
     }
 
     /**
