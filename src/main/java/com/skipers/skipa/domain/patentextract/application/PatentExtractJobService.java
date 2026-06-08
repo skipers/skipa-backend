@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patentextract.application;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractJobStatusResponse;
+import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractResultResponse;
 import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractUploadUrlResponse;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -36,8 +37,7 @@ public class PatentExtractJobService {
 
     @Transactional
     public PatentExtractJobStatusResponse completeUpload(Long extractJobId) {
-        PatentExtractJob job = patentExtractJobRepository.findById(extractJobId)
-                .orElseThrow(() -> new PatentExtractException(ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND));
+        PatentExtractJob job = getJob(extractJobId);
 
         if (!patentExtractStorageService.exists(job.getObjectKey())) {
             throw new PatentExtractException(ErrorCode.PATENT_DOCUMENT_NOT_FOUND);
@@ -47,6 +47,25 @@ public class PatentExtractJobService {
         publishPatentExtractMessage(job);
 
         return PatentExtractJobStatusResponse.from(job);
+    }
+
+    public PatentExtractJobStatusResponse getStatus(Long extractJobId) {
+        return PatentExtractJobStatusResponse.from(getJob(extractJobId));
+    }
+
+    public PatentExtractResultResponse getResult(Long extractJobId) {
+        PatentExtractJob job = getJob(extractJobId);
+
+        if (!job.isCompleted()) {
+            throw new PatentExtractException(ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
+        }
+
+        return PatentExtractResultResponse.from(job);
+    }
+
+    private PatentExtractJob getJob(Long extractJobId) {
+        return patentExtractJobRepository.findById(extractJobId)
+                .orElseThrow(() -> new PatentExtractException(ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND));
     }
 
     private String buildTemporaryPdfObjectKey(Long extractJobId) {

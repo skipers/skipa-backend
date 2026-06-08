@@ -1,9 +1,11 @@
 package com.skipers.skipa.domain.patentextract.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJobStatus;
 import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractJobStatusResponse;
+import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractResultResponse;
 import com.skipers.skipa.domain.patentextract.dto.response.PatentExtractUploadUrlResponse;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -26,6 +28,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PatentExtractJobServiceTest {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Mock
     private PatentExtractJobRepository patentExtractJobRepository;
@@ -127,10 +131,65 @@ class PatentExtractJobServiceTest {
         assertPatentExtractError(() -> patentExtractJobService.completeUpload(1L), ErrorCode.EXTERNAL_SERVICE_ERROR);
     }
 
+    @Test
+    void getStatusReturnsCurrentJobStatus() {
+        PatentExtractJob job = uploadPendingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        PatentExtractJobStatusResponse response = patentExtractJobService.getStatus(1L);
+
+        assertThat(response.extractJobId()).isEqualTo(1L);
+        assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(response.status()).isEqualTo(PatentExtractJobStatus.UPLOAD_PENDING.name());
+    }
+
+    @Test
+    void getStatusRejectsMissingJob() {
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertPatentExtractError(() -> patentExtractJobService.getStatus(1L), ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND);
+    }
+
+    @Test
+    void getResultReturnsCompletedResultJson() {
+        PatentExtractJob job = completedJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        PatentExtractResultResponse response = patentExtractJobService.getResult(1L);
+
+        assertThat(response.extractJobId()).isEqualTo(1L);
+        assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(response.status()).isEqualTo(PatentExtractJobStatus.COMPLETED.name());
+        assertThat(response.result().get("title").asText()).isEqualTo("Patent");
+        assertThat(response.completedAt()).isNotNull();
+    }
+
+    @Test
+    void getResultRejectsJobThatIsNotCompleted() {
+        PatentExtractJob job = uploadPendingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        assertPatentExtractError(() -> patentExtractJobService.getResult(1L), ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
+    }
+
+    @Test
+    void getResultRejectsMissingJob() {
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertPatentExtractError(() -> patentExtractJobService.getResult(1L), ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND);
+    }
+
     private PatentExtractJob uploadPendingJob(Long extractJobId) {
         PatentExtractJob job = PatentExtractJob.createUploadPending();
         ReflectionTestUtils.setField(job, "id", extractJobId);
         job.assignObjectKey("patents/extract-jobs/%d/patent.pdf".formatted(extractJobId));
+        return job;
+    }
+
+    private PatentExtractJob completedJob(Long extractJobId) {
+        PatentExtractJob job = uploadPendingJob(extractJobId);
+        job.markUploadCompleted(null);
+        job.complete(objectMapper.createObjectNode().put("title", "Patent"), null);
         return job;
     }
 
