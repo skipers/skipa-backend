@@ -13,6 +13,9 @@ import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
+import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
+import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.user.domain.User;
@@ -38,6 +41,9 @@ public class PatentService {
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final PatentExtractJobRepository patentExtractJobRepository;
+    private final PatentOriginalPdfStorageService patentOriginalPdfStorageService;
+
     @Transactional
     public PatentDetailResponse create(PatentCreateRequest request) {
         String applicationNumber = request.applicationNumber();
@@ -45,6 +51,8 @@ public class PatentService {
         if (patentRepository.existsByApplicationNumber(applicationNumber)) {
             throw new PatentException(ErrorCode.DUPLICATE_APPLICATION_NUMBER);
         }
+
+        String originalPdfKey = resolveOriginalPdfKey(request);
 
         Patent patent = patentRepository.save(Patent.builder()
                 .title(request.title())
@@ -62,7 +70,7 @@ public class PatentService {
                 .inventor(request.inventor())
                 .expiryDate(request.expiryDate())
                 .citationCount(request.citationCount())
-                .originalPdfKey(request.originalPdfKey())
+                .originalPdfKey(originalPdfKey)
                 .managementNumber(request.managementNumber())
                 .businessField(request.businessField())
                 .techField(request.techField())
@@ -203,6 +211,27 @@ public class PatentService {
         return keyword == null
                 ? patentRepository.findAll(pageable)
                 : patentRepository.findByTitleContainingIgnoreCase(keyword, pageable);
+    }
+
+    private String resolveOriginalPdfKey(PatentCreateRequest request) {
+        if (request.extractJobId() == null) {
+            return request.originalPdfKey();
+        }
+
+        PatentExtractJob extractJob = patentExtractJobRepository.findById(request.extractJobId())
+                .orElseThrow(() -> new PatentExtractException(ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND));
+
+        if (!extractJob.isCompleted()) {
+            throw new PatentExtractException(ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
+        }
+
+        String finalObjectKey = buildFinalPdfObjectKey(request.applicationNumber());
+        patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), finalObjectKey);
+        return finalObjectKey;
+    }
+
+    private String buildFinalPdfObjectKey(String applicationNumber) {
+        return "patents/%s/patent.pdf".formatted(applicationNumber);
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {

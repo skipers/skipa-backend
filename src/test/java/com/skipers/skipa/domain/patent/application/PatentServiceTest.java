@@ -13,6 +13,10 @@ import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
+import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
+import com.skipers.skipa.domain.patentextract.domain.PatentExtractJobStatus;
+import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -67,6 +71,12 @@ class PatentServiceTest {
     @Mock
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
+    @Mock
+    private PatentExtractJobRepository patentExtractJobRepository;
+
+    @Mock
+    private PatentOriginalPdfStorageService patentOriginalPdfStorageService;
+
     @InjectMocks
     private PatentService patentService;
 
@@ -98,6 +108,66 @@ class PatentServiceTest {
         );
 
         verify(patentRepository, never()).save(any());
+    }
+
+    @Test
+    void createWithoutExtractJobPreservesOriginalPdfKey() {
+        when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PatentDetailResponse response = patentService.create(createRequest("Patent", "APP-1"));
+
+        assertThat(response.originalPdfKey()).isEqualTo("pdf-key");
+        verify(patentExtractJobRepository, never()).findById(any());
+        verify(patentOriginalPdfStorageService, never()).copy(any(), any());
+    }
+
+    @Test
+    void createWithExtractJobCopiesTemporaryPdfAndStoresFinalPdfKey() {
+        PatentExtractJob extractJob = completedExtractJob(7L, "patents/extract-jobs/7/patent.pdf");
+        when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
+        when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PatentDetailResponse response = patentService.create(createRequestWithExtractJob("Patent", "10-2026-0000000", 7L));
+
+        assertThat(response.originalPdfKey()).isEqualTo("patents/10-2026-0000000/patent.pdf");
+        verify(patentOriginalPdfStorageService).copy(
+                "patents/extract-jobs/7/patent.pdf",
+                "patents/10-2026-0000000/patent.pdf"
+        );
+        verify(patentRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
+                saved.getOriginalPdfKey().equals("patents/10-2026-0000000/patent.pdf")
+        ));
+    }
+
+    @Test
+    void createRejectsMissingExtractJob() {
+        when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertPatentExtractError(
+                () -> patentService.create(createRequestWithExtractJob("Patent", "APP-1", 7L)),
+                ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND
+        );
+
+        verify(patentRepository, never()).save(any());
+        verify(patentOriginalPdfStorageService, never()).copy(any(), any());
+    }
+
+    @Test
+    void createRejectsExtractJobThatIsNotCompleted() {
+        PatentExtractJob extractJob = PatentExtractJob.builder()
+                .objectKey("patents/extract-jobs/7/patent.pdf")
+                .status(PatentExtractJobStatus.ANALYZING)
+                .build();
+        ReflectionTestUtils.setField(extractJob, "id", 7L);
+        when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
+
+        assertPatentExtractError(
+                () -> patentService.create(createRequestWithExtractJob("Patent", "APP-1", 7L)),
+                ErrorCode.PATENT_EXTRACT_NOT_COMPLETED
+        );
+
+        verify(patentRepository, never()).save(any());
+        verify(patentOriginalPdfStorageService, never()).copy(any(), any());
     }
 
     @Test
@@ -279,6 +349,7 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
+                "pdf-key",
                 null,
                 null,
                 null,
@@ -292,6 +363,48 @@ class PatentServiceTest {
                 null,
                 null
         );
+    }
+
+    private PatentCreateRequest createRequestWithExtractJob(String title, String applicationNumber, Long extractJobId) {
+        return new PatentCreateRequest(
+                title,
+                applicationNumber,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "ignored-pdf-key",
+                extractJobId,
+                null,
+                null,
+                null,
+                List.of("Product"),
+                null,
+                null,
+                null,
+                " Initial Department ",
+                List.of("Keyword"),
+                null,
+                null
+        );
+    }
+
+    private PatentExtractJob completedExtractJob(Long extractJobId, String objectKey) {
+        PatentExtractJob extractJob = PatentExtractJob.builder()
+                .objectKey(objectKey)
+                .status(PatentExtractJobStatus.COMPLETED)
+                .build();
+        ReflectionTestUtils.setField(extractJob, "id", extractJobId);
+        return extractJob;
     }
 
     private User legalUser() {
@@ -337,6 +450,12 @@ class PatentServiceTest {
     private void assertPatentError(Runnable invocation, ErrorCode errorCode) {
         assertThatThrownBy(invocation::run)
                 .isInstanceOfSatisfying(PatentException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(errorCode));
+    }
+
+    private void assertPatentExtractError(Runnable invocation, ErrorCode errorCode) {
+        assertThatThrownBy(invocation::run)
+                .isInstanceOfSatisfying(PatentExtractException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(errorCode));
     }
 }

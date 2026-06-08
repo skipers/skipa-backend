@@ -8,4 +8,8 @@ public class PatentException extends BusinessException {
     public PatentException(ErrorCode errorCode) {
         super(errorCode);
     }
+
+    public PatentException(ErrorCode errorCode, Throwable cause) {
+        super(errorCode, cause);
+    }
 }
