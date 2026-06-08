@@ -716,6 +716,62 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void patentListSupportsLegalScreenFiltersAndExpandedFields() throws Exception {
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Filtered Patent")
+                .applicationNumber("APP-LIST-FILTER")
+                .registrationNumber("REG-LIST-FILTER")
+                .applicationDate(LocalDate.now().minusYears(1))
+                .expiryDate(LocalDate.now().plusYears(1))
+                .techField("반도체")
+                .businessField("메모리")
+                .overview("특허 개요")
+                .keywords(java.util.List.of("공정", "소자"))
+                .citationCount(7)
+                .filingCountry("KR")
+                .currentDepartment(department)
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(patent)
+                .status(PatentLegalStatusType.REGISTERED)
+                .changedAt(LocalDate.now())
+                .build());
+        Review review = reviewRepository.save(Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .build());
+        review.submit(BusinessOpinion.MAINTAIN, "유지", Instant.now());
+        String legalToken = createActiveUserToken("legal-patent-list", "legal-patent-list@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("departmentId", department.getId().toString())
+                        .param("reviewStatus", "done")
+                        .param("decision", "MAINTAIN")
+                        .param("status", "REGISTERED")
+                        .param("filingCountry", "KR")
+                        .param("techField", "반도체")
+                        .param("sort", "expiryDate"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
+                .andExpect(jsonPath("$.data.items[0].registrationNumber").value("REG-LIST-FILTER"))
+                .andExpect(jsonPath("$.data.items[0].latestLegalStatus").value("REGISTERED"))
+                .andExpect(jsonPath("$.data.items[0].techField").value("반도체"))
+                .andExpect(jsonPath("$.data.items[0].businessField").value("메모리"))
+                .andExpect(jsonPath("$.data.items[0].overview").value("특허 개요"))
+                .andExpect(jsonPath("$.data.items[0].keywords[0]").value("공정"))
+                .andExpect(jsonPath("$.data.items[0].citationCount").value(7))
+                .andExpect(jsonPath("$.data.items[0].filingCountry").value("KR"))
+                .andExpect(jsonPath("$.data.items[0].currentDepartmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.items[0].currentDepartmentName").value(department.getName()))
+                .andExpect(jsonPath("$.data.items[0].reviewStatus").value("done"))
+                .andExpect(jsonPath("$.data.items[0].decision").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.items[0].isOverdue").value(false));
+    }
+
+    @Test
     void patentApisReturnValidationDuplicateAndNotFoundErrors() throws Exception {
         String legalToken = createActiveUserToken("legal-errors", "legal-errors@example.com", UserRole.LEGAL);
 

@@ -21,11 +21,17 @@ import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
+import com.skipers.skipa.domain.review.domain.BusinessOpinion;
+import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
+import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -38,9 +44,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -52,6 +61,7 @@ public class PatentService {
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewCycleRepository reviewCycleRepository;
     private final ReportRepository reportRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final PatentExtractJobRepository patentExtractJobRepository;
@@ -141,6 +151,50 @@ public class PatentService {
                 : findPatents(normalizedKeyword, sortedPageable);
 
         return patents.map(PatentListResponse::from);
+    }
+
+    public Page<PatentListResponse> getAll(
+            User user,
+            String keyword,
+            Long departmentId,
+            String reviewStatus,
+            String decision,
+            List<String> statuses,
+            String filingCountry,
+            String techField,
+            String sort,
+            Pageable pageable
+    ) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        List<Patent> patents = user.getRole() == UserRole.BUSINESS
+                ? findBusinessPatents(user, normalizedKeyword)
+                : findPatents(normalizedKeyword);
+        Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
+        Optional<ReviewCycle> activeReviewCycle = findActiveReviewCycle();
+        Map<Long, Review> reviewsByPatentId = activeReviewCycle
+                .map(reviewCycle -> latestReviewsByPatentId(reviewRepository.findAllByReviewCycleId(reviewCycle.getId())))
+                .orElseGet(Map::of);
+        Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
+        BusinessOpinion parsedDecision = parseDecision(decision);
+        LocalDate today = LocalDate.now();
+
+        List<PatentListResponse> responses = patents.stream()
+                .filter(patent -> matchesDepartment(patent, departmentId))
+                .filter(patent -> matchesReviewStatus(patent, reviewsByPatentId.get(patent.getId()), reviewStatus, today))
+                .filter(patent -> matchesDecision(reviewsByPatentId.get(patent.getId()), parsedDecision))
+                .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
+                .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
+                .filter(patent -> matchesText(patent.getTechField(), techField))
+                .map(patent -> toListResponse(
+                        patent,
+                        latestStatuses.get(patent.getId()),
+                        reviewsByPatentId.get(patent.getId()),
+                        today
+                ))
+                .sorted(listSort(sort))
+                .toList();
+
+        return page(responses, pageable);
     }
 
     public PatentStatsResponse getStats() {
@@ -282,6 +336,27 @@ public class PatentService {
                 : patentRepository.findByTitleContainingIgnoreCase(keyword, pageable);
     }
 
+    private List<Patent> findBusinessPatents(User user, String keyword) {
+        if (user.getDepartment() == null) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+
+        Long departmentId = user.getDepartment().getId();
+        return keyword == null
+                ? patentRepository.findByCurrentDepartmentId(departmentId, Pageable.unpaged()).getContent()
+                : patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(
+                        departmentId,
+                        keyword,
+                        Pageable.unpaged()
+                ).getContent();
+    }
+
+    private List<Patent> findPatents(String keyword) {
+        return keyword == null
+                ? patentRepository.findAll()
+                : patentRepository.findByTitleContainingIgnoreCase(keyword, Pageable.unpaged()).getContent();
+    }
+
     private Map<Long, PatentLegalStatusType> latestLegalStatuses(List<PatentLegalStatus> legalStatuses) {
         Map<Long, PatentLegalStatus> latestByPatentId = new HashMap<>();
         for (PatentLegalStatus legalStatus : legalStatuses) {
@@ -295,6 +370,164 @@ public class PatentService {
         Map<Long, PatentLegalStatusType> latestStatuses = new HashMap<>();
         latestByPatentId.forEach((patentId, legalStatus) -> latestStatuses.put(patentId, legalStatus.getStatus()));
         return latestStatuses;
+    }
+
+    private Optional<ReviewCycle> findActiveReviewCycle() {
+        LocalDate today = LocalDate.now();
+        return reviewCycleRepository
+                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today);
+    }
+
+    private Map<Long, Review> latestReviewsByPatentId(List<Review> reviews) {
+        Map<Long, Review> latestReviews = new HashMap<>();
+        for (Review review : reviews) {
+            Long patentId = review.getPatent().getId();
+            Review current = latestReviews.get(patentId);
+            if (current == null || review.getId() > current.getId()) {
+                latestReviews.put(patentId, review);
+            }
+        }
+        return latestReviews;
+    }
+
+    private Set<PatentLegalStatusType> parseLegalStatuses(List<String> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<PatentLegalStatusType> parsedStatuses = new HashSet<>();
+        for (String status : statuses) {
+            if (status == null || status.isBlank()) {
+                continue;
+            }
+            try {
+                parsedStatuses.add(PatentLegalStatusType.valueOf(status));
+            } catch (IllegalArgumentException e) {
+                throw new PatentException(ErrorCode.INVALID_REQUEST);
+            }
+        }
+        return parsedStatuses;
+    }
+
+    private BusinessOpinion parseDecision(String decision) {
+        if (decision == null || decision.isBlank()) {
+            return null;
+        }
+        try {
+            return BusinessOpinion.valueOf(decision);
+        } catch (IllegalArgumentException e) {
+            throw new PatentException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private boolean matchesDepartment(Patent patent, Long departmentId) {
+        if (departmentId == null) {
+            return true;
+        }
+        Department department = patent.getCurrentDepartment();
+        if (departmentId == -1L) {
+            return department == null;
+        }
+        return department != null && department.getId().equals(departmentId);
+    }
+
+    private boolean matchesReviewStatus(Patent patent, Review review, String reviewStatus, LocalDate today) {
+        if (reviewStatus == null || reviewStatus.isBlank()) {
+            return true;
+        }
+        return switch (reviewStatus) {
+            case "unassigned" -> patent.getCurrentDepartment() == null;
+            case "unread" -> review != null
+                    && review.getStatus() == ReviewStatus.SUBMITTED
+                    && !review.isChecked();
+            case "requested" -> review != null
+                    && review.getStatus() == ReviewStatus.PENDING
+                    && !review.getDueDate().isBefore(today);
+            case "overdue" -> review != null
+                    && review.getStatus() == ReviewStatus.PENDING
+                    && review.getDueDate().isBefore(today);
+            case "done" -> review != null && review.getStatus() == ReviewStatus.SUBMITTED;
+            default -> throw new PatentException(ErrorCode.INVALID_REQUEST);
+        };
+    }
+
+    private boolean matchesDecision(Review review, BusinessOpinion decision) {
+        return decision == null || review != null && review.getOpinion() == decision;
+    }
+
+    private boolean matchesLegalStatus(PatentLegalStatusType latestStatus, Set<PatentLegalStatusType> statuses) {
+        return statuses.isEmpty() || latestStatus != null && statuses.contains(latestStatus);
+    }
+
+    private boolean matchesText(String actual, String expected) {
+        return expected == null || expected.isBlank() || expected.equals(actual);
+    }
+
+    private PatentListResponse toListResponse(
+            Patent patent,
+            PatentLegalStatusType latestLegalStatus,
+            Review review,
+            LocalDate today
+    ) {
+        String reviewStatus = reviewStatus(patent, review, today);
+        return PatentListResponse.of(
+                patent,
+                latestLegalStatus == null ? null : latestLegalStatus.name(),
+                reviewStatus,
+                review == null || review.getOpinion() == null ? null : review.getOpinion().name(),
+                review != null && review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today)
+        );
+    }
+
+    private String reviewStatus(Patent patent, Review review, LocalDate today) {
+        if (patent.getCurrentDepartment() == null) {
+            return "unassigned";
+        }
+        if (review == null) {
+            return null;
+        }
+        if (review.getStatus() == ReviewStatus.SUBMITTED) {
+            return "done";
+        }
+        if (review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today)) {
+            return "overdue";
+        }
+        if (review.getStatus() == ReviewStatus.PENDING) {
+            return "requested";
+        }
+        return null;
+    }
+
+    private Comparator<PatentListResponse> listSort(String sort) {
+        Comparator<PatentListResponse> comparator = switch (sort == null ? "" : sort) {
+            case "expiryDate" -> Comparator.comparing(
+                    PatentListResponse::expiryDate,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            case "applicationDate" -> Comparator.comparing(
+                    PatentListResponse::applicationDate,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            );
+            case "citationCount" -> Comparator.comparing(
+                    PatentListResponse::citationCount,
+                    Comparator.nullsLast(Comparator.naturalOrder())
+            ).reversed();
+            case "", "id" -> Comparator.comparing(PatentListResponse::id).reversed();
+            default -> throw new PatentException(ErrorCode.INVALID_REQUEST);
+        };
+        return comparator.thenComparing(PatentListResponse::id, Comparator.reverseOrder());
+    }
+
+    private Page<PatentListResponse> page(List<PatentListResponse> responses, Pageable pageable) {
+        if (pageable.isUnpaged()) {
+            return new PageImpl<>(responses);
+        }
+        int start = (int) pageable.getOffset();
+        if (start >= responses.size()) {
+            return new PageImpl<>(List.of(), pageable, responses.size());
+        }
+        int end = Math.min(start + pageable.getPageSize(), responses.size());
+        return new PageImpl<>(responses.subList(start, end), pageable, responses.size());
     }
 
     private int compareLegalStatusRecency(PatentLegalStatus left, PatentLegalStatus right) {
