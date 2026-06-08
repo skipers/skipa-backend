@@ -18,8 +18,8 @@ SKIPA(SK IP Agent)는 사내 특허의 가치 평가와 Life Cycle 관리를 지
 - 특허 평가 보고서 생성 요청과 조회
 - 로그아웃, 토큰 갱신, 내 정보 조회
 - 관리자 사용자 관리
-- 특허 원문 PDF 업로드와 메타데이터 추출
-- RabbitMQ 기반 AI Worker 연동, MinIO 보고서 파일 연동, KIPRIS 연동
+- 특허 원문 PDF 업로드와 AI 기반 특허 등록 초안 추출
+- RabbitMQ 기반 AI Worker 연동, MinIO 특허 원문·보고서 파일 연동, KIPRIS 연동
 - Legal 팀 대시보드
 
 API의 상세 내용은 [api-spec.md](api-spec.md)를 참고해 주세요.
@@ -86,6 +86,7 @@ src/main/java/com/skipers/skipa
     ├── department             # 부서 관리
     ├── patent                 # 특허, 권리 상태, 연차료, 사업부 검토 화면
     ├── review                 # 검토 주기, 검토 요청, Legal 모니터링
+    ├── patentextract          # 특허 원문 PDF 업로드, AI 추출 작업, RabbitMQ 발행
     └── report                 # 평가 보고서 생성 요청, RabbitMQ 발행, MinIO URL 조회
 ```
 
@@ -104,7 +105,7 @@ src/main/java/com/skipers/skipa
 | 패키지 | 역할 |
 | --- | --- |
 | `domain.user` 확장 | 관리자 사용자 목록 조회, 생성, 수정, 삭제 |
-| `domain.patent` 문서 확장 | 특허 원문 업로드, 삭제, 메타데이터 추출 |
+| `domain.patentextract` | 특허 원문 PDF 업로드, AI 추출 작업 상태·결과 관리 |
 | `domain.dashboard` | Legal 팀 대시보드 통계 |
 | `infra.ai` | AI 서버 연동 |
 | `infra.storage` | MinIO 등 파일 저장소 연동 |
@@ -176,6 +177,47 @@ X-Internal-Api-Key: <secret>
 
 프론트는 `GET /patents/{patentId}/reports/{reportId}/status`를 polling하고, `COMPLETED`가 되면 `GET /patents/{patentId}/reports/{reportId}`로 백엔드가 생성한 MinIO presigned URL을 받습니다. 프론트 응답에는 MinIO object key를 직접 노출하지 않습니다.
 
+### 특허 원문 PDF 추출 흐름
+
+프론트는 `POST /patent-extract-jobs/upload-url`로 업로드 URL을 발급받습니다. 백엔드는 `patent_extract_jobs`를 `UPLOAD_PENDING` 상태로 생성하고, `patents/extract-jobs/{extractJobId}/patent.pdf` 경로의 MinIO PUT presigned URL을 반환합니다.
+
+프론트가 presigned URL로 PDF를 업로드한 뒤 `POST /patent-extract-jobs/{extractJobId}/upload-complete`를 호출하면, 백엔드는 MinIO object 존재 여부를 확인하고 RabbitMQ에 추출 메시지를 발행합니다.
+
+```text
+Frontend -> Backend presigned URL -> MinIO upload -> Backend upload-complete -> RabbitMQ -> AI Worker -> Backend internal API -> Frontend polling -> Patent create
+```
+
+RabbitMQ 메시지 payload는 다음 형식입니다.
+
+```json
+{
+  "type": "PATENT_EXTRACT",
+  "extractJobId": 9001,
+  "objectKey": "patents/extract-jobs/9001/patent.pdf"
+}
+```
+
+AI Worker는 완료 시 추출 결과 JSON을 백엔드 내부 API에 전달합니다.
+
+```http
+PATCH /internal/patent-extract-jobs/{extractJobId}/complete
+X-Internal-Api-Key: <secret>
+```
+
+```json
+{
+  "result": {
+    "title": "반도체 패키지 구조",
+    "applicationNumber": "10-2026-0000000",
+    "keywords": ["패키지", "반도체"],
+    "overview": "특허 개요",
+    "coreContent": "특허 핵심 내용"
+  }
+}
+```
+
+프론트는 `GET /patent-extract-jobs/{extractJobId}/status`를 polling하고, `COMPLETED`가 되면 `GET /patent-extract-jobs/{extractJobId}/result`로 특허 등록 폼에 자동 입력할 결과를 받습니다. 사용자가 검토 후 `POST /patents`에 `extractJobId`를 포함해 최종 생성하면, 백엔드는 임시 PDF를 `patents/{applicationNumber}/patent.pdf`로 복사하고 `patents.originalPdfKey`에 최종 object key를 저장합니다.
+
 ### Enum
 
 API와 DB에 저장되는 enum 문자열은 영어 대문자로 통일합니다.
@@ -184,6 +226,7 @@ API와 DB에 저장되는 enum 문자열은 영어 대문자로 통일합니다.
 | --- | --- |
 | 권리 상태 | `PUBLISHED`, `REGISTERED`, `REJECTED`, `ABANDONED`, `EXPIRED`, `INVALIDATED`, `WITHDRAWN` |
 | 연차료 납부 상태 | `PAID`, `UNPAID`, `ABANDONED` |
+| 특허 추출 작업 상태 | `UPLOAD_PENDING`, `ANALYZING`, `COMPLETED`, `FAILED` |
 | 보고서 생성 상태 | `GENERATING`, `COMPLETED`, `FAILED` |
 | 검토 제출 상태 | `PENDING`, `SUBMITTED` |
 | 사업부 의견 | `MAINTAIN`, `ABANDON` |
@@ -197,7 +240,7 @@ API와 DB에 저장되는 enum 문자열은 영어 대문자로 통일합니다.
 | Users | `/users` | 관리자 사용자 관리 |
 | Departments | `/departments` | 부서 관리 |
 | Patents | `/patents` | 특허 관리와 담당 부서 변경 |
-| Patent Documents | `/patents/{patentId}/documents` | 특허 문서 관리 |
+| Patent Extract Jobs | `/patent-extract-jobs` | 특허 원문 PDF 업로드와 AI 추출 작업 |
 | Patent Legal Status | `/patents/{patentId}/legal-status` | 권리 상태 이력 관리 |
 | Patent Annuities | `/patents/{patentId}/annuities` | 연차료 납부 이력 관리 |
 | Review Cycles | `/review-cycles` | 검토 주기 관리 |
@@ -224,7 +267,7 @@ LOCAL_SEED_PASSWORD=1234
 
 ### 2. 로컬 실행
 
-`local` profile은 Redis, RabbitMQ, MinIO 없이 실행하는 것을 기본으로 합니다. 로컬에서 보고서 생성 요청은 큐 발행 없이 통과하며, 실제 AI Worker/MinIO 연동 검증은 배포 또는 별도 연동 환경에서 확인합니다.
+`local` profile은 Redis, RabbitMQ, MinIO 없이 실행하는 것을 기본으로 합니다. 로컬에서 보고서 생성 요청과 특허 추출 업로드 URL 발급은 외부 연동 없이 동작하며, 실제 AI Worker/MinIO 연동 검증은 배포 또는 별도 연동 환경에서 확인합니다.
 
 처음 한 번, 또는 로컬 DB 파일을 삭제한 뒤 다시 시작할 때 파일 DB를 생성합니다.
 
