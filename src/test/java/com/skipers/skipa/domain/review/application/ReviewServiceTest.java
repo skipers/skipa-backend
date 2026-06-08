@@ -13,6 +13,7 @@ import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.global.exception.BusinessException;
@@ -108,6 +109,7 @@ class ReviewServiceTest {
         assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate());
         assertThat(response.opinion()).isNull();
         assertThat(response.submittedAt()).isNull();
+        assertThat(response.checked()).isFalse();
     }
 
     @Test
@@ -282,23 +284,23 @@ class ReviewServiceTest {
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
         Review review = review();
-        when(reviewRepository.findAllByFilters(ReviewStatus.PENDING, 1L, 10L, sortedPageable))
+        when(reviewRepository.findAllByFilters(ReviewStatus.PENDING, 1L, 10L, false, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll("PENDING", 1L, 10L, pageable).getContent())
+        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
-        verify(reviewRepository).findAllByFilters(ReviewStatus.PENDING, 1L, 10L, sortedPageable);
+        verify(reviewRepository).findAllByFilters(ReviewStatus.PENDING, 1L, 10L, false, sortedPageable);
     }
 
     @Test
     void getAllRejectsInvalidStatus() {
         assertError(
-                () -> reviewService.getAll("대기", null, null, PageRequest.of(0, 20)),
+                () -> reviewService.getAll("대기", null, null, null, PageRequest.of(0, 20)),
                 ReviewException.class,
                 ErrorCode.INVALID_REQUEST
         );
-        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any());
+        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -315,6 +317,41 @@ class ReviewServiceTest {
 
         assertError(
                 () -> reviewService.get(100L),
+                ReviewException.class,
+                ErrorCode.REVIEW_NOT_FOUND
+        );
+    }
+
+    @Test
+    void confirmMarksSubmittedReviewAsChecked() {
+        Review review = review();
+        review.submit(com.skipers.skipa.domain.review.domain.BusinessOpinion.MAINTAIN, "유지", java.time.Instant.now());
+        when(reviewRepository.findById(100L)).thenReturn(Optional.of(review));
+
+        ReviewConfirmResponse response = reviewService.confirm(100L);
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.checked()).isTrue();
+        assertThat(review.isChecked()).isTrue();
+    }
+
+    @Test
+    void confirmRejectsPendingReview() {
+        when(reviewRepository.findById(100L)).thenReturn(Optional.of(review()));
+
+        assertError(
+                () -> reviewService.confirm(100L),
+                ReviewException.class,
+                ErrorCode.INVALID_REVIEW_STATUS
+        );
+    }
+
+    @Test
+    void confirmRejectsMissingReview() {
+        when(reviewRepository.findById(100L)).thenReturn(Optional.empty());
+
+        assertError(
+                () -> reviewService.confirm(100L),
                 ReviewException.class,
                 ErrorCode.REVIEW_NOT_FOUND
         );

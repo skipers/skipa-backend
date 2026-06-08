@@ -13,6 +13,7 @@ import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
+import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -127,14 +128,20 @@ public class ReviewService {
         );
     }
 
-    public Page<ReviewResponse> getAll(String status, Long departmentId, Long patentId, Pageable pageable) {
+    public Page<ReviewResponse> getAll(
+            String status,
+            Long departmentId,
+            Long patentId,
+            Boolean checked,
+            Pageable pageable
+    ) {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findAllByFilters(parseStatus(status), departmentId, patentId, sortedPageable)
+        return reviewRepository.findAllByFilters(parseStatus(status), departmentId, patentId, checked, sortedPageable)
                 .map(ReviewResponse::from);
     }
 
@@ -143,6 +150,18 @@ public class ReviewService {
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
 
         return ReviewResponse.from(review);
+    }
+
+    @Transactional
+    public ReviewConfirmResponse confirm(Long reviewId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
+        if (review.getStatus() != ReviewStatus.SUBMITTED) {
+            throw new ReviewException(ErrorCode.INVALID_REVIEW_STATUS);
+        }
+
+        review.confirm();
+        return ReviewConfirmResponse.from(review);
     }
 
     private ReviewStatus parseStatus(String status) {

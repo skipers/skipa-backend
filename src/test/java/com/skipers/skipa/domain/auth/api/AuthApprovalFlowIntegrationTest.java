@@ -1254,6 +1254,7 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/reviews")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "SUBMITTED")
+                        .param("checked", "false")
                         .param("departmentId", otherDepartment.getId().toString())
                         .param("patentId", secondPatent.getId().toString()))
                 .andExpect(status().isOk())
@@ -1261,7 +1262,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(secondReview.getId()))
                 .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.items[0].comment").value("유지 의견입니다."))
-                .andExpect(jsonPath("$.data.items[0].status").value("SUBMITTED"));
+                .andExpect(jsonPath("$.data.items[0].status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.data.items[0].checked").value(false));
 
         mockMvc.perform(get("/reviews/{reviewId}", secondReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
@@ -1270,7 +1272,43 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.patentId").value(secondPatent.getId()))
                 .andExpect(jsonPath("$.data.departmentId").value(otherDepartment.getId()))
                 .andExpect(jsonPath("$.data.opinion").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.checked").value(false))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(secondReview.getId()))
+                .andExpect(jsonPath("$.data.checked").value(true));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.checked").value(true));
+
+        mockMvc.perform(get("/reviews")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("checked", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(0));
+
+        mockMvc.perform(get("/reviews")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("checked", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].checked").value(true));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", firstReview.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REVIEW_STATUS"));
     }
 
     @Test
@@ -1284,6 +1322,11 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
         mockMvc.perform(get("/reviews/{reviewId}", 999999L)
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
+
+        mockMvc.perform(patch("/reviews/{reviewId}/confirm", 999999L)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
