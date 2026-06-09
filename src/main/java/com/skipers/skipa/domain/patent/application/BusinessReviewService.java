@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewHistoryResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewSummaryResponse;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
@@ -88,6 +89,33 @@ public class BusinessReviewService {
         return reviews.map(review -> {
             Report report = reportsByPatentId.get(review.getPatent().getId());
             return BusinessReviewResponse.from(
+                    review,
+                    report == null ? null : report.getTotalScore(),
+                    report == null ? null : report.getValueGrade()
+            );
+        });
+    }
+
+    public Page<BusinessReviewHistoryResponse> getHistory(
+            User user,
+            Integer year,
+            Integer quarter,
+            Pageable pageable
+    ) {
+        Long departmentId = getDepartmentId(user);
+        validateHistoryFilter(year, quarter);
+
+        Page<Review> reviews = reviewRepository.findSubmittedBusinessReviewHistory(
+                departmentId,
+                LocalDate.now(),
+                year,
+                quarter,
+                pageable
+        );
+        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(reviews.getContent());
+        return reviews.map(review -> {
+            Report report = reportsByPatentId.get(review.getPatent().getId());
+            return BusinessReviewHistoryResponse.from(
                     review,
                     report == null ? null : report.getTotalScore(),
                     report == null ? null : report.getValueGrade()
@@ -189,6 +217,15 @@ public class BusinessReviewService {
         try {
             return BusinessOpinion.valueOf(opinion);
         } catch (IllegalArgumentException e) {
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private void validateHistoryFilter(Integer year, Integer quarter) {
+        if (year == null && quarter != null) {
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
+        }
+        if (quarter != null && (quarter < 1 || quarter > 4)) {
             throw new ReviewException(ErrorCode.INVALID_REQUEST);
         }
     }

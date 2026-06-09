@@ -13,6 +13,7 @@ import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.ReviewSubmitRequest;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewHistoryResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.user.domain.User;
@@ -183,6 +184,64 @@ class BusinessReviewServiceTest {
                 submittedTo,
                 pageable
         ).getContent()).hasSize(1);
+    }
+
+    @Test
+    void getHistoryReturnsSubmittedPastReviewsWithYearQuarterFilters() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        ReviewCycle pastCycle = ReviewCycle.builder()
+                .year(2025)
+                .quarter(4)
+                .startDate(LocalDate.now().minusMonths(6))
+                .endDate(LocalDate.now().minusMonths(3))
+                .build();
+        ReflectionTestUtils.setField(pastCycle, "id", 2L);
+        Review pastReview = Review.builder()
+                .patent(review.getPatent())
+                .department(review.getDepartment())
+                .reviewCycle(pastCycle)
+                .status(ReviewStatus.SUBMITTED)
+                .build();
+        ReflectionTestUtils.setField(pastReview, "id", 200L);
+        Report report = Report.builder()
+                .patent(review.getPatent())
+                .totalScore(new BigDecimal("88.00"))
+                .valueGrade("A")
+                .status(ReportStatus.COMPLETED)
+                .build();
+        ReflectionTestUtils.setField(report, "id", 1000L);
+        when(reviewRepository.findSubmittedBusinessReviewHistory(
+                1L,
+                LocalDate.now(),
+                2025,
+                4,
+                pageable
+        )).thenReturn(new PageImpl<>(List.of(pastReview), pageable, 1));
+        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(report));
+
+        List<BusinessReviewHistoryResponse> responses = businessReviewService.getHistory(
+                businessUser,
+                2025,
+                4,
+                pageable
+        ).getContent();
+
+        assertThat(responses)
+                .extracting(BusinessReviewHistoryResponse::id)
+                .containsExactly(200L);
+        assertThat(responses.get(0).reviewCycle().year()).isEqualTo(2025);
+        assertThat(responses.get(0).reviewCycle().quarter()).isEqualTo(4);
+        assertThat(responses.get(0))
+                .extracting(BusinessReviewHistoryResponse::totalScore, BusinessReviewHistoryResponse::valueGrade)
+                .containsExactly(new BigDecimal("88.00"), "A");
+    }
+
+    @Test
+    void getHistoryRejectsQuarterWithoutYear() {
+        assertReviewError(
+                () -> businessReviewService.getHistory(businessUser, null, 1, PageRequest.of(0, 20)),
+                ErrorCode.INVALID_REQUEST
+        );
     }
 
     @Test

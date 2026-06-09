@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.patent.api;
 
 import com.skipers.skipa.domain.patent.application.BusinessReviewService;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewHistoryResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewSummaryResponse;
 import com.skipers.skipa.global.response.ApiResponse;
@@ -85,6 +86,37 @@ public class BusinessReviewController {
                 opinion,
                 submittedFrom,
                 submittedTo,
+                pageable
+        )));
+    }
+
+    /**
+     * 본인 소속 부서의 과거 제출 이력을 조회한다(page/size 기반).
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param year 검토 주기 연도(선택)
+     * @param quarter 검토 주기 분기(선택, year와 함께 사용)
+     * @param pageable page/size 정보
+     * @return 과거 사업부 검토 제출 이력 목록 페이지
+     */
+    @Operation(
+            summary = "[Business] 사업부 검토 과거 제출 이력 조회",
+            description = "사업부 사용자의 소속 부서 기준 과거 검토 주기의 제출 완료 이력을 조회합니다. "
+                    + "필터: 미지정 시 전체, year 지정 시 해당 연도 전체, year와 quarter 지정 시 해당 연도/분기입니다. "
+                    + "현재 진행 중인 검토 주기는 포함하지 않습니다."
+    )
+    @PreAuthorize("hasRole('BUSINESS')")
+    @GetMapping("/history")
+    public ApiResponse<PageResponse<BusinessReviewHistoryResponse>> getHistory(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer quarter,
+            @PageableDefault(page = 0, size = 20) Pageable pageable
+    ) {
+        return ApiResponse.ok(PageResponse.from(businessReviewService.getHistory(
+                userDetails.getUser(),
+                year,
+                quarter,
                 pageable
         )));
     }

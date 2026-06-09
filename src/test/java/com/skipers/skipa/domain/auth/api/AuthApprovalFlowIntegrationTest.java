@@ -1241,6 +1241,130 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void businessReviewHistoryReturnsPastSubmittedReviewsByYearAndQuarter() throws Exception {
+        Department otherDepartment = departmentRepository.save(Department.builder()
+                .name("제조")
+                .build());
+        ReviewCycle cycle2026Q1 = reviewCycleRepository.save(ReviewCycle.builder()
+                .year(2026)
+                .quarter(1)
+                .startDate(LocalDate.now().minusMonths(5))
+                .endDate(LocalDate.now().minusMonths(3))
+                .build());
+        ReviewCycle cycle2025Q4 = reviewCycleRepository.save(ReviewCycle.builder()
+                .year(2025)
+                .quarter(4)
+                .startDate(LocalDate.now().minusMonths(8))
+                .endDate(LocalDate.now().minusMonths(6))
+                .build());
+        Patent latestPastPatent = patentRepository.save(Patent.builder()
+                .title("Latest Past Review Patent")
+                .applicationNumber("HIST-2026-Q1")
+                .currentDepartment(department)
+                .build());
+        Patent olderPastPatent = patentRepository.save(Patent.builder()
+                .title("Older Past Review Patent")
+                .applicationNumber("HIST-2025-Q4")
+                .currentDepartment(department)
+                .build());
+        Patent currentPatent = patentRepository.save(Patent.builder()
+                .title("Current Submitted Review Patent")
+                .applicationNumber("HIST-CURRENT")
+                .currentDepartment(department)
+                .build());
+        Patent pendingPatent = patentRepository.save(Patent.builder()
+                .title("Past Pending Review Patent")
+                .applicationNumber("HIST-PENDING")
+                .currentDepartment(department)
+                .build());
+        Patent otherPatent = patentRepository.save(Patent.builder()
+                .title("Other Department Past Review Patent")
+                .applicationNumber("HIST-OTHER")
+                .currentDepartment(otherDepartment)
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(latestPastPatent)
+                .department(department)
+                .reviewCycle(cycle2026Q1)
+                .opinion(BusinessOpinion.MAINTAIN)
+                .comment("2026 Q1 제출")
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now().minusSeconds(20))
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(olderPastPatent)
+                .department(department)
+                .reviewCycle(cycle2025Q4)
+                .opinion(BusinessOpinion.ABANDON)
+                .comment("2025 Q4 제출")
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now().minusSeconds(40))
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(currentPatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.MAINTAIN)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now())
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(pendingPatent)
+                .department(department)
+                .reviewCycle(cycle2025Q4)
+                .status(ReviewStatus.PENDING)
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(otherPatent)
+                .department(otherDepartment)
+                .reviewCycle(cycle2025Q4)
+                .opinion(BusinessOpinion.MAINTAIN)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now())
+                .build());
+        reportRepository.save(Report.builder()
+                .patent(latestPastPatent)
+                .totalScore(new BigDecimal("90.00"))
+                .valueGrade("S")
+                .status(ReportStatus.COMPLETED)
+                .build());
+        String businessToken = createActiveUserToken("business-review-history", "business-review-history@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/business-reviews/history")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].patentId").value(latestPastPatent.getId()))
+                .andExpect(jsonPath("$.data.items[0].reviewCycle.year").value(2026))
+                .andExpect(jsonPath("$.data.items[0].reviewCycle.quarter").value(1))
+                .andExpect(jsonPath("$.data.items[0].totalScore").value(90.0))
+                .andExpect(jsonPath("$.data.items[0].valueGrade").value("S"))
+                .andExpect(jsonPath("$.data.items[1].patentId").value(olderPastPatent.getId()));
+
+        mockMvc.perform(get("/business-reviews/history")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("year", "2025"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].patentId").value(olderPastPatent.getId()))
+                .andExpect(jsonPath("$.data.items[0].reviewCycle.year").value(2025));
+
+        mockMvc.perform(get("/business-reviews/history")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("year", "2025")
+                        .param("quarter", "4"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].reviewCycle.quarter").value(4));
+
+        mockMvc.perform(get("/business-reviews/history")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("quarter", "4"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void businessUserCanReadOnlyAssignedPatentHistory() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")

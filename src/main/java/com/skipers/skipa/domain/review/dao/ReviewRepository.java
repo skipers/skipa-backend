@@ -54,6 +54,28 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("""
             select review
             from Review review
+            where review.department.id = :departmentId
+              and review.status = com.skipers.skipa.domain.review.domain.ReviewStatus.SUBMITTED
+              and review.reviewCycle.endDate < :today
+              and (:year is null or review.reviewCycle.year = :year)
+              and (:quarter is null or review.reviewCycle.quarter = :quarter)
+            order by review.reviewCycle.year desc,
+                     review.reviewCycle.quarter desc,
+                     review.submittedAt desc,
+                     review.id desc
+            """)
+    Page<Review> findSubmittedBusinessReviewHistory(
+            @Param("departmentId") Long departmentId,
+            @Param("today") LocalDate today,
+            @Param("year") Integer year,
+            @Param("quarter") Integer quarter,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
+    @Query("""
+            select review
+            from Review review
             where review.reviewCycle.id = :reviewCycleId
               and (:status is null or review.status = :status)
               and (:departmentId is null or review.department.id = :departmentId)
