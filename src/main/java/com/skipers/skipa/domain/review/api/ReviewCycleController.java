@@ -46,6 +46,18 @@ public class ReviewCycleController {
     }
 
     /**
+     * 현재 활성화된 검토 주기를 조회한다.
+     *
+     * @return 현재 검토 주기
+     */
+    @Operation(summary = "현재 검토 주기 조회", description = "오늘 날짜가 포함된 현재 활성 검토 주기의 연도, 분기, 기간 범위를 조회합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/current")
+    public ApiResponse<ReviewCycleResponse> getCurrent() {
+        return ApiResponse.ok(reviewCycleService.getCurrent());
+    }
+
+    /**
      * 검토 주기를 ID로 조회한다.
      *
      * @param reviewCycleId 검토 주기 ID

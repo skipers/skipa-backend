@@ -9,7 +9,6 @@ import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
@@ -113,8 +112,8 @@ class AuthApprovalFlowIntegrationTest {
                 .name("통신")
                 .build());
         reviewCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name("2026년 2분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(1))
                 .build());
@@ -1000,7 +999,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.departmentId").value(department.getId()))
                 .andExpect(jsonPath("$.data.departmentName").value("통신"))
                 .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
-                .andExpect(jsonPath("$.data.reviewCycleName").value("2026년 2분기 정기 재평가"))
+                .andExpect(jsonPath("$.data.reviewCycleYear").value(2026))
+                .andExpect(jsonPath("$.data.reviewCycleQuarter").value(2))
                 .andExpect(jsonPath("$.data.opinion").value(nullValue()))
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.submittedAt").value(nullValue()))
@@ -1113,8 +1113,8 @@ class AuthApprovalFlowIntegrationTest {
                 .currentDepartment(department)
                 .build());
         ReviewCycle previousCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name("2026년 1분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(1)
                 .startDate(LocalDate.now().minusMonths(3))
                 .endDate(LocalDate.now().minusMonths(1))
                 .build());
@@ -1150,8 +1150,8 @@ class AuthApprovalFlowIntegrationTest {
                 .currentDepartment(department)
                 .build());
         ReviewCycle previousCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name("2026년 1분기 미제출 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(1)
                 .startDate(LocalDate.now().minusMonths(3))
                 .endDate(LocalDate.now().minusMonths(1))
                 .build());
@@ -1543,8 +1543,8 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Admin Review Cycle",
-                                  "type": "AD_HOC",
+                                  "year": 2027,
+                                  "quarter": 1,
                                   "startDate": "2027-01-01",
                                   "endDate": "2027-03-31"
                                 }
@@ -1556,8 +1556,8 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Admin Updated Review Cycle",
-                                  "type": "AD_HOC",
+                                  "year": 2027,
+                                  "quarter": 1,
                                   "startDate": "2027-01-01",
                                   "endDate": "2027-03-31"
                                 }
@@ -1586,15 +1586,15 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "2026년 하반기 수시 재평가",
-                                  "type": "AD_HOC",
+                                  "year": 2027,
+                                  "quarter": 1,
                                   "startDate": "%s",
                                   "endDate": "%s"
                                 }
                                 """.formatted(startDate, endDate)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.name").value("2026년 하반기 수시 재평가"))
-                .andExpect(jsonPath("$.data.type").value("AD_HOC"))
+                .andExpect(jsonPath("$.data.year").value(2027))
+                .andExpect(jsonPath("$.data.quarter").value(1))
                 .andExpect(jsonPath("$.data.startDate").value(startDate.toString()))
                 .andExpect(jsonPath("$.data.endDate").value(endDate.toString()))
                 .andReturn();
@@ -1622,15 +1622,15 @@ class AuthApprovalFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "2026년 하반기 정기 재평가",
-                                  "type": "QUARTERLY",
+                                  "year": 2027,
+                                  "quarter": 2,
                                   "startDate": "%s",
                                   "endDate": "%s"
                                 }
                                 """.formatted(updatedStartDate, updatedEndDate)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.name").value("2026년 하반기 정기 재평가"))
-                .andExpect(jsonPath("$.data.type").value("QUARTERLY"))
+                .andExpect(jsonPath("$.data.year").value(2027))
+                .andExpect(jsonPath("$.data.quarter").value(2))
                 .andExpect(jsonPath("$.data.startDate").value(updatedStartDate.toString()))
                 .andExpect(jsonPath("$.data.endDate").value(updatedEndDate.toString()));
 

@@ -8,7 +8,6 @@ import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -83,8 +82,8 @@ class ExpiringPatentControllerIntegrationTest {
                 .name("배터리 사업부")
                 .build());
         reviewCycleRepository.save(ReviewCycle.builder()
-                .name("2026년 2분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(10))
                 .build());
