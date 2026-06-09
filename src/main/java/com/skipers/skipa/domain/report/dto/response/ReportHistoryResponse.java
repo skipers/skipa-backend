@@ -28,11 +28,11 @@ public record ReportHistoryResponse(
             @Schema(description = "평가 날짜", example = "2026-06-09T09:00:00Z")
             Instant evaluatedAt,
 
-            @Schema(description = "사업부 결정", example = "MAINTAIN")
-            String decision,
+            @Schema(description = "사업부 제출 의견", example = "MAINTAIN")
+            String opinion,
 
-            @Schema(description = "사업부 의견", example = "핵심 특허로 판단되어 유지를 요청합니다.")
-            String opinion
+            @Schema(description = "사업부 제출 코멘트", example = "핵심 특허로 판단되어 유지를 요청합니다.")
+            String comment
     ) {
     }
 }

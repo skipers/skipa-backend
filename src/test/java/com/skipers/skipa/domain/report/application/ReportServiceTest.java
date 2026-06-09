@@ -185,8 +185,8 @@ class ReportServiceTest {
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
         assertThat(response.url()).isEqualTo("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
-        assertThat(response.decision()).isEqualTo("MAINTAIN");
-        assertThat(response.opinion()).isEqualTo("유지 의견");
+        assertThat(response.opinion()).isEqualTo("MAINTAIN");
+        assertThat(response.comment()).isEqualTo("유지 의견");
         assertThat(response.submittedAt()).isEqualTo(Instant.parse("2026-02-01T00:00:00Z"));
         assertThat(ReportDetailResponse.class.getRecordComponents())
                 .extracting(recordComponent -> recordComponent.getName())
@@ -238,8 +238,8 @@ class ReportServiceTest {
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
         assertThat(response.url()).isEqualTo("https://minio.example.com/reports/1/report.json?signature=abc");
-        assertThat(response.decision()).isEqualTo("ABANDON");
-        assertThat(response.opinion()).isEqualTo("포기 의견");
+        assertThat(response.opinion()).isEqualTo("ABANDON");
+        assertThat(response.comment()).isEqualTo("포기 의견");
         assertThat(response.submittedAt()).isEqualTo(Instant.parse("2026-02-01T00:00:00Z"));
     }
 
@@ -272,7 +272,7 @@ class ReportServiceTest {
         verify(businessPatentAccessValidator).validate(null, 10L);
         assertThat(response.items()).hasSize(2);
         assertThat(response.items().get(0))
-                .extracting("id", "patentId", "totalScore", "valueGrade", "evaluatedAt", "decision", "opinion")
+                .extracting("id", "patentId", "totalScore", "valueGrade", "evaluatedAt", "opinion", "comment")
                 .containsExactly(
                         2L,
                         10L,
@@ -283,7 +283,7 @@ class ReportServiceTest {
                         "유지 의견"
                 );
         assertThat(response.items().get(1))
-                .extracting("id", "patentId", "totalScore", "valueGrade", "evaluatedAt", "decision", "opinion")
+                .extracting("id", "patentId", "totalScore", "valueGrade", "evaluatedAt", "opinion", "comment")
                 .containsExactly(
                         1L,
                         10L,

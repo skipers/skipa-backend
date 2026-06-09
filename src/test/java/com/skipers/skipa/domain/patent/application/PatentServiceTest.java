@@ -402,7 +402,7 @@ class PatentServiceTest {
         Object item = result.getContent().get(0);
         assertThat(item)
                 .extracting("id", "latestLegalStatus", "techField", "currentDepartmentId", "currentDepartmentName",
-                        "reviewStatus", "decision", "checked", "latestReportScore", "isOverdue", "filingCountry")
+                        "reviewStatus", "opinion", "checked", "latestReportScore", "isOverdue", "filingCountry")
                 .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false,
                         new BigDecimal("82.50"), false, "KR");
     }

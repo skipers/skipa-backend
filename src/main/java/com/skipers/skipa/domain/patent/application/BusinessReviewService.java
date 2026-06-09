@@ -100,16 +100,19 @@ public class BusinessReviewService {
             User user,
             Integer year,
             Integer quarter,
+            String opinion,
             Pageable pageable
     ) {
         Long departmentId = getDepartmentId(user);
         validateHistoryFilter(year, quarter);
+        BusinessOpinion parsedOpinion = parseOpinion(opinion);
 
         Page<Review> reviews = reviewRepository.findSubmittedBusinessReviewHistory(
                 departmentId,
                 LocalDate.now(),
                 year,
                 quarter,
+                parsedOpinion,
                 pageable
         );
         Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(reviews.getContent());

@@ -158,7 +158,7 @@ public class PatentService {
             String keyword,
             Long departmentId,
             String reviewStatus,
-            String decision,
+            String opinion,
             Boolean checked,
             List<String> statuses,
             String filingCountry,
@@ -177,13 +177,13 @@ public class PatentService {
                 .orElseGet(Map::of);
         Map<Long, BigDecimal> latestReportScores = latestReportScoresByPatentId();
         Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
-        BusinessOpinion parsedDecision = parseDecision(decision);
+        BusinessOpinion parsedOpinion = parseOpinion(opinion);
         LocalDate today = LocalDate.now();
 
         List<PatentListResponse> responses = patents.stream()
                 .filter(patent -> matchesDepartment(patent, departmentId))
                 .filter(patent -> matchesReviewStatus(patent, reviewsByPatentId.get(patent.getId()), reviewStatus, today))
-                .filter(patent -> matchesDecision(reviewsByPatentId.get(patent.getId()), parsedDecision))
+                .filter(patent -> matchesOpinion(reviewsByPatentId.get(patent.getId()), parsedOpinion))
                 .filter(patent -> matchesChecked(reviewsByPatentId.get(patent.getId()), checked))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
@@ -371,12 +371,12 @@ public class PatentService {
         return parsedStatuses;
     }
 
-    private BusinessOpinion parseDecision(String decision) {
-        if (decision == null || decision.isBlank()) {
+    private BusinessOpinion parseOpinion(String opinion) {
+        if (opinion == null || opinion.isBlank()) {
             return null;
         }
         try {
-            return BusinessOpinion.valueOf(decision);
+            return BusinessOpinion.valueOf(opinion);
         } catch (IllegalArgumentException e) {
             throw new PatentException(ErrorCode.INVALID_REQUEST);
         }
@@ -413,8 +413,8 @@ public class PatentService {
         };
     }
 
-    private boolean matchesDecision(Review review, BusinessOpinion decision) {
-        return decision == null || review != null && review.getOpinion() == decision;
+    private boolean matchesOpinion(Review review, BusinessOpinion opinion) {
+        return opinion == null || review != null && review.getOpinion() == opinion;
     }
 
     private boolean matchesChecked(Review review, Boolean checked) {

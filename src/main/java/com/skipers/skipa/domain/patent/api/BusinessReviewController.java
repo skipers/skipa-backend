@@ -100,13 +100,15 @@ public class BusinessReviewController {
      * @param userDetails 인증 사용자 정보
      * @param year 검토 주기 연도(선택)
      * @param quarter 검토 주기 분기(선택, year와 함께 사용)
+     * @param opinion 사업부 의견(선택)
      * @param pageable page/size 정보
      * @return 과거 사업부 검토 제출 이력 목록 페이지
      */
     @Operation(
             summary = "[Business] 사업부 검토 과거 제출 이력 조회",
             description = "사업부 사용자의 소속 부서 기준 과거 검토 주기의 제출 완료 이력을 조회합니다. "
-                    + "필터: 미지정 시 전체, year 지정 시 해당 연도 전체, year와 quarter 지정 시 해당 연도/분기입니다. "
+                    + "필터: 미지정 시 전체, year 지정 시 해당 연도 전체, year와 quarter 지정 시 해당 연도/분기, "
+                    + "opinion(MAINTAIN, ABANDON) 지정 시 유지/포기 의견입니다. "
                     + "현재 진행 중인 검토 주기는 포함하지 않습니다."
     )
     @PreAuthorize("hasRole('BUSINESS')")
@@ -115,12 +117,14 @@ public class BusinessReviewController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer quarter,
+            @RequestParam(required = false) String opinion,
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(businessReviewService.getHistory(
                 userDetails.getUser(),
                 year,
                 quarter,
+                opinion,
                 pageable
         )));
     }

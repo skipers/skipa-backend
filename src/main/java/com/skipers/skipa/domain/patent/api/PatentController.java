@@ -94,7 +94,7 @@ public class PatentController {
      * @param keyword 특허명 검색 키워드(선택)
      * @param departmentId 부서 ID(선택, -1은 미배정)
      * @param reviewStatus 검토 상태(선택)
-     * @param decision 사업부 결정(선택)
+     * @param opinion 사업부 의견(선택)
      * @param checked 회신 확인 여부(선택)
      * @param status 권리 상태(선택, 복수 가능)
      * @param filingCountry 출원국(선택)
@@ -108,7 +108,7 @@ public class PatentController {
             description = "특허 목록을 페이지 단위로 조회합니다. "
                     + "필터: keyword(특허명), departmentId(부서 ID, -1은 미배정), "
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
-                    + "decision(MAINTAIN, ABANDON), checked(true/false), "
+                    + "opinion(MAINTAIN, ABANDON), checked(true/false), "
                     + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
                     + "filingCountry, techField. "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
@@ -124,7 +124,7 @@ public class PatentController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) String reviewStatus,
-            @RequestParam(required = false) String decision,
+            @RequestParam(required = false) String opinion,
             @RequestParam(required = false) Boolean checked,
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) String filingCountry,
@@ -137,7 +137,7 @@ public class PatentController {
                 keyword,
                 departmentId,
                 reviewStatus,
-                decision,
+                opinion,
                 checked,
                 status,
                 filingCountry,

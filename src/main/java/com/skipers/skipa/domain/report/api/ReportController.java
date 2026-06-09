@@ -80,7 +80,7 @@ public class ReportController {
             summary = "[Common] 최신 평가 보고서 조회",
             description = "특허의 최신 평가 보고서를 조회합니다. "
                     + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL, totalScore, valueGrade를 함께 반환합니다. "
-                    + "해당 보고서에 매칭되는 제출 의견이 있으면 decision, opinion, submittedAt을 함께 반환합니다."
+                    + "해당 보고서에 매칭되는 제출 의견이 있으면 opinion, comment, submittedAt을 함께 반환합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/latest")
@@ -123,7 +123,7 @@ public class ReportController {
     @Operation(
             summary = "[Common] 평가 보고서 단일 조회",
             description = "평가 보고서 ID로 상세 정보를 조회합니다. "
-                    + "해당 보고서에 매칭되는 제출 의견이 있으면 decision, opinion, submittedAt을 함께 반환합니다."
+                    + "해당 보고서에 매칭되는 제출 의견이 있으면 opinion, comment, submittedAt을 함께 반환합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}")

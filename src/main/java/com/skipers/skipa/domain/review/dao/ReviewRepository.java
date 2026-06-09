@@ -59,6 +59,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
               and review.reviewCycle.endDate < :today
               and (:year is null or review.reviewCycle.year = :year)
               and (:quarter is null or review.reviewCycle.quarter = :quarter)
+              and (:opinion is null or review.opinion = :opinion)
             order by review.reviewCycle.year desc,
                      review.reviewCycle.quarter desc,
                      review.submittedAt desc,
@@ -69,6 +70,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             @Param("today") LocalDate today,
             @Param("year") Integer year,
             @Param("quarter") Integer quarter,
+            @Param("opinion") BusinessOpinion opinion,
             Pageable pageable
     );
 

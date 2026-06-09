@@ -271,6 +271,7 @@ class BusinessReviewServiceTest {
                 LocalDate.now(),
                 2025,
                 4,
+                BusinessOpinion.MAINTAIN,
                 pageable
         )).thenReturn(new PageImpl<>(List.of(pastReview), pageable, 1));
         when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(report));
@@ -279,6 +280,7 @@ class BusinessReviewServiceTest {
                 businessUser,
                 2025,
                 4,
+                "MAINTAIN",
                 pageable
         ).getContent();
 
@@ -295,7 +297,7 @@ class BusinessReviewServiceTest {
     @Test
     void getHistoryRejectsQuarterWithoutYear() {
         assertReviewError(
-                () -> businessReviewService.getHistory(businessUser, null, 1, PageRequest.of(0, 20)),
+                () -> businessReviewService.getHistory(businessUser, null, 1, null, PageRequest.of(0, 20)),
                 ErrorCode.INVALID_REQUEST
         );
     }

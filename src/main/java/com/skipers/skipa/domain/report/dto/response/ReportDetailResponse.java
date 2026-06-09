@@ -30,11 +30,11 @@ public record ReportDetailResponse(
         @Schema(description = "평가 완료 시각", example = "2026-06-09T09:00:00Z")
         Instant evaluatedAt,
 
-        @Schema(description = "해당 보고서에 대한 사업부 제출 결정", example = "MAINTAIN")
-        String decision,
-
-        @Schema(description = "해당 보고서에 대한 사업부 제출 의견", example = "핵심 특허로 판단되어 유지를 요청합니다.")
+        @Schema(description = "해당 보고서에 대한 사업부 제출 의견", example = "MAINTAIN")
         String opinion,
+
+        @Schema(description = "해당 보고서에 대한 사업부 제출 코멘트", example = "핵심 특허로 판단되어 유지를 요청합니다.")
+        String comment,
 
         @Schema(description = "해당 보고서에 대한 사업부 의견 제출 시각", example = "2026-06-10T09:00:00Z")
         Instant submittedAt,

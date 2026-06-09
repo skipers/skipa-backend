@@ -181,8 +181,8 @@ class ReportAsyncFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].totalScore").value(91.0))
                 .andExpect(jsonPath("$.data.items[0].valueGrade").value("S"))
                 .andExpect(jsonPath("$.data.items[0].evaluatedAt").value("2026-01-01T00:00:00Z"))
-                .andExpect(jsonPath("$.data.items[0].decision").isEmpty())
-                .andExpect(jsonPath("$.data.items[0].opinion").isEmpty());
+                .andExpect(jsonPath("$.data.items[0].opinion").isEmpty())
+                .andExpect(jsonPath("$.data.items[0].comment").isEmpty());
     }
 
     @Test
