@@ -11,6 +11,7 @@ public record ReportDetailResponse(
         String status,
         String url,
         BigDecimal totalScore,
+        String valueGrade,
         Instant evaluatedAt,
         Instant createdAt,
         Instant updatedAt
@@ -23,6 +24,7 @@ public record ReportDetailResponse(
                 report.getStatus().name(),
                 url,
                 report.getTotalScore(),
+                report.getValueGrade(),
                 report.getEvaluatedAt(),
                 report.getCreatedAt(),
                 report.getUpdatedAt()

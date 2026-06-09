@@ -104,11 +104,11 @@ public class ReportService {
     }
 
     @Transactional
-    public ReportStatusResponse complete(Long reportId, String reportKey, BigDecimal totalScore) {
+    public ReportStatusResponse complete(Long reportId, String reportKey, BigDecimal totalScore, String valueGrade) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        report.complete(reportKey, totalScore, Instant.now());
+        report.complete(reportKey, totalScore, valueGrade, Instant.now());
 
         return ReportStatusResponse.from(report);
     }

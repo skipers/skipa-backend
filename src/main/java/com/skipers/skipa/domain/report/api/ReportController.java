@@ -78,7 +78,7 @@ public class ReportController {
     @Operation(
             summary = "[Common] 최신 평가 보고서 조회",
             description = "특허의 최신 평가 보고서를 조회합니다. "
-                    + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL과 totalScore를 함께 반환합니다."
+                    + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL, totalScore, valueGrade를 함께 반환합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/latest")
