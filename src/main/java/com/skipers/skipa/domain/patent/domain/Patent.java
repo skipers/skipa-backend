@@ -74,6 +74,9 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "citation_count") // 피인용 수
     private Integer citationCount;
 
+    @Column(name = "examination_claim_count") // 심사청구항수
+    private Integer examinationClaimCount;
+
     @Column(name = "original_pdf_key", length = 500) // 원문 파일 키
     private String originalPdfKey;
 
@@ -133,6 +136,7 @@ public class Patent extends BaseTimeEntity {
             String inventor,
             LocalDate expiryDate,
             Integer citationCount,
+            Integer examinationClaimCount,
             String originalPdfKey,
             String managementNumber,
             String businessField,
@@ -162,6 +166,7 @@ public class Patent extends BaseTimeEntity {
         this.inventor = inventor;
         this.expiryDate = expiryDate;
         this.citationCount = citationCount;
+        this.examinationClaimCount = examinationClaimCount;
         this.originalPdfKey = originalPdfKey;
         this.managementNumber = managementNumber;
         this.businessField = businessField;
@@ -193,6 +198,7 @@ public class Patent extends BaseTimeEntity {
             String inventor,
             LocalDate expiryDate,
             Integer citationCount,
+            Integer examinationClaimCount,
             String originalPdfKey,
             String managementNumber,
             String businessField,
@@ -221,6 +227,7 @@ public class Patent extends BaseTimeEntity {
         this.inventor = inventor;
         this.expiryDate = expiryDate;
         this.citationCount = citationCount;
+        this.examinationClaimCount = examinationClaimCount;
         this.originalPdfKey = originalPdfKey;
         this.managementNumber = managementNumber;
         this.businessField = businessField;

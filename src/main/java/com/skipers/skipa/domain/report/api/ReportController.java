@@ -63,7 +63,7 @@ public class ReportController {
     public ApiResponse<PageResponse<ReportResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long patentId,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(reportService.getAll(userDetails.getUser(), patentId, pageable)));
     }

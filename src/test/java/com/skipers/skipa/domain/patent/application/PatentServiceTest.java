@@ -506,6 +506,7 @@ class PatentServiceTest {
         assertThat(response.registrationNumber()).isEqualTo("REG-1");
         assertThat(response.applicationDate()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(response.applicant()).isEqualTo("Applicant");
+        assertThat(response.examinationClaimCount()).isEqualTo(5);
         assertThat(response.initialDepartment()).isEqualTo("Initial Department");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
@@ -695,6 +696,7 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
+                null,
                 "pdf-key",
                 null,
                 null,
@@ -715,6 +717,7 @@ class PatentServiceTest {
         return new PatentCreateRequest(
                 title,
                 applicationNumber,
+                null,
                 null,
                 null,
                 null,
@@ -778,6 +781,7 @@ class PatentServiceTest {
                 "Inventor",
                 LocalDate.of(2046, 1, 1),
                 3,
+                5,
                 "pdf-key",
                 "management",
                 "business",

@@ -74,7 +74,7 @@ public class DepartmentController {
     @GetMapping
     public ApiResponse<PageResponse<DepartmentResponse>> getAll(
             @RequestParam(required = false) String keyword,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(departmentService.getAll(keyword, pageable)));
     }

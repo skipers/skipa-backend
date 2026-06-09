@@ -92,6 +92,7 @@ public class PatentService {
                 .inventor(request.inventor())
                 .expiryDate(request.expiryDate())
                 .citationCount(request.citationCount())
+                .examinationClaimCount(request.examinationClaimCount())
                 .originalPdfKey(originalPdfKey)
                 .managementNumber(request.managementNumber())
                 .businessField(request.businessField())
@@ -240,6 +241,7 @@ public class PatentService {
                 request.inventor(),
                 request.expiryDate(),
                 request.citationCount(),
+                request.examinationClaimCount(),
                 request.originalPdfKey(),
                 request.managementNumber(),
                 request.businessField(),

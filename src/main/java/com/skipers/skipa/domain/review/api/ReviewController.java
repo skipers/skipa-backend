@@ -80,7 +80,7 @@ public class ReviewController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long patentId,
             @RequestParam(required = false) Boolean checked,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(reviewService.getAll(
                 status,

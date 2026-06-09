@@ -78,7 +78,7 @@ public class BusinessReviewController {
             @RequestParam(required = false) String opinion,
             @RequestParam(required = false) LocalDate submittedFrom,
             @RequestParam(required = false) LocalDate submittedTo,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(businessReviewService.getAll(
                 userDetails.getUser(),
@@ -111,7 +111,7 @@ public class BusinessReviewController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer quarter,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(businessReviewService.getHistory(
                 userDetails.getUser(),

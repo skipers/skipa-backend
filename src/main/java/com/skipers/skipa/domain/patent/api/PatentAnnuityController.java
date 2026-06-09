@@ -65,7 +65,7 @@ public class PatentAnnuityController {
     public ApiResponse<PageResponse<PatentAnnuityResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long patentId,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(patentAnnuityService.getAll(userDetails.getUser(), patentId, pageable)));
     }

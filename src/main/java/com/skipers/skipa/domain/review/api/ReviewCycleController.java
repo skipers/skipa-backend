@@ -85,7 +85,7 @@ public class ReviewCycleController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<ReviewCycleResponse>> getAll(
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(reviewCycleService.getAll(pageable)));
     }

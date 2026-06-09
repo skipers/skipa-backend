@@ -128,7 +128,7 @@ public class PatentController {
             @RequestParam(required = false) String filingCountry,
             @RequestParam(required = false) String techField,
             @RequestParam(required = false) String sort,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(patentService.getAll(
                 userDetails.getUser(),

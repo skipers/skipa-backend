@@ -37,6 +37,7 @@ class PatentTest {
                 "Inventor",
                 LocalDate.of(2046, 1, 1),
                 3,
+                5,
                 "pdf-key",
                 "management",
                 "business",
@@ -66,6 +67,7 @@ class PatentTest {
         assertThat(patent.getInventor()).isEqualTo("Inventor");
         assertThat(patent.getExpiryDate()).isEqualTo(LocalDate.of(2046, 1, 1));
         assertThat(patent.getCitationCount()).isEqualTo(3);
+        assertThat(patent.getExaminationClaimCount()).isEqualTo(5);
         assertThat(patent.getOriginalPdfKey()).isEqualTo("pdf-key");
         assertThat(patent.getManagementNumber()).isEqualTo("management");
         assertThat(patent.getBusinessField()).isEqualTo("business");
@@ -88,6 +90,7 @@ class PatentTest {
                 .applicationNumber("APP-1")
                 .applicant("Applicant")
                 .inventor("Inventor")
+                .examinationClaimCount(7)
                 .initialDepartment("Legal")
                 .currentDepartment(currentDepartment)
                 .build();
@@ -107,12 +110,14 @@ class PatentTest {
         assertThat(detailResponse.id()).isEqualTo(1L);
         assertThat(detailResponse.relatedProducts()).containsExactly("Product");
         assertThat(detailResponse.keywords()).containsExactly("Keyword");
+        assertThat(detailResponse.examinationClaimCount()).isEqualTo(7);
         assertThat(detailResponse.initialDepartment()).isEqualTo("Legal");
         assertThat(detailResponse.currentDepartmentId()).isEqualTo(10L);
         assertThat(detailResponse.currentDepartmentName()).isEqualTo("Legal");
         assertThat(detailResponse.createdAt()).isEqualTo(createdAt);
         assertThat(listResponse.title()).isEqualTo("Patent");
         assertThat(listResponse.applicationNumber()).isEqualTo("APP-1");
+        assertThat(listResponse.examinationClaimCount()).isEqualTo(7);
         assertThat(listResponse.updatedAt()).isEqualTo(updatedAt);
     }
 
