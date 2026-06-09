@@ -22,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Service
@@ -103,11 +104,11 @@ public class ReportService {
     }
 
     @Transactional
-    public ReportStatusResponse complete(Long reportId, String reportKey) {
+    public ReportStatusResponse complete(Long reportId, String reportKey, BigDecimal totalScore) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        report.complete(reportKey, Instant.now());
+        report.complete(reportKey, totalScore, Instant.now());
 
         return ReportStatusResponse.from(report);
     }

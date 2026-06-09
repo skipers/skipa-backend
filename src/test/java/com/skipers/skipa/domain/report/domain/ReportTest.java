@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.report.exception.ReportException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -17,10 +18,11 @@ class ReportTest {
         Report report = generatingReport();
         Instant evaluatedAt = Instant.parse("2026-06-07T08:55:00Z");
 
-        report.complete("reports/1/report.html", evaluatedAt);
+        report.complete("reports/1/report.html", new BigDecimal("82.50"), evaluatedAt);
 
         assertThat(report.getStatus()).isEqualTo(ReportStatus.COMPLETED);
         assertThat(report.getReportKey()).isEqualTo("reports/1/report.html");
+        assertThat(report.getTotalScore()).isEqualByComparingTo("82.50");
         assertThat(report.getEvaluatedAt()).isEqualTo(evaluatedAt);
         assertThat(report.isCompleted()).isTrue();
     }
@@ -30,12 +32,25 @@ class ReportTest {
         Report report = generatingReport();
 
         assertReportError(
-                () -> report.complete(" ", Instant.parse("2026-06-07T08:55:00Z")),
+                () -> report.complete(" ", new BigDecimal("82.50"), Instant.parse("2026-06-07T08:55:00Z")),
                 ErrorCode.INVALID_REQUEST
         );
 
         assertThat(report.getStatus()).isEqualTo(ReportStatus.GENERATING);
         assertThat(report.getReportKey()).isNull();
+    }
+
+    @Test
+    void completeRejectsMissingTotalScore() {
+        Report report = generatingReport();
+
+        assertReportError(
+                () -> report.complete("reports/1/report.html", null, Instant.parse("2026-06-07T08:55:00Z")),
+                ErrorCode.INVALID_REQUEST
+        );
+
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.GENERATING);
+        assertThat(report.getTotalScore()).isNull();
     }
 
     @Test
@@ -53,10 +68,10 @@ class ReportTest {
     @Test
     void finalizedReportCannotBeCompletedAgain() {
         Report report = generatingReport();
-        report.complete("reports/1/report.html", Instant.parse("2026-06-07T08:55:00Z"));
+        report.complete("reports/1/report.html", new BigDecimal("82.50"), Instant.parse("2026-06-07T08:55:00Z"));
 
         assertReportError(
-                () -> report.complete("reports/1/retry.html", Instant.parse("2026-06-07T09:00:00Z")),
+                () -> report.complete("reports/1/retry.html", new BigDecimal("83.00"), Instant.parse("2026-06-07T09:00:00Z")),
                 ErrorCode.REPORT_ALREADY_PROCESSED
         );
 

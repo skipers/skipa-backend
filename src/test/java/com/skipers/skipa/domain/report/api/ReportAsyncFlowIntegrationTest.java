@@ -119,12 +119,14 @@ class ReportAsyncFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "reportKey": "reports/%d/report.html"
+                                  "reportKey": "reports/%d/report.html",
+                                  "totalScore": 82.5
                                 }
                                 """.formatted(reportId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reportId").value(reportId))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.totalScore").value(82.5));
 
         when(reportStorageService.generatePresignedUrl("reports/%d/report.html".formatted(reportId)))
                 .thenReturn("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId));
@@ -133,12 +135,14 @@ class ReportAsyncFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.evaluatedAt").isNotEmpty());
 
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), reportId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
                 .andExpect(jsonPath("$.data.reportKey").doesNotExist());
 
@@ -147,6 +151,7 @@ class ReportAsyncFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(reportId))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
                 .andExpect(jsonPath("$.data.reportKey").doesNotExist());
     }

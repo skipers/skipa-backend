@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -106,14 +107,16 @@ class ReportServiceTest {
         Report report = report(1L, 10L);
         when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
 
-        ReportStatusResponse response = reportService.complete(1L, "reports/1/report.html");
+        ReportStatusResponse response = reportService.complete(1L, "reports/1/report.html", new BigDecimal("82.50"));
 
         assertThat(report.getStatus()).isEqualTo(ReportStatus.COMPLETED);
         assertThat(report.getReportKey()).isEqualTo("reports/1/report.html");
+        assertThat(report.getTotalScore()).isEqualByComparingTo("82.50");
         assertThat(report.getEvaluatedAt()).isNotNull();
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.totalScore()).isEqualByComparingTo("82.50");
     }
 
     @Test
@@ -121,7 +124,7 @@ class ReportServiceTest {
         when(reportRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertReportError(
-                () -> reportService.complete(1L, "reports/1/report.html"),
+                () -> reportService.complete(1L, "reports/1/report.html", new BigDecimal("82.50")),
                 ErrorCode.REPORT_NOT_FOUND
         );
     }
@@ -150,7 +153,7 @@ class ReportServiceTest {
     @Test
     void getReturnsPresignedUrlWithoutExposingReportKey() {
         Report report = report(1L, 10L);
-        report.complete("reports/1/report.html", null);
+        report.complete("reports/1/report.html", new BigDecimal("82.50"), null);
         when(reportRepository.findByIdAndPatentId(1L, 10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.html"))
                 .thenReturn("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
@@ -161,6 +164,7 @@ class ReportServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.url()).isEqualTo("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
         assertThat(ReportDetailResponse.class.getRecordComponents())
                 .extracting(recordComponent -> recordComponent.getName())
@@ -197,7 +201,7 @@ class ReportServiceTest {
     @Test
     void getLatestReturnsCompletedReportWithPresignedUrl() {
         Report report = report(1L, 10L);
-        report.complete("reports/1/report.json", null);
+        report.complete("reports/1/report.json", new BigDecimal("82.50"), null);
         when(patentRepository.existsById(10L)).thenReturn(true);
         when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.json"))
@@ -206,6 +210,7 @@ class ReportServiceTest {
         ReportDetailResponse response = reportService.getLatest(null, 10L);
 
         assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.url()).isEqualTo("https://minio.example.com/reports/1/report.json?signature=abc");
     }
 

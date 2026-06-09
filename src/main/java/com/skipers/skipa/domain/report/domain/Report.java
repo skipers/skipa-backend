@@ -20,6 +20,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -40,6 +41,9 @@ public class Report extends BaseTimeEntity {
     @Column(name = "report_key", length = 500) // 보고서 키(S3 key)
     private String reportKey;
 
+    @Column(name = "total_score", precision = 5, scale = 2) // AI 평가 총점
+    private BigDecimal totalScore;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20) // 생성 상태(GENERATING/COMPLETED/FAILED)
     private ReportStatus status;
@@ -48,21 +52,26 @@ public class Report extends BaseTimeEntity {
     private Instant evaluatedAt;
 
     @Builder
-    private Report(Patent patent, String reportKey, ReportStatus status, Instant evaluatedAt) {
+    private Report(Patent patent, String reportKey, BigDecimal totalScore, ReportStatus status, Instant evaluatedAt) {
         this.patent = patent;
         this.reportKey = reportKey;
+        this.totalScore = totalScore;
         this.status = status != null ? status : ReportStatus.GENERATING;
         this.evaluatedAt = evaluatedAt;
     }
 
-    public void complete(String reportKey, Instant evaluatedAt) {
+    public void complete(String reportKey, BigDecimal totalScore, Instant evaluatedAt) {
         validateGenerating();
 
         if (reportKey == null || reportKey.isBlank()) {
             throw new ReportException(ErrorCode.INVALID_REQUEST);
         }
+        if (totalScore == null) {
+            throw new ReportException(ErrorCode.INVALID_REQUEST);
+        }
 
         this.reportKey = reportKey;
+        this.totalScore = totalScore;
         this.status = ReportStatus.COMPLETED;
         this.evaluatedAt = evaluatedAt != null ? evaluatedAt : Instant.now();
     }

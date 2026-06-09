@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.report.dto.response;
 
 import com.skipers.skipa.domain.report.domain.Report;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 public record ReportDetailResponse(
@@ -9,6 +10,7 @@ public record ReportDetailResponse(
         Long patentId,
         String status,
         String url,
+        BigDecimal totalScore,
         Instant evaluatedAt,
         Instant createdAt,
         Instant updatedAt
@@ -20,6 +22,7 @@ public record ReportDetailResponse(
                 report.getPatent().getId(),
                 report.getStatus().name(),
                 url,
+                report.getTotalScore(),
                 report.getEvaluatedAt(),
                 report.getCreatedAt(),
                 report.getUpdatedAt()

@@ -21,6 +21,8 @@ import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJobStatus;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
@@ -43,6 +45,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -98,6 +101,10 @@ class PatentServiceTest {
     void setUp() {
         lenient().when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(any()))
                 .thenReturn(Optional.empty());
+        lenient().when(reportRepository.findFirstByPatentIdAndStatusOrderByIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
+        lenient().when(reportRepository.findAllByStatus(any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -217,10 +224,13 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
         when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(1L))
                 .thenReturn(Optional.of(latestStatus));
+        when(reportRepository.findFirstByPatentIdAndStatusOrderByIdDesc(1L, ReportStatus.COMPLETED))
+                .thenReturn(Optional.of(report(1L, patent, new BigDecimal("82.50"))));
 
         PatentDetailResponse response = patentService.get(1L);
 
         assertThat(response.latestLegalStatus()).isEqualTo("REGISTERED");
+        assertThat(response.latestReportScore()).isEqualByComparingTo("82.50");
         assertThat(response.currentDepartmentName()).isEqualTo("통신");
     }
 
@@ -301,6 +311,7 @@ class PatentServiceTest {
         ReviewCycle activeCycle = reviewCycle();
         Review maintainReview = submittedReview(10L, maintainPatent, telecom, activeCycle, BusinessOpinion.MAINTAIN, false);
         Review abandonReview = submittedReview(20L, abandonPatent, battery, activeCycle, BusinessOpinion.ABANDON, true);
+        Report completedReport = report(1L, maintainPatent, new BigDecimal("82.50"));
         when(patentRepository.findAll()).thenReturn(List.of(abandonPatent, maintainPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
                 legalStatus(100L, maintainPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
@@ -309,6 +320,7 @@ class PatentServiceTest {
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(activeCycle));
         when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(maintainReview, abandonReview));
+        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(completedReport));
 
         Page<?> result = patentService.getAll(
                 legalUser(),
@@ -328,8 +340,9 @@ class PatentServiceTest {
         Object item = result.getContent().get(0);
         assertThat(item)
                 .extracting("id", "latestLegalStatus", "techField", "currentDepartmentId", "currentDepartmentName",
-                        "reviewStatus", "decision", "checked", "isOverdue", "filingCountry")
-                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false, false, "KR");
+                        "reviewStatus", "decision", "checked", "latestReportScore", "isOverdue", "filingCountry")
+                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false,
+                        new BigDecimal("82.50"), false, "KR");
     }
 
     @Test
@@ -606,6 +619,16 @@ class PatentServiceTest {
                 .build();
         ReflectionTestUtils.setField(review, "id", id);
         return review;
+    }
+
+    private Report report(Long id, Patent patent, BigDecimal totalScore) {
+        Report report = Report.builder()
+                .patent(patent)
+                .status(ReportStatus.COMPLETED)
+                .totalScore(totalScore)
+                .build();
+        ReflectionTestUtils.setField(report, "id", id);
+        return report;
     }
 
     private PatentCreateRequest createRequest(String title, String applicationNumber) {

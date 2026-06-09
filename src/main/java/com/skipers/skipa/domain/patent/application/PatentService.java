@@ -19,6 +19,7 @@ import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -171,6 +173,7 @@ public class PatentService {
         Map<Long, Review> reviewsByPatentId = activeReviewCycle
                 .map(reviewCycle -> latestReviewsByPatentId(reviewRepository.findAllByReviewCycleId(reviewCycle.getId())))
                 .orElseGet(Map::of);
+        Map<Long, BigDecimal> latestReportScores = latestReportScoresByPatentId();
         Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
         BusinessOpinion parsedDecision = parseDecision(decision);
         LocalDate today = LocalDate.now();
@@ -187,6 +190,7 @@ public class PatentService {
                         patent,
                         latestStatuses.get(patent.getId()),
                         reviewsByPatentId.get(patent.getId()),
+                        latestReportScores.get(patent.getId()),
                         today
                 ))
                 .sorted(listSort(sort))
@@ -417,6 +421,7 @@ public class PatentService {
             Patent patent,
             PatentLegalStatusType latestLegalStatus,
             Review review,
+            BigDecimal latestReportScore,
             LocalDate today
     ) {
         String reviewStatus = reviewStatus(patent, review, today);
@@ -426,6 +431,7 @@ public class PatentService {
                 reviewStatus,
                 review == null || review.getOpinion() == null ? null : review.getOpinion().name(),
                 review == null || review.getStatus() != ReviewStatus.SUBMITTED ? null : review.isChecked(),
+                latestReportScore,
                 review != null && review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today)
         );
     }
@@ -514,6 +520,27 @@ public class PatentService {
                 .findFirstByPatentIdOrderByChangedAtDescIdDesc(patent.getId())
                 .map(legalStatus -> legalStatus.getStatus().name())
                 .orElse(null);
-        return PatentDetailResponse.of(patent, latestLegalStatus);
+        BigDecimal latestReportScore = reportRepository
+                .findFirstByPatentIdAndStatusOrderByIdDesc(
+                        patent.getId(),
+                        com.skipers.skipa.domain.report.domain.ReportStatus.COMPLETED
+                )
+                .map(Report::getTotalScore)
+                .orElse(null);
+        return PatentDetailResponse.of(patent, latestLegalStatus, latestReportScore);
+    }
+
+    private Map<Long, BigDecimal> latestReportScoresByPatentId() {
+        Map<Long, BigDecimal> scoresByPatentId = new HashMap<>();
+        Map<Long, Long> reportIdsByPatentId = new HashMap<>();
+        for (Report report : reportRepository.findAllByStatus(com.skipers.skipa.domain.report.domain.ReportStatus.COMPLETED)) {
+            Long patentId = report.getPatent().getId();
+            Long currentReportId = reportIdsByPatentId.get(patentId);
+            if (currentReportId == null || report.getId() > currentReportId) {
+                reportIdsByPatentId.put(patentId, report.getId());
+                scoresByPatentId.put(patentId, report.getTotalScore());
+            }
+        }
+        return scoresByPatentId;
     }
 }
