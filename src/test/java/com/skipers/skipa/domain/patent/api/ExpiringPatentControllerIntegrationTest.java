@@ -175,7 +175,13 @@ class ExpiringPatentControllerIntegrationTest {
                         .param("year", String.valueOf(LocalDate.now().getYear())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.months.length()").value(12))
-                .andExpect(jsonPath("$.data.months[%d].count".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1));
+                .andExpect(jsonPath("$.data.months[%d].count".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1))
+                .andExpect(jsonPath("$.data.months[%d].patents.length()".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1))
+                .andExpect(jsonPath("$.data.months[%d].patents[0].id".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(expiringSoonPatent.getId()))
+                .andExpect(jsonPath("$.data.months[%d].patents[0].title".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value("Expiring Soon Patent"))
+                .andExpect(jsonPath("$.data.months[%d].patents[0].applicationNumber".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value("APP-EXPIRING-1"))
+                .andExpect(jsonPath("$.data.months[%d].patents[0].expiryDate".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(expiringSoonPatent.getExpiryDate().toString()))
+                .andExpect(jsonPath("$.data.months[%d].patents[0].techField".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value("반도체"));
     }
 
     @Test
@@ -191,7 +197,9 @@ class ExpiringPatentControllerIntegrationTest {
                         .param("year", String.valueOf(LocalDate.now().getYear())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.months.length()").value(12))
-                .andExpect(jsonPath("$.data.months[%d].count".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1));
+                .andExpect(jsonPath("$.data.months[%d].count".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1))
+                .andExpect(jsonPath("$.data.months[%d].patents.length()".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1))
+                .andExpect(jsonPath("$.data.months[%d].patents[0].id".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(expiringSoonPatent.getId()));
     }
 
     private Patent savePatent(

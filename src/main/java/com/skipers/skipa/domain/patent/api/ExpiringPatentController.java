@@ -82,7 +82,8 @@ public class ExpiringPatentController {
      */
     @Operation(
             summary = "[Common] 소멸 예정 특허 캘린더 조회",
-            description = "선택 연도의 월별 소멸 예정 특허 개수를 Patent.expiryDate 기준으로 조회합니다. "
+            description = "선택 연도의 월별 소멸 예정 특허 개수와 특허 목록을 Patent.expiryDate 기준으로 조회합니다. "
+                    + "특허 목록에는 특허 ID, 특허명, 출원번호, 소멸 예정일, 관련 기술 분야를 포함합니다. "
                     + "필터: year(연도, 미지정 시 현재 연도). "
                     + "BUSINESS 사용자는 본인 소속 부서 특허만 조회합니다."
     )

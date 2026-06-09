@@ -65,18 +65,26 @@ public class ExpiringPatentService {
         LocalDate today = LocalDate.now();
         LocalDate startDate = LocalDate.of(selectedYear, 1, 1);
         LocalDate endDate = LocalDate.of(selectedYear, 12, 31);
-        Map<Integer, Long> byMonth = new HashMap<>();
+        Map<Integer, List<Patent>> byMonth = new HashMap<>();
 
         scopedPatents(user).stream()
                 .filter(patent -> patent.getExpiryDate() != null)
                 .filter(patent -> !patent.getExpiryDate().isBefore(today))
                 .filter(patent -> !patent.getExpiryDate().isBefore(startDate))
                 .filter(patent -> !patent.getExpiryDate().isAfter(endDate))
-                .forEach(patent -> byMonth.merge(patent.getExpiryDate().getMonthValue(), 1L, Long::sum));
+                .forEach(patent -> byMonth
+                        .computeIfAbsent(patent.getExpiryDate().getMonthValue(), ignored -> new ArrayList<>())
+                        .add(patent));
 
         List<ExpiringPatentCalendarResponse.MonthBucket> months = new ArrayList<>();
         for (int month = 1; month <= 12; month++) {
-            months.add(new ExpiringPatentCalendarResponse.MonthBucket(month, byMonth.getOrDefault(month, 0L)));
+            List<ExpiringPatentCalendarResponse.PatentItem> patents = byMonth.getOrDefault(month, List.of()).stream()
+                    .sorted(Comparator.comparing(Patent::getExpiryDate)
+                            .thenComparing(Patent::getApplicationNumber)
+                            .thenComparing(Patent::getId))
+                    .map(ExpiringPatentCalendarResponse.PatentItem::from)
+                    .toList();
+            months.add(new ExpiringPatentCalendarResponse.MonthBucket(month, patents.size(), patents));
         }
         return new ExpiringPatentCalendarResponse(months);
     }
