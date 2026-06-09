@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patent.api;
 import com.skipers.skipa.domain.patent.application.BusinessReviewService;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewSummaryResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import com.skipers.skipa.global.security.CustomUserDetails;
@@ -26,13 +27,31 @@ import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/assigned-patents")
+@RequestMapping("/business-reviews")
 public class BusinessReviewController {
 
     private final BusinessReviewService businessReviewService;
 
     /**
-     * 본인 소속 부서에 요청된 특허 검토 현황 목록을 조회한다(page/size 기반).
+     * 본인 소속 부서의 현재 검토 현황 요약을 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @return 현재 검토 주기와 제출 현황 KPI
+     */
+    @Operation(
+            summary = "[Business] 사업부 검토 현황 요약 조회",
+            description = "사업부 사용자의 소속 부서 기준 현재 검토 주기 정보와 제출 완료/미제출 KPI를 조회합니다."
+    )
+    @PreAuthorize("hasRole('BUSINESS')")
+    @GetMapping("/summary")
+    public ApiResponse<BusinessReviewSummaryResponse> getSummary(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ApiResponse.ok(businessReviewService.getSummary(userDetails.getUser()));
+    }
+
+    /**
+     * 본인 소속 부서에 현재 검토 주기로 요청된 특허 검토 현황 목록을 조회한다(page/size 기반).
      *
      * @param userDetails 인증 사용자 정보
      * @param status 제출 상태(선택)
@@ -44,7 +63,8 @@ public class BusinessReviewController {
      */
     @Operation(
             summary = "[Business] 사업부 검토 현황 목록 조회",
-            description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황 목록을 조회합니다. "
+            description = "사업부 사용자의 소속 부서에 현재 검토 주기로 요청된 특허 검토 현황 목록을 조회합니다. "
+                    + "각 특허의 최신 완료 평가 보고서 점수와 등급을 함께 반환합니다. "
                     + "필터: status(PENDING, OVERDUE, SUBMITTED), opinion(MAINTAIN, ABANDON), "
                     + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
                     + "정렬: 최신 검토 요청순(id 내림차순) 고정입니다."
@@ -70,13 +90,13 @@ public class BusinessReviewController {
     }
 
     /**
-     * 본인 소속 부서에 요청된 특허 검토 현황을 ID로 조회한다.
+     * 본인 소속 부서에 현재 검토 주기로 요청된 특허 검토 현황을 ID로 조회한다.
      *
      * @param userDetails 인증 사용자 정보
      * @param patentId 특허 ID
      * @return 사업부 검토 현황 상세 정보
      */
-    @Operation(summary = "[Business] 사업부 검토 현황 단일 조회", description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황과 의견 제출 정보를 조회합니다.")
+    @Operation(summary = "[Business] 사업부 검토 현황 단일 조회", description = "사업부 사용자의 소속 부서에 현재 검토 주기로 요청된 특허 검토 현황과 의견 제출 정보를 조회합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping("/{patentId}")
     public ApiResponse<BusinessReviewDetailResponse> get(
@@ -87,14 +107,14 @@ public class BusinessReviewController {
     }
 
     /**
-     * 본인 소속 부서에 요청된 특허 검토에 의견을 제출한다.
+     * 본인 소속 부서에 현재 검토 주기로 요청된 특허 검토에 의견을 제출한다.
      *
      * @param userDetails 인증 사용자 정보
      * @param patentId 특허 ID
      * @param request 의견 제출 요청
      * @return 의견이 반영된 사업부 검토 현황
      */
-    @Operation(summary = "[Business] 사업부 검토 의견 제출", description = "사업부 사용자가 요청된 특허 검토에 MAINTAIN 또는 ABANDON 의견을 제출합니다.")
+    @Operation(summary = "[Business] 사업부 검토 의견 제출", description = "사업부 사용자가 현재 검토 주기로 요청된 특허 검토에 MAINTAIN 또는 ABANDON 의견을 제출합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @PostMapping("/{patentId}/opinions")
     public ApiResponse<BusinessReviewResponse> submit(

@@ -2,11 +2,13 @@ package com.skipers.skipa.domain.patent.dto.response;
 
 import com.skipers.skipa.domain.review.domain.Review;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 
 public record BusinessReviewResponse(
         Long id,
+        Long patentId,
         String title,
         String applicationNumber,
         String opinion,
@@ -16,11 +18,18 @@ public record BusinessReviewResponse(
         Instant createdAt,
         Instant updatedAt,
         Instant reviewRequestedAt,
-        LocalDate dueDate
+        LocalDate dueDate,
+        BigDecimal totalScore,
+        String valueGrade
 ) {
 
     public static BusinessReviewResponse from(Review review) {
+        return from(review, null, null);
+    }
+
+    public static BusinessReviewResponse from(Review review, BigDecimal totalScore, String valueGrade) {
         return new BusinessReviewResponse(
+                review.getId(),
                 review.getPatent().getId(),
                 review.getPatent().getTitle(),
                 review.getPatent().getApplicationNumber(),
@@ -31,7 +40,9 @@ public record BusinessReviewResponse(
                 review.getPatent().getCreatedAt(),
                 review.getPatent().getUpdatedAt(),
                 review.getCreatedAt(),
-                review.getDueDate()
+                review.getDueDate(),
+                totalScore,
+                valueGrade
         );
     }
 }

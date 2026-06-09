@@ -1,6 +1,10 @@
 package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -25,6 +29,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.time.LocalDate;
@@ -42,6 +47,12 @@ class BusinessReviewServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
+
+    @Mock
+    private ReviewCycleRepository reviewCycleRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
 
     @Mock
     private PatentService patentService;
@@ -85,13 +96,66 @@ class BusinessReviewServiceTest {
     void getAllUsesAuthenticatedUsersDepartmentAndDescendingIdSort() {
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(reviewRepository.findLatestBusinessReviewsByDepartmentId(1L, null, null, null, null, sortedPageable))
+        Report report = Report.builder()
+                .patent(review.getPatent())
+                .totalScore(new BigDecimal("92.50"))
+                .valueGrade("S")
+                .status(ReportStatus.COMPLETED)
+                .build();
+        ReflectionTestUtils.setField(report, "id", 1000L);
+        stubActiveReviewCycle();
+        when(reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(1L, 1L, null, null, null, null, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
+        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(report));
 
-        assertThat(businessReviewService.getAll(businessUser, null, null, null, null, pageable).getContent())
+        List<BusinessReviewResponse> responses = businessReviewService.getAll(
+                businessUser,
+                null,
+                null,
+                null,
+                null,
+                pageable
+        ).getContent();
+
+        assertThat(responses)
                 .extracting(BusinessReviewResponse::id)
+                .containsExactly(100L);
+        assertThat(responses)
+                .extracting(BusinessReviewResponse::patentId)
                 .containsExactly(10L);
-        verify(reviewRepository).findLatestBusinessReviewsByDepartmentId(1L, null, null, null, null, sortedPageable);
+        assertThat(responses.get(0))
+                .extracting(BusinessReviewResponse::totalScore, BusinessReviewResponse::valueGrade)
+                .containsExactly(new BigDecimal("92.50"), "S");
+        verify(reviewRepository).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(1L, 1L, null, null, null, null, sortedPageable);
+    }
+
+    @Test
+    void getSummaryReturnsActiveReviewCycleAndSubmissionKpi() {
+        ReviewCycle reviewCycle = reviewCycle();
+        ReflectionTestUtils.setField(reviewCycle, "id", 1L);
+        Review submittedReview = Review.builder()
+                .patent(review.getPatent())
+                .department(review.getDepartment())
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.SUBMITTED)
+                .build();
+        Review scheduledReview = Review.builder()
+                .patent(review.getPatent())
+                .department(review.getDepartment())
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.SCHEDULED)
+                .build();
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(review, submittedReview, scheduledReview));
+
+        var response = businessReviewService.getSummary(businessUser);
+
+        assertThat(response.reviewCycle().id()).isEqualTo(1L);
+        assertThat(response.kpi().submitted()).isEqualTo(1);
+        assertThat(response.kpi().notSubmitted()).isEqualTo(1);
     }
 
     @Test
@@ -100,7 +164,9 @@ class BusinessReviewServiceTest {
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
         LocalDate submittedFrom = LocalDate.of(2026, 6, 1);
         LocalDate submittedTo = LocalDate.of(2026, 6, 30);
-        when(reviewRepository.findLatestBusinessReviewsByDepartmentId(
+        stubActiveReviewCycle();
+        when(reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
                 1L,
                 ReviewStatus.SUBMITTED,
                 BusinessOpinion.MAINTAIN,
@@ -121,6 +187,7 @@ class BusinessReviewServiceTest {
 
     @Test
     void getRejectsSubmissionAssignedToAnotherDepartment() {
+        stubActiveReviewCycle();
         doThrow(new PatentException(ErrorCode.FORBIDDEN))
                 .when(businessPatentAccessValidator).validate(businessUser, 10L);
 
@@ -129,7 +196,8 @@ class BusinessReviewServiceTest {
 
     @Test
     void getRejectsMissingSubmission() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED))).thenReturn(Optional.empty());
+        stubActiveReviewCycle();
+        when(reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(1L, 10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED))).thenReturn(Optional.empty());
 
         assertReviewError(() -> businessReviewService.get(businessUser, 10L), ErrorCode.REVIEW_NOT_FOUND);
     }
@@ -149,7 +217,8 @@ class BusinessReviewServiceTest {
                 () -> businessReviewService.getAll(legalUser, null, null, null, null, PageRequest.of(0, 20)),
                 ErrorCode.FORBIDDEN
         );
-        verify(reviewRepository, never()).findLatestBusinessReviewsByDepartmentId(
+        verify(reviewRepository, never()).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
@@ -177,7 +246,8 @@ class BusinessReviewServiceTest {
 
     @Test
     void submitUpdatesOpinionCommentStatusAndSubmittedAt() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
+        stubActiveReviewCycle();
+        when(reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(1L, 10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(review));
 
         BusinessReviewResponse response = businessReviewService.submit(
@@ -197,7 +267,8 @@ class BusinessReviewServiceTest {
     @Test
     void submitRejectsAlreadySubmittedRequest() {
         review.submit(BusinessOpinion.MAINTAIN, "기존 의견", java.time.Instant.now());
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
+        stubActiveReviewCycle();
+        when(reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(1L, 10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(review));
 
         assertReviewError(
@@ -212,7 +283,8 @@ class BusinessReviewServiceTest {
 
     @Test
     void submitRejectsInvalidOpinion() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
+        stubActiveReviewCycle();
+        when(reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(1L, 10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(review));
 
         assertReviewError(
@@ -226,24 +298,26 @@ class BusinessReviewServiceTest {
     }
 
     @Test
-    void submitRejectsRequestAfterDueDate() {
-        Review expiredReview = Review.builder()
+    void submitAllowsOverdueRequestAfterDueDate() {
+        Review overdueReview = Review.builder()
                 .patent(review.getPatent())
                 .department(review.getDepartment())
                 .reviewCycle(reviewCycle())
+                .status(ReviewStatus.OVERDUE)
                 .dueDate(LocalDate.now().minusDays(1))
                 .build();
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
-                .thenReturn(Optional.of(expiredReview));
+        stubActiveReviewCycle();
+        when(reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(1L, 10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)))
+                .thenReturn(Optional.of(overdueReview));
 
-        assertReviewError(
-                () -> businessReviewService.submit(
-                        businessUser,
-                        10L,
-                        new ReviewSubmitRequest("MAINTAIN", null)
-                ),
-                ErrorCode.REVIEW_DEADLINE_EXPIRED
+        BusinessReviewResponse response = businessReviewService.submit(
+                businessUser,
+                10L,
+                new ReviewSubmitRequest("MAINTAIN", null)
         );
+
+        assertThat(response.status()).isEqualTo("SUBMITTED");
+        assertThat(response.opinion()).isEqualTo("MAINTAIN");
     }
 
     private void assertReviewError(Runnable invocation, ErrorCode errorCode) {
@@ -273,5 +347,12 @@ class BusinessReviewServiceTest {
                 .build();
         ReflectionTestUtils.setField(reviewCycle, "id", 1L);
         return reviewCycle;
+    }
+
+    private void stubActiveReviewCycle() {
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(Optional.of(reviewCycle()));
     }
 }

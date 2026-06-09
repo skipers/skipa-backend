@@ -107,7 +107,7 @@ class ReviewServiceTest {
         assertThat(response.departmentId()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.reviewCycleId()).isEqualTo(1L);
-        assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate());
+        assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate().minusDays(14));
         assertThat(response.opinion()).isNull();
         assertThat(response.submittedAt()).isNull();
         assertThat(response.checked()).isFalse();

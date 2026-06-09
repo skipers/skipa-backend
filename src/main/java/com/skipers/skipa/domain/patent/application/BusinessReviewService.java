@@ -2,12 +2,18 @@ package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
+import com.skipers.skipa.domain.patent.dto.response.BusinessReviewSummaryResponse;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.ReviewSubmitRequest;
 import com.skipers.skipa.domain.review.exception.ReviewException;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -29,8 +38,24 @@ import java.util.List;
 public class BusinessReviewService {
 
     private final ReviewRepository reviewRepository;
+    private final ReviewCycleRepository reviewCycleRepository;
+    private final ReportRepository reportRepository;
     private final PatentService patentService;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+
+    public BusinessReviewSummaryResponse getSummary(User user) {
+        Long departmentId = getDepartmentId(user);
+        ReviewCycle reviewCycle = getActiveReviewCycle();
+        List<Review> reviews = currentDepartmentReviews(reviewCycle.getId(), departmentId);
+        long submitted = reviews.stream()
+                .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
+                .count();
+
+        return new BusinessReviewSummaryResponse(
+                BusinessReviewSummaryResponse.ReviewCycleInfo.from(reviewCycle),
+                new BusinessReviewSummaryResponse.Kpi(submitted, reviews.size() - submitted)
+        );
+    }
 
     public Page<BusinessReviewResponse> getAll(
             User user,
@@ -41,21 +66,33 @@ public class BusinessReviewService {
             Pageable pageable
     ) {
         Long departmentId = getDepartmentId(user);
+        ReviewStatus parsedStatus = parseStatus(status);
+        BusinessOpinion parsedOpinion = parseOpinion(opinion);
+        ReviewCycle reviewCycle = getActiveReviewCycle();
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findLatestBusinessReviewsByDepartmentId(
+        Page<Review> reviews = reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                        reviewCycle.getId(),
                         departmentId,
-                        parseStatus(status),
-                        parseOpinion(opinion),
+                        parsedStatus,
+                        parsedOpinion,
                         startOfDay(submittedFrom),
                         nextDayStart(submittedTo),
                         sortedPageable
-                )
-                .map(BusinessReviewResponse::from);
+                );
+        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(reviews.getContent());
+        return reviews.map(review -> {
+            Report report = reportsByPatentId.get(review.getPatent().getId());
+            return BusinessReviewResponse.from(
+                    review,
+                    report == null ? null : report.getTotalScore(),
+                    report == null ? null : report.getValueGrade()
+            );
+        });
     }
 
     public BusinessReviewDetailResponse get(User user, Long patentId) {
@@ -77,9 +114,6 @@ public class BusinessReviewService {
         if (review.getStatus() != ReviewStatus.PENDING && review.getStatus() != ReviewStatus.OVERDUE) {
             throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
         }
-        if (review.getDueDate().isBefore(LocalDate.now())) {
-            throw new ReviewException(ErrorCode.REVIEW_DEADLINE_EXPIRED);
-        }
 
         BusinessOpinion opinion;
         try {
@@ -95,14 +129,44 @@ public class BusinessReviewService {
 
     private Review getOwnedReview(User user, Long patentId) {
         Long departmentId = getDepartmentId(user);
+        ReviewCycle reviewCycle = getActiveReviewCycle();
         businessPatentAccessValidator.validate(user, patentId);
 
-        return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
+        return reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
+                        reviewCycle.getId(),
                         patentId,
                         departmentId,
                         List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)
                 )
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
+    }
+
+    private ReviewCycle getActiveReviewCycle() {
+        LocalDate today = LocalDate.now();
+        return reviewCycleRepository
+                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today)
+                .orElseThrow(() -> new ReviewException(ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND));
+    }
+
+    private List<Review> currentDepartmentReviews(Long reviewCycleId, Long departmentId) {
+        return reviewRepository.findAllByReviewCycleId(reviewCycleId).stream()
+                .filter(review -> review.getDepartment().getId().equals(departmentId))
+                .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
+                .toList();
+    }
+
+    private Map<Long, Report> latestCompletedReportsByPatentId(List<Review> reviews) {
+        Map<Long, Report> reportsByPatentId = new HashMap<>();
+        if (reviews.isEmpty()) {
+            return reportsByPatentId;
+        }
+
+        reportRepository.findAllByStatus(ReportStatus.COMPLETED).stream()
+                .filter(report -> reviews.stream()
+                        .anyMatch(review -> review.getPatent().getId().equals(report.getPatent().getId())))
+                .sorted(Comparator.comparing(Report::getId).reversed())
+                .forEach(report -> reportsByPatentId.putIfAbsent(report.getPatent().getId(), report));
+        return reportsByPatentId;
     }
 
     private ReviewStatus parseStatus(String status) {

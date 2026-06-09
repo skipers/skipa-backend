@@ -24,6 +24,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             select review
             from Review review
             where review.department.id = :departmentId
+              and review.reviewCycle.id = :reviewCycleId
               and review.patent.currentDepartment.id = :departmentId
               and review.status <> com.skipers.skipa.domain.review.domain.ReviewStatus.SCHEDULED
               and (:status is null or review.status = :status)
@@ -35,10 +36,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                   from Review latestReview
                   where latestReview.patent.id = review.patent.id
                     and latestReview.department.id = :departmentId
+                    and latestReview.reviewCycle.id = :reviewCycleId
                     and latestReview.status <> com.skipers.skipa.domain.review.domain.ReviewStatus.SCHEDULED
               )
             """)
-    Page<Review> findLatestBusinessReviewsByDepartmentId(
+    Page<Review> findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+            @Param("reviewCycleId") Long reviewCycleId,
             @Param("departmentId") Long departmentId,
             @Param("status") ReviewStatus status,
             @Param("opinion") BusinessOpinion opinion,
@@ -69,8 +72,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"patent", "department", "report"})
     Optional<Review> findFirstByPatentIdAndDepartmentIdOrderByIdDesc(Long patentId, Long departmentId);
 
-    @EntityGraph(attributePaths = {"patent", "department", "report"})
-    Optional<Review> findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
+    @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
+    Optional<Review> findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
+            Long reviewCycleId,
             Long patentId,
             Long departmentId,
             Collection<ReviewStatus> statuses
