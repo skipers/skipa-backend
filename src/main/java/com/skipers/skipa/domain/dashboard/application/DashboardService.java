@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -94,16 +93,13 @@ public class DashboardService {
         Map<Long, PatentLegalStatusType> latestLegalStatuses = latestLegalStatuses();
 
         long submitted = countSubmitted(reviews);
-        long overdue = countOverdue(reviews, today);
-        long pending = reviews.stream()
+        long notSubmitted = reviews.stream()
                 .filter(review -> review.getStatus() == ReviewStatus.PENDING)
                 .count();
 
         return new BusinessDashboardResponse(
                 ReviewCycleSummary.from(reviewCycle),
-                reviewCycle.getEndDate(),
-                ChronoUnit.DAYS.between(today, reviewCycle.getEndDate()),
-                new BusinessDashboardResponse.Kpi(reviews.size(), submitted, pending, overdue),
+                new BusinessDashboardResponse.Kpi(reviews.size(), submitted, notSubmitted),
                 pendingPatents(reviews),
                 recentSubmissions(reviews),
                 patentStatusSummary(departmentPatents, latestLegalStatuses, today),
@@ -179,6 +175,7 @@ public class DashboardService {
                 .sorted(Comparator.comparing(Review::getDueDate).thenComparing(Review::getId))
                 .limit(RECENT_LIMIT)
                 .map(review -> new BusinessDashboardResponse.PatentReviewItem(
+                        review.getId(),
                         review.getPatent().getId(),
                         review.getPatent().getTitle(),
                         review.getPatent().getApplicationNumber(),
@@ -211,20 +208,17 @@ public class DashboardService {
             LocalDate today
     ) {
         long active = 0;
-        long expiringSoon = 0;
         long inactive = 0;
 
         for (Patent patent : patents) {
             if (isInactive(patent, latestLegalStatuses.get(patent.getId()), today)) {
                 inactive++;
-            } else if (isExpiringSoon(patent, today)) {
-                expiringSoon++;
             } else {
                 active++;
             }
         }
 
-        return new BusinessDashboardResponse.PatentStatusSummary(active, expiringSoon, inactive);
+        return new BusinessDashboardResponse.PatentStatusSummary(active, inactive);
     }
 
     private List<BusinessDashboardResponse.YearlyTrend> yearlyTrends(
@@ -365,11 +359,6 @@ public class DashboardService {
 
     private String normalizeGroupName(String value) {
         return value == null || value.isBlank() ? "미분류" : value;
-    }
-
-    private boolean isExpiringSoon(Patent patent, LocalDate today) {
-        LocalDate expiryDate = patent.getExpiryDate();
-        return expiryDate != null && !expiryDate.isBefore(today) && !expiryDate.isAfter(today.plusYears(1));
     }
 
     private boolean isInactive(Patent patent, PatentLegalStatusType status, LocalDate today) {
