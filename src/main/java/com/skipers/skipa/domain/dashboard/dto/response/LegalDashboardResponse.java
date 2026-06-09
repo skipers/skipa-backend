@@ -8,7 +8,6 @@ import java.util.List;
 
 public record LegalDashboardResponse(
         ReviewCycleSummary reviewCycle,
-        double progressRate,
         Kpi kpi,
         List<DepartmentProgress> departments,
         List<NameCount> byTechField,
@@ -31,9 +30,7 @@ public record LegalDashboardResponse(
             Long departmentId,
             String departmentName,
             long assigned,
-            long reviewing,
-            long decided,
-            long overdue
+            long decided
     ) {
     }
 

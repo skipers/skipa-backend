@@ -124,6 +124,13 @@ class DashboardControllerIntegrationTest {
                 semiconductorDepartment,
                 LocalDate.now().plusMonths(7)
         );
+        Patent checkedReplyPatent = savePatent(
+                "Checked Reply Patent",
+                "APP-DASH-LEGAL-5",
+                "소재",
+                batteryDepartment,
+                LocalDate.now().plusMonths(8)
+        );
         savePatent(
                 "Unrequested Patent",
                 "APP-DASH-LEGAL-4",
@@ -152,19 +159,31 @@ class DashboardControllerIntegrationTest {
                 .reviewCycle(reviewCycle)
                 .dueDate(LocalDate.now().minusDays(1))
                 .build());
+        reviewRepository.save(Review.builder()
+                .patent(checkedReplyPatent)
+                .department(batteryDepartment)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.ABANDON)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now().minusSeconds(60))
+                .checked(true)
+                .build());
         String legalToken = createActiveUserToken("legal-dashboard", "legal-dashboard@example.com", UserRole.LEGAL, null);
 
         mockMvc.perform(get("/dashboard/legal")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
-                .andExpect(jsonPath("$.data.kpi.requested").value(3))
+                .andExpect(jsonPath("$.data.progressRate").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.requested").value(4))
                 .andExpect(jsonPath("$.data.kpi.reviewing").value(1))
-                .andExpect(jsonPath("$.data.kpi.decided").value(1))
+                .andExpect(jsonPath("$.data.kpi.decided").value(2))
                 .andExpect(jsonPath("$.data.kpi.overdue").value(1))
                 .andExpect(jsonPath("$.data.kpi.unread").value(1))
                 .andExpect(jsonPath("$.data.kpi.unrequested").value(1))
                 .andExpect(jsonPath("$.data.departments.length()").value(2))
+                .andExpect(jsonPath("$.data.departments[0].reviewing").doesNotExist())
+                .andExpect(jsonPath("$.data.departments[0].overdue").doesNotExist())
                 .andExpect(jsonPath("$.data.recentReplies.length()").value(1))
                 .andExpect(jsonPath("$.data.recentReplies[0].checked").value(false));
     }

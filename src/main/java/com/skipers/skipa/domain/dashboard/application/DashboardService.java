@@ -65,7 +65,6 @@ public class DashboardService {
 
         return new LegalDashboardResponse(
                 ReviewCycleSummary.from(reviewCycle),
-                progressRate(decided, reviews.size()),
                 new LegalDashboardResponse.Kpi(reviews.size(), reviewing, decided, overdue, unread, unrequested),
                 departmentProgress(reviews, today),
                 nameCounts(patents.stream()
@@ -128,10 +127,6 @@ public class DashboardService {
             accumulator.assigned++;
             if (review.getStatus() == ReviewStatus.SUBMITTED) {
                 accumulator.decided++;
-            } else if (review.getDueDate().isBefore(today)) {
-                accumulator.overdue++;
-            } else {
-                accumulator.reviewing++;
             }
         }
 
@@ -141,9 +136,7 @@ public class DashboardService {
                         accumulator.departmentId(),
                         accumulator.departmentName(),
                         accumulator.assigned,
-                        accumulator.reviewing,
-                        accumulator.decided,
-                        accumulator.overdue
+                        accumulator.decided
                 ))
                 .toList();
     }
@@ -151,6 +144,7 @@ public class DashboardService {
     private List<LegalDashboardResponse.RecentReply> recentReplies(List<Review> reviews) {
         return reviews.stream()
                 .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
+                .filter(review -> !review.isChecked())
                 .filter(review -> review.getSubmittedAt() != null)
                 .sorted(Comparator.comparing(Review::getSubmittedAt).reversed())
                 .limit(RECENT_LIMIT)
@@ -350,13 +344,6 @@ public class DashboardService {
                 .count();
     }
 
-    private double progressRate(long done, long total) {
-        if (total == 0) {
-            return 0.0;
-        }
-        return Math.round(done * 1000.0 / total) / 10.0;
-    }
-
     private String normalizeGroupName(String value) {
         return value == null || value.isBlank() ? "미분류" : value;
     }
@@ -380,9 +367,7 @@ public class DashboardService {
         private final Long departmentId;
         private final String departmentName;
         private long assigned;
-        private long reviewing;
         private long decided;
-        private long overdue;
 
         private DepartmentAccumulator(Long departmentId, String departmentName) {
             this.departmentId = departmentId;
