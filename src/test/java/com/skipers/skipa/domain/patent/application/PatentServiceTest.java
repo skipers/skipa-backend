@@ -286,6 +286,54 @@ class PatentServiceTest {
     }
 
     @Test
+    void getSummaryCountsMaintainAndAbandonStatusesForLegalUser() {
+        Patent appliedPatent = patent(1L, "Applied Patent", "APP-SUM-1", null, null, null, null);
+        Patent registeredPatent = patent(2L, "Registered Patent", "APP-SUM-2", null, null, null, null);
+        Patent expiredPatent = patent(3L, "Expired Patent", "APP-SUM-3", null, null, null, null);
+        Patent noStatusPatent = patent(4L, "No Status Patent", "APP-SUM-4", null, null, null, null);
+        when(patentRepository.findAll()).thenReturn(List.of(appliedPatent, registeredPatent, expiredPatent, noStatusPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
+                legalStatus(10L, appliedPatent, PatentLegalStatusType.APPLIED, LocalDate.now()),
+                legalStatus(20L, registeredPatent, PatentLegalStatusType.PUBLISHED, LocalDate.now().minusDays(1)),
+                legalStatus(21L, registeredPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
+                legalStatus(30L, expiredPatent, PatentLegalStatusType.EXPIRED, LocalDate.now())
+        ));
+
+        var response = patentService.getSummary(legalUser());
+
+        assertThat(response.maintain()).isEqualTo(2);
+        assertThat(response.abandon()).isEqualTo(2);
+    }
+
+    @Test
+    void getSummaryCountsOnlyBusinessUsersDepartmentPatents() {
+        Department department = department("통신", 1L);
+        Patent maintainPatent = patent(1L, "Maintain Patent", "APP-SUM-BIZ-1", null, null, null, department);
+        Patent abandonPatent = patent(2L, "Abandon Patent", "APP-SUM-BIZ-2", null, null, null, department);
+        when(patentRepository.findByCurrentDepartmentId(1L, Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(maintainPatent, abandonPatent)));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
+                legalStatus(10L, maintainPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
+                legalStatus(20L, abandonPatent, PatentLegalStatusType.WITHDRAWN, LocalDate.now())
+        ));
+
+        var response = patentService.getSummary(businessUser(department));
+
+        assertThat(response.maintain()).isEqualTo(1);
+        assertThat(response.abandon()).isEqualTo(1);
+        verify(patentRepository).findByCurrentDepartmentId(1L, Pageable.unpaged());
+        verify(patentRepository, never()).findAll();
+    }
+
+    @Test
+    void getSummaryRejectsBusinessUserWithoutDepartment() {
+        assertPatentError(
+                () -> patentService.getSummary(businessUser(null)),
+                ErrorCode.FORBIDDEN
+        );
+    }
+
+    @Test
     void getAllAppliesLegalScreenFiltersAndReturnsExpandedFields() {
         Department telecom = department("통신", 1L);
         Department battery = department("배터리", 2L);

@@ -681,6 +681,62 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void patentSummaryCountsAllPatentsForLegalAndDepartmentPatentsForBusiness() throws Exception {
+        Department otherDepartment = departmentRepository.save(Department.builder()
+                .name("제조")
+                .build());
+        Patent ownMaintainPatent = patentRepository.save(Patent.builder()
+                .title("Own Maintain Patent")
+                .applicationNumber("SUM-OWN-MAIN")
+                .currentDepartment(department)
+                .build());
+        Patent ownAbandonPatent = patentRepository.save(Patent.builder()
+                .title("Own Abandon Patent")
+                .applicationNumber("SUM-OWN-ABAN")
+                .currentDepartment(department)
+                .build());
+        Patent otherMaintainPatent = patentRepository.save(Patent.builder()
+                .title("Other Maintain Patent")
+                .applicationNumber("SUM-OTHER-MAIN")
+                .currentDepartment(otherDepartment)
+                .build());
+        Patent noStatusPatent = patentRepository.save(Patent.builder()
+                .title("No Status Patent")
+                .applicationNumber("SUM-NO-STATUS")
+                .currentDepartment(otherDepartment)
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(ownMaintainPatent)
+                .status(PatentLegalStatusType.REGISTERED)
+                .changedAt(LocalDate.now())
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(ownAbandonPatent)
+                .status(PatentLegalStatusType.EXPIRED)
+                .changedAt(LocalDate.now())
+                .build());
+        patentLegalStatusRepository.save(PatentLegalStatus.builder()
+                .patent(otherMaintainPatent)
+                .status(PatentLegalStatusType.APPLIED)
+                .changedAt(LocalDate.now())
+                .build());
+        String legalToken = createActiveUserToken("legal-patent-summary", "legal-patent-summary@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-patent-summary", "business-patent-summary@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents/summary")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.maintain").value(2))
+                .andExpect(jsonPath("$.data.abandon").value(2));
+
+        mockMvc.perform(get("/patents/summary")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.maintain").value(1))
+                .andExpect(jsonPath("$.data.abandon").value(1));
+    }
+
+    @Test
     void patentListSupportsLegalScreenFiltersAndExpandedFields() throws Exception {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Filtered Patent")

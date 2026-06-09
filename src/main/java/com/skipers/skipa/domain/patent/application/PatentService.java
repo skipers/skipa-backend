@@ -14,6 +14,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
+import com.skipers.skipa.domain.patent.dto.response.PatentSummaryResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
@@ -197,6 +198,19 @@ public class PatentService {
                 .toList();
 
         return page(responses, pageable);
+    }
+
+    public PatentSummaryResponse getSummary(User user) {
+        List<Patent> patents = user.getRole() == UserRole.BUSINESS
+                ? findBusinessPatents(user, null)
+                : patentRepository.findAll();
+        Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
+
+        long maintain = patents.stream()
+                .filter(patent -> isMaintainStatus(latestStatuses.get(patent.getId())))
+                .count();
+
+        return new PatentSummaryResponse(maintain, patents.size() - maintain);
     }
 
     @Transactional
@@ -411,6 +425,12 @@ public class PatentService {
 
     private boolean matchesLegalStatus(PatentLegalStatusType latestStatus, Set<PatentLegalStatusType> statuses) {
         return statuses.isEmpty() || latestStatus != null && statuses.contains(latestStatus);
+    }
+
+    private boolean isMaintainStatus(PatentLegalStatusType latestStatus) {
+        return latestStatus == PatentLegalStatusType.APPLIED
+                || latestStatus == PatentLegalStatusType.PUBLISHED
+                || latestStatus == PatentLegalStatusType.REGISTERED;
     }
 
     private boolean matchesText(String actual, String expected) {
