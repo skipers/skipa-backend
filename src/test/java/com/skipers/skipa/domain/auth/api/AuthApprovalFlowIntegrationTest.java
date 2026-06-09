@@ -580,6 +580,8 @@ class AuthApprovalFlowIntegrationTest {
                                 {
                                   "title": "  Chip Patent  ",
                                   "applicationNumber": " APP-1 ",
+                                  "applicant": " Search Applicant ",
+                                  "inventor": " Search Inventor ",
                                   "ipcCodes": [" H01L 21/00 "],
                                   "cpcCodes": [" H01L 23/00 "],
                                   "relatedProducts": [" Product "],
@@ -590,6 +592,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.title").value("  Chip Patent  "))
                 .andExpect(jsonPath("$.data.applicationNumber").value(" APP-1 "))
+                .andExpect(jsonPath("$.data.applicant").value(" Search Applicant "))
+                .andExpect(jsonPath("$.data.inventor").value(" Search Inventor "))
                 .andExpect(jsonPath("$.data.ipcCodes[0]").value(" H01L 21/00 "))
                 .andExpect(jsonPath("$.data.cpcCodes[0]").value(" H01L 23/00 "))
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
@@ -621,6 +625,27 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].title").value("  Chip Patent  "))
                 .andExpect(jsonPath("$.data.items[0].ipcCodes[0]").value(" H01L 21/00 "))
                 .andExpect(jsonPath("$.data.items[0].cpcCodes[0]").value(" H01L 23/00 "));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("keyword", "APP-1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patentId));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("keyword", "inventor"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patentId));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .param("keyword", "applicant"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patentId));
 
         mockMvc.perform(put("/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + legalToken)

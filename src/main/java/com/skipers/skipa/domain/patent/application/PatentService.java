@@ -289,13 +289,13 @@ public class PatentService {
         Long departmentId = user.getDepartment().getId();
         return keyword == null
                 ? patentRepository.findByCurrentDepartmentId(departmentId, pageable)
-                : patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(departmentId, keyword, pageable);
+                : patentRepository.searchByCurrentDepartmentIdAndKeyword(departmentId, keyword, pageable);
     }
 
     private Page<Patent> findPatents(String keyword, Pageable pageable) {
         return keyword == null
                 ? patentRepository.findAll(pageable)
-                : patentRepository.findByTitleContainingIgnoreCase(keyword, pageable);
+                : patentRepository.searchByKeyword(keyword, pageable);
     }
 
     private List<Patent> findBusinessPatents(User user, String keyword) {
@@ -306,7 +306,7 @@ public class PatentService {
         Long departmentId = user.getDepartment().getId();
         return keyword == null
                 ? patentRepository.findByCurrentDepartmentId(departmentId, Pageable.unpaged()).getContent()
-                : patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(
+                : patentRepository.searchByCurrentDepartmentIdAndKeyword(
                         departmentId,
                         keyword,
                         Pageable.unpaged()
@@ -316,7 +316,7 @@ public class PatentService {
     private List<Patent> findPatents(String keyword) {
         return keyword == null
                 ? patentRepository.findAll()
-                : patentRepository.findByTitleContainingIgnoreCase(keyword, Pageable.unpaged()).getContent();
+                : patentRepository.searchByKeyword(keyword, Pageable.unpaged()).getContent();
     }
 
     private Map<Long, PatentLegalStatusType> latestLegalStatuses(List<PatentLegalStatus> legalStatuses) {

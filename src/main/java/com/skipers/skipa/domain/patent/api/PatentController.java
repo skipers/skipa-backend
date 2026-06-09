@@ -91,7 +91,7 @@ public class PatentController {
     /**
      * 특허 목록을 조회한다(page/size 기반).
      *
-     * @param keyword 특허명 검색 키워드(선택)
+     * @param keyword 특허명/출원번호/발명자/출원인 검색 키워드(선택)
      * @param departmentId 부서 ID(선택, -1은 미배정)
      * @param reviewStatus 검토 상태(선택)
      * @param opinion 사업부 의견(선택)
@@ -106,7 +106,7 @@ public class PatentController {
     @Operation(
             summary = "[Common] 특허 목록 조회",
             description = "특허 목록을 페이지 단위로 조회합니다. "
-                    + "필터: keyword(특허명), departmentId(부서 ID, -1은 미배정), "
+                    + "필터: keyword(특허명, 출원번호, 발명자, 출원인), departmentId(부서 ID, -1은 미배정), "
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
                     + "opinion(MAINTAIN, ABANDON), checked(true/false), "
                     + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "

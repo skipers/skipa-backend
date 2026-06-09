@@ -254,7 +254,7 @@ class PatentServiceTest {
     }
 
     @Test
-    void getAllWithKeywordSearchesTitle() {
+    void getAllWithKeywordSearchesPatentFields() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
         Pageable sortedPageable = PageRequest.of(
@@ -263,13 +263,13 @@ class PatentServiceTest {
                 Sort.by(Sort.Direction.ASC, "applicationNumber")
                         .and(Sort.by(Sort.Direction.DESC, "id"))
         );
-        when(patentRepository.findByTitleContainingIgnoreCase("patent", sortedPageable))
+        when(patentRepository.searchByKeyword("patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(legalUser(), " patent ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(patentRepository).findByTitleContainingIgnoreCase("patent", sortedPageable);
+        verify(patentRepository).searchByKeyword("patent", sortedPageable);
     }
 
     @Test
@@ -284,14 +284,14 @@ class PatentServiceTest {
                 Sort.by(Sort.Direction.ASC, "applicationNumber")
                         .and(Sort.by(Sort.Direction.DESC, "id"))
         );
-        when(patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable))
+        when(patentRepository.searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(businessUser(department), " patent ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(patentRepository).findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable);
-        verify(patentRepository, never()).findByTitleContainingIgnoreCase("patent", sortedPageable);
+        verify(patentRepository).searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable);
+        verify(patentRepository, never()).searchByKeyword("patent", sortedPageable);
     }
 
     @Test
