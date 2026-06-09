@@ -53,15 +53,15 @@ public class PatentController {
     }
 
     /**
-     * 특허 유지/포기 현황을 조회한다.
+     * 특허 유지중/비활성 현황을 조회한다.
      *
      * @param userDetails 인증 사용자 정보
-     * @return 유지/포기 특허 수
+     * @return 유지중/비활성 특허 수
      */
     @Operation(
             summary = "[Common] 특허 요약 조회",
-            description = "최신 권리 상태 기준 특허 유지/포기 현황을 조회합니다. "
-                    + "유지는 최신 권리 상태가 APPLIED, PUBLISHED, REGISTERED인 특허이고, 포기는 그 외 특허입니다. "
+            description = "최신 권리 상태 기준 특허 유지중/비활성 현황을 조회합니다. "
+                    + "active는 최신 권리 상태가 APPLIED, PUBLISHED, REGISTERED인 특허이고, inactive는 그 외 특허입니다. "
                     + "LEGAL 사용자는 전체 특허, BUSINESS 사용자는 본인 소속 부서 특허만 집계합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")

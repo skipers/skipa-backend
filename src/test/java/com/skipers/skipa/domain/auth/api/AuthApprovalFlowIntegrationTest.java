@@ -726,14 +726,14 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/patents/summary")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.maintain").value(2))
-                .andExpect(jsonPath("$.data.abandon").value(2));
+                .andExpect(jsonPath("$.data.active").value(2))
+                .andExpect(jsonPath("$.data.inactive").value(2));
 
         mockMvc.perform(get("/patents/summary")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.maintain").value(1))
-                .andExpect(jsonPath("$.data.abandon").value(1));
+                .andExpect(jsonPath("$.data.active").value(1))
+                .andExpect(jsonPath("$.data.inactive").value(1));
     }
 
     @Test

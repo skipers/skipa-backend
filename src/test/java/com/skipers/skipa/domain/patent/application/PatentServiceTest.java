@@ -301,8 +301,8 @@ class PatentServiceTest {
 
         var response = patentService.getSummary(legalUser());
 
-        assertThat(response.maintain()).isEqualTo(2);
-        assertThat(response.abandon()).isEqualTo(2);
+        assertThat(response.active()).isEqualTo(2);
+        assertThat(response.inactive()).isEqualTo(2);
     }
 
     @Test
@@ -319,8 +319,8 @@ class PatentServiceTest {
 
         var response = patentService.getSummary(businessUser(department));
 
-        assertThat(response.maintain()).isEqualTo(1);
-        assertThat(response.abandon()).isEqualTo(1);
+        assertThat(response.active()).isEqualTo(1);
+        assertThat(response.inactive()).isEqualTo(1);
         verify(patentRepository).findByCurrentDepartmentId(1L, Pageable.unpaged());
         verify(patentRepository, never()).findAll();
     }

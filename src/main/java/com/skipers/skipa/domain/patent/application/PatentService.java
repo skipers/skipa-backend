@@ -206,11 +206,11 @@ public class PatentService {
                 : patentRepository.findAll();
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
 
-        long maintain = patents.stream()
-                .filter(patent -> isMaintainStatus(latestStatuses.get(patent.getId())))
+        long active = patents.stream()
+                .filter(patent -> isActiveStatus(latestStatuses.get(patent.getId())))
                 .count();
 
-        return new PatentSummaryResponse(maintain, patents.size() - maintain);
+        return new PatentSummaryResponse(active, patents.size() - active);
     }
 
     @Transactional
@@ -427,7 +427,7 @@ public class PatentService {
         return statuses.isEmpty() || latestStatus != null && statuses.contains(latestStatus);
     }
 
-    private boolean isMaintainStatus(PatentLegalStatusType latestStatus) {
+    private boolean isActiveStatus(PatentLegalStatusType latestStatus) {
         return latestStatus == PatentLegalStatusType.APPLIED
                 || latestStatus == PatentLegalStatusType.PUBLISHED
                 || latestStatus == PatentLegalStatusType.REGISTERED;
