@@ -5,12 +5,15 @@ import com.skipers.skipa.domain.review.domain.Review;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public record BusinessReviewResponse(
         Long id,
         Long patentId,
         String title,
         String applicationNumber,
+        String overview,
+        List<String> keywords,
         String opinion,
         String comment,
         String status,
@@ -33,6 +36,8 @@ public record BusinessReviewResponse(
                 review.getPatent().getId(),
                 review.getPatent().getTitle(),
                 review.getPatent().getApplicationNumber(),
+                review.getPatent().getOverview(),
+                review.getPatent().getKeywords(),
                 review.getOpinion() != null ? review.getOpinion().name() : null,
                 review.getComment(),
                 review.getStatus().name(),

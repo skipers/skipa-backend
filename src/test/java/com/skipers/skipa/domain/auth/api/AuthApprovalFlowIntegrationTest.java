@@ -887,6 +887,8 @@ class AuthApprovalFlowIntegrationTest {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Assigned Patent")
                 .applicationNumber("APP-OPINION")
+                .overview("사업부 검토 개요")
+                .keywords(java.util.List.of("검토", "사업부"))
                 .currentDepartment(department)
                 .build());
         Review review = reviewRepository.save(Review.builder()
@@ -927,6 +929,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].patentId").value(patent.getId()))
                 .andExpect(jsonPath("$.data.items[0].title").value("Assigned Patent"))
                 .andExpect(jsonPath("$.data.items[0].applicationNumber").value("APP-OPINION"))
+                .andExpect(jsonPath("$.data.items[0].overview").value("사업부 검토 개요"))
+                .andExpect(jsonPath("$.data.items[0].keywords[0]").value("검토"))
                 .andExpect(jsonPath("$.data.items[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.data.items[0].totalScore").value(91.5))
                 .andExpect(jsonPath("$.data.items[0].valueGrade").value("S"))

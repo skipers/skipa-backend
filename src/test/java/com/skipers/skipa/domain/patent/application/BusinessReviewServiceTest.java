@@ -73,6 +73,8 @@ class BusinessReviewServiceTest {
         Patent patent = Patent.builder()
                 .title("Patent")
                 .applicationNumber("APP-1")
+                .overview("Overview")
+                .keywords(List.of("Keyword"))
                 .currentDepartment(department)
                 .build();
         ReflectionTestUtils.setField(patent, "id", 10L);
@@ -130,6 +132,8 @@ class BusinessReviewServiceTest {
         assertThat(responses)
                 .extracting(BusinessReviewResponse::patentId)
                 .containsExactly(10L);
+        assertThat(responses.get(0).overview()).isEqualTo("Overview");
+        assertThat(responses.get(0).keywords()).containsExactly("Keyword");
         assertThat(responses.get(0))
                 .extracting(BusinessReviewResponse::totalScore, BusinessReviewResponse::valueGrade)
                 .containsExactly(new BigDecimal("92.50"), "S");

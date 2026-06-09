@@ -66,7 +66,7 @@ public class BusinessReviewController {
     @Operation(
             summary = "[Business] 사업부 검토 현황 목록 조회",
             description = "사업부 사용자의 소속 부서에 현재 검토 주기로 요청된 특허 검토 현황 목록을 조회합니다. "
-                    + "각 특허의 최신 완료 평가 보고서 점수와 등급을 함께 반환합니다. "
+                    + "각 특허의 개요, 키워드, 최신 완료 평가 보고서 점수와 등급을 함께 반환합니다. "
                     + "필터: status(PENDING, OVERDUE, SUBMITTED), opinion(MAINTAIN, ABANDON), "
                     + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc. "
