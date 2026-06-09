@@ -13,6 +13,9 @@ jobs:
   build-and-update-manifest:
     name: Build, Push, and Update Manifest
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-backend-${{ github.ref_name }}
+      cancel-in-progress: true
 
     env:
       REGISTRY: amdp-registry.skala-ai.com
@@ -32,6 +35,12 @@ jobs:
           echo "IMAGE_REPOSITORY=${REGISTRY}/${PROJECT}/${IMAGE_NAME}" >> $GITHUB_ENV
           echo "IMAGE=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:dev-${SHORT_SHA}" >> $GITHUB_ENV
           echo "LATEST_IMAGE=${REGISTRY}/${PROJECT}/${IMAGE_NAME}:dev-latest" >> $GITHUB_ENV
+
+      - name: Show deployment target
+        run: |
+          echo "Image: ${IMAGE}"
+          echo "Latest alias: ${LATEST_IMAGE}"
+          echo "Infra path: ${INFRA_REPO}/${INFRA_PATH}"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -61,6 +70,7 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
+          provenance: false
           tags: |
             ${{ env.IMAGE }}
             ${{ env.LATEST_IMAGE }}
@@ -74,12 +84,21 @@ jobs:
 
       - name: Install Kustomize
         run: |
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          sudo mv kustomize /usr/local/bin/
+          KUSTOMIZE_VERSION=5.8.1
+          curl -sLo /tmp/kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+          tar -xzf /tmp/kustomize.tar.gz -C /tmp
+          sudo mv /tmp/kustomize /usr/local/bin/kustomize
+          kustomize version
 
       - name: Update backend image tag in kustomization
         working-directory: skipa-infra/${{ env.INFRA_PATH }}
         run: |
+          if [ ! -f kustomization.yml ]; then
+            echo "Cannot find kustomization.yml in ${INFRA_PATH}" >&2
+            exit 1
+          fi
+
           kustomize edit set image "${IMAGE_REPOSITORY}=${IMAGE_REPOSITORY}:${IMAGE_TAG}"
 
       - name: Commit and push manifest update to infra repository
@@ -95,5 +114,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add "${INFRA_PATH}/kustomization.yml"
+
+          if git diff --cached --quiet; then
+            echo "No staged manifest changes to commit."
+            exit 0
+          fi
+
           git commit -m "ci: update backend image tag to ${IMAGE_TAG} [skip ci]"
           git push origin main
