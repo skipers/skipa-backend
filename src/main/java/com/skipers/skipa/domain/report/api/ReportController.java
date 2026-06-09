@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.report.api;
 import com.skipers.skipa.domain.report.application.ReportService;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportHistoryResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.global.response.ApiResponse;
@@ -87,6 +88,27 @@ public class ReportController {
             @PathVariable Long patentId
     ) {
         return ApiResponse.ok(reportService.getLatest(userDetails.getUser(), patentId));
+    }
+
+    /**
+     * 특허의 과거 평가 이력을 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param patentId 특허 ID
+     * @return 과거 평가 이력
+     */
+    @Operation(
+            summary = "[Common] 과거 평가 이력 조회",
+            description = "특허의 완료된 평가 보고서 중 가장 최근 1건을 제외한 과거 평가 이력을 조회합니다. "
+                    + "평가 날짜, 점수, 등급, 사업부 결정, 사업부 의견, 보고서 ID를 반환합니다."
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/history")
+    public ApiResponse<ReportHistoryResponse> getHistory(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId
+    ) {
+        return ApiResponse.ok(reportService.getHistory(userDetails.getUser(), patentId));
     }
 
     /**

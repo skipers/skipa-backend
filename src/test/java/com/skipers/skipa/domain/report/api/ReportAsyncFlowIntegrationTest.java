@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.math.BigDecimal;
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -81,6 +84,15 @@ class ReportAsyncFlowIntegrationTest {
     @Test
     void legalUserCreatesReportAndAiCallbackCompletesAsyncFlow() throws Exception {
         Patent patent = savePatent("APP-ASYNC-COMPLETE");
+        Report oldReport = reportRepository.save(Report.builder()
+                .patent(patent)
+                .build());
+        oldReport.complete(
+                "reports/%d/report.html".formatted(oldReport.getId()),
+                new BigDecimal("91.00"),
+                "S",
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
         String legalToken = createActiveUserToken("legal-report-flow", "legal-report-flow@example.com");
 
         MvcResult createResult = mockMvc.perform(post("/patents/{patentId}/reports", patent.getId())
@@ -159,6 +171,18 @@ class ReportAsyncFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.valueGrade").value("A"))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
                 .andExpect(jsonPath("$.data.reportKey").doesNotExist());
+
+        mockMvc.perform(get("/patents/{patentId}/reports/history", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(oldReport.getId()))
+                .andExpect(jsonPath("$.data.items[0].patentId").value(patent.getId()))
+                .andExpect(jsonPath("$.data.items[0].totalScore").value(91.0))
+                .andExpect(jsonPath("$.data.items[0].valueGrade").value("S"))
+                .andExpect(jsonPath("$.data.items[0].evaluatedAt").value("2026-01-01T00:00:00Z"))
+                .andExpect(jsonPath("$.data.items[0].decision").isEmpty())
+                .andExpect(jsonPath("$.data.items[0].opinion").isEmpty());
     }
 
     @Test
