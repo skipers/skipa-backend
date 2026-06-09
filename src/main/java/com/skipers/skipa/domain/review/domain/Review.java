@@ -60,7 +60,7 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "report_id")
     private Report report;
 
-    @ManyToOne(fetch = FetchType.LAZY) // 재평가 대상 연차료(N) : (1) 사업부 검토
+    @ManyToOne(fetch = FetchType.LAZY) // 검토 대상 연차료(N) : (1) 사업부 검토
     @JoinColumn(name = "patent_annuity_id")
     private PatentAnnuity patentAnnuity;
 
