@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +31,14 @@ public class BusinessReviewService {
     private final PatentService patentService;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
 
-    public Page<BusinessReviewResponse> getAll(User user, Pageable pageable) {
+    public Page<BusinessReviewResponse> getAll(
+            User user,
+            String status,
+            String opinion,
+            LocalDate submittedFrom,
+            LocalDate submittedTo,
+            Pageable pageable
+    ) {
         Long departmentId = getDepartmentId(user);
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -38,7 +46,14 @@ public class BusinessReviewService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findLatestBusinessReviewsByDepartmentId(departmentId, sortedPageable)
+        return reviewRepository.findLatestBusinessReviewsByDepartmentId(
+                        departmentId,
+                        parseStatus(status),
+                        parseOpinion(opinion),
+                        startOfDay(submittedFrom),
+                        nextDayStart(submittedTo),
+                        sortedPageable
+                )
                 .map(BusinessReviewResponse::from);
     }
 
@@ -83,6 +98,38 @@ public class BusinessReviewService {
 
         return reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId)
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
+    }
+
+    private ReviewStatus parseStatus(String status) {
+        if (status == null) {
+            return null;
+        }
+
+        try {
+            return ReviewStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private BusinessOpinion parseOpinion(String opinion) {
+        if (opinion == null) {
+            return null;
+        }
+
+        try {
+            return BusinessOpinion.valueOf(opinion);
+        } catch (IllegalArgumentException e) {
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private Instant startOfDay(LocalDate date) {
+        return date == null ? null : date.atStartOfDay(ZoneId.systemDefault()).toInstant();
+    }
+
+    private Instant nextDayStart(LocalDate date) {
+        return date == null ? null : date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     private Long getDepartmentId(User user) {

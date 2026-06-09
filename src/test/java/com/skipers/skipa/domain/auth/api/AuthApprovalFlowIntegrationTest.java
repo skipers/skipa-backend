@@ -854,6 +854,19 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.data.items[0].reviewRequestedAt").isNotEmpty());
 
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("status", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()));
+
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("status", "SUBMITTED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(0));
+
         mockMvc.perform(get("/assigned-patents/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
@@ -880,6 +893,23 @@ class AuthApprovalFlowIntegrationTest {
         Review submitted = reviewRepository.findById(review.getId()).orElseThrow();
         assertThat(submitted.getStatus()).isEqualTo(ReviewStatus.SUBMITTED);
         assertThat(submitted.getSubmittedAt()).isNotNull();
+
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("status", "SUBMITTED")
+                        .param("opinion", "MAINTAIN")
+                        .param("submittedFrom", LocalDate.now().toString())
+                        .param("submittedTo", LocalDate.now().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(patent.getId()))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"));
+
+        mockMvc.perform(get("/assigned-patents")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .param("opinion", "HOLD"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
         mockMvc.perform(post("/assigned-patents/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
