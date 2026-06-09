@@ -159,6 +159,7 @@ public class PatentService {
             Long departmentId,
             String reviewStatus,
             String decision,
+            Boolean checked,
             List<String> statuses,
             String filingCountry,
             String techField,
@@ -182,6 +183,7 @@ public class PatentService {
                 .filter(patent -> matchesDepartment(patent, departmentId))
                 .filter(patent -> matchesReviewStatus(patent, reviewsByPatentId.get(patent.getId()), reviewStatus, today))
                 .filter(patent -> matchesDecision(reviewsByPatentId.get(patent.getId()), parsedDecision))
+                .filter(patent -> matchesChecked(reviewsByPatentId.get(patent.getId()), checked))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
                 .filter(patent -> matchesText(patent.getTechField(), techField))
@@ -437,6 +439,7 @@ public class PatentService {
         }
         return switch (reviewStatus) {
             case "unassigned" -> patent.getCurrentDepartment() == null;
+            case "unrequested" -> review == null;
             case "unread" -> review != null
                     && review.getStatus() == ReviewStatus.SUBMITTED
                     && !review.isChecked();
@@ -453,6 +456,13 @@ public class PatentService {
 
     private boolean matchesDecision(Review review, BusinessOpinion decision) {
         return decision == null || review != null && review.getOpinion() == decision;
+    }
+
+    private boolean matchesChecked(Review review, Boolean checked) {
+        return checked == null
+                || review != null
+                && review.getStatus() == ReviewStatus.SUBMITTED
+                && review.isChecked() == checked;
     }
 
     private boolean matchesLegalStatus(PatentLegalStatusType latestStatus, Set<PatentLegalStatusType> statuses) {
@@ -475,6 +485,7 @@ public class PatentService {
                 latestLegalStatus == null ? null : latestLegalStatus.name(),
                 reviewStatus,
                 review == null || review.getOpinion() == null ? null : review.getOpinion().name(),
+                review == null || review.getStatus() != ReviewStatus.SUBMITTED ? null : review.isChecked(),
                 review != null && review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today)
         );
     }
@@ -484,7 +495,7 @@ public class PatentService {
             return "unassigned";
         }
         if (review == null) {
-            return null;
+            return "unrequested";
         }
         if (review.getStatus() == ReviewStatus.SUBMITTED) {
             return "done";

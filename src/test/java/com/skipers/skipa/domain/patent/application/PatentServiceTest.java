@@ -317,6 +317,7 @@ class PatentServiceTest {
                 1L,
                 "done",
                 "MAINTAIN",
+                false,
                 List.of("REGISTERED"),
                 "KR",
                 "반도체",
@@ -328,8 +329,8 @@ class PatentServiceTest {
         Object item = result.getContent().get(0);
         assertThat(item)
                 .extracting("id", "latestLegalStatus", "techField", "currentDepartmentId", "currentDepartmentName",
-                        "reviewStatus", "decision", "isOverdue", "filingCountry")
-                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false, "KR");
+                        "reviewStatus", "decision", "checked", "isOverdue", "filingCountry")
+                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false, false, "KR");
     }
 
     @Test
@@ -367,6 +368,7 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
+                null,
                 PageRequest.of(0, 20)
         );
 
@@ -374,6 +376,60 @@ class PatentServiceTest {
         assertThat(result.getContent().get(0))
                 .extracting("id", "reviewStatus", "currentDepartmentId")
                 .containsExactly(2L, "unassigned", null);
+    }
+
+    @Test
+    void getAllFiltersUnrequestedPatentsByReviewStatus() {
+        Department department = department("통신", 1L);
+        Patent unrequestedPatent = patent(
+                1L,
+                "Unrequested Patent",
+                "APP-LIST-UNREQUESTED",
+                "반도체",
+                "KR",
+                null,
+                department
+        );
+        Patent requestedPatent = patent(
+                2L,
+                "Requested Patent",
+                "APP-LIST-REQUESTED",
+                "반도체",
+                "KR",
+                null,
+                department
+        );
+        ReviewCycle activeCycle = reviewCycle();
+        Review review = Review.builder()
+                .patent(requestedPatent)
+                .department(department)
+                .reviewCycle(activeCycle)
+                .build();
+        ReflectionTestUtils.setField(review, "id", 1L);
+        when(patentRepository.findAll()).thenReturn(List.of(unrequestedPatent, requestedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(activeCycle));
+        when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(review));
+
+        Page<?> result = patentService.getAll(
+                legalUser(),
+                null,
+                null,
+                "unrequested",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0))
+                .extracting("id", "reviewStatus", "checked")
+                .containsExactly(1L, "unrequested", null);
     }
 
     @Test

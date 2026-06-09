@@ -26,13 +26,14 @@ public record PatentListResponse(
         String currentDepartmentName,
         String reviewStatus,
         String decision,
+        Boolean checked,
         boolean isOverdue,
         Instant createdAt,
         Instant updatedAt
 ) {
 
     public static PatentListResponse from(Patent patent) {
-        return of(patent, null, null, null, false);
+        return of(patent, null, null, null, null, false);
     }
 
     public static PatentListResponse of(
@@ -40,6 +41,7 @@ public record PatentListResponse(
             String latestLegalStatus,
             String reviewStatus,
             String decision,
+            Boolean checked,
             boolean isOverdue
     ) {
         Long currentDepartmentId = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getId();
@@ -65,6 +67,7 @@ public record PatentListResponse(
                 currentDepartmentName,
                 reviewStatus,
                 decision,
+                checked,
                 isOverdue,
                 patent.getCreatedAt(),
                 patent.getUpdatedAt()

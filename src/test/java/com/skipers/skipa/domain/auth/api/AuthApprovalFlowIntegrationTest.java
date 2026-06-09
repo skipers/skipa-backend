@@ -714,6 +714,7 @@ class AuthApprovalFlowIntegrationTest {
                         .param("departmentId", department.getId().toString())
                         .param("reviewStatus", "done")
                         .param("decision", "MAINTAIN")
+                        .param("checked", "false")
                         .param("status", "REGISTERED")
                         .param("filingCountry", "KR")
                         .param("techField", "반도체")
@@ -733,6 +734,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].currentDepartmentName").value(department.getName()))
                 .andExpect(jsonPath("$.data.items[0].reviewStatus").value("done"))
                 .andExpect(jsonPath("$.data.items[0].decision").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.items[0].checked").value(false))
                 .andExpect(jsonPath("$.data.items[0].isOverdue").value(false));
     }
 

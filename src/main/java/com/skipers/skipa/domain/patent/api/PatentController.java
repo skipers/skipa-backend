@@ -74,6 +74,7 @@ public class PatentController {
      * @param departmentId 부서 ID(선택, -1은 미배정)
      * @param reviewStatus 재평가 상태(선택)
      * @param decision 사업부 결정(선택)
+     * @param checked 회신 확인 여부(선택)
      * @param status 권리 상태(선택, 복수 가능)
      * @param filingCountry 출원국(선택)
      * @param techField 기술 분야(선택)
@@ -90,6 +91,7 @@ public class PatentController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) String reviewStatus,
             @RequestParam(required = false) String decision,
+            @RequestParam(required = false) Boolean checked,
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) String filingCountry,
             @RequestParam(required = false) String techField,
@@ -102,6 +104,7 @@ public class PatentController {
                 departmentId,
                 reviewStatus,
                 decision,
+                checked,
                 status,
                 filingCountry,
                 techField,
