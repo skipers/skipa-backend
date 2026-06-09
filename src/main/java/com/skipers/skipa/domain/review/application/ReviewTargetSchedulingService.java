@@ -22,7 +22,7 @@ import java.time.YearMonth;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ReevaluationSchedulingService {
+public class ReviewTargetSchedulingService {
 
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewCycleRepository reviewCycleRepository;
@@ -30,7 +30,7 @@ public class ReevaluationSchedulingService {
     private final ReportRepository reportRepository;
 
     @Transactional
-    public int scheduleNextQuarterReevaluations() {
+    public int scheduleNextQuarterReviewTargets() {
         QuarterRange nextQuarter = nextQuarter(LocalDate.now());
         ReviewCycle reviewCycle = reviewCycleRepository
                 .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(

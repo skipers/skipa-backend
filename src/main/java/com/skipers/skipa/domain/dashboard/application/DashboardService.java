@@ -84,6 +84,7 @@ public class DashboardService {
         Long departmentId = user.getDepartment().getId();
         List<Review> reviews = reviewRepository.findAllByReviewCycleId(reviewCycle.getId()).stream()
                 .filter(review -> review.getDepartment().getId().equals(departmentId))
+                .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
                 .toList();
         List<Patent> departmentPatents = patentRepository.findByCurrentDepartmentId(
                 departmentId,
@@ -93,7 +94,7 @@ public class DashboardService {
 
         long submitted = countSubmitted(reviews);
         long notSubmitted = reviews.stream()
-                .filter(review -> review.getStatus() == ReviewStatus.PENDING)
+                .filter(review -> review.getStatus() != ReviewStatus.SUBMITTED)
                 .count();
 
         return new BusinessDashboardResponse(
@@ -165,7 +166,7 @@ public class DashboardService {
 
     private List<BusinessDashboardResponse.PatentReviewItem> pendingPatents(List<Review> reviews) {
         return reviews.stream()
-                .filter(review -> review.getStatus() == ReviewStatus.PENDING)
+                .filter(review -> review.getStatus() != ReviewStatus.SUBMITTED)
                 .sorted(Comparator.comparing(Review::getDueDate).thenComparing(Review::getId))
                 .limit(RECENT_LIMIT)
                 .map(review -> new BusinessDashboardResponse.PatentReviewItem(
@@ -173,7 +174,6 @@ public class DashboardService {
                         review.getPatent().getId(),
                         review.getPatent().getTitle(),
                         review.getPatent().getApplicationNumber(),
-                        review.getDueDate(),
                         review.getStatus().name()
                 ))
                 .toList();
@@ -339,8 +339,8 @@ public class DashboardService {
 
     private long countOverdue(List<Review> reviews, LocalDate today) {
         return reviews.stream()
-                .filter(review -> review.getStatus() == ReviewStatus.PENDING)
-                .filter(review -> review.getDueDate().isBefore(today))
+                .filter(review -> review.getStatus() == ReviewStatus.OVERDUE
+                        || review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today))
                 .count();
     }
 

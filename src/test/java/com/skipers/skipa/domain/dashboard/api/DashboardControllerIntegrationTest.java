@@ -153,7 +153,7 @@ class DashboardControllerIntegrationTest {
                 .submittedAt(Instant.now())
                 .checked(false)
                 .build());
-        reviewRepository.save(Review.builder()
+        Review overdueReview = reviewRepository.save(Review.builder()
                 .patent(overduePatent)
                 .department(semiconductorDepartment)
                 .reviewCycle(reviewCycle)
@@ -204,6 +204,13 @@ class DashboardControllerIntegrationTest {
                 semiconductorDepartment,
                 LocalDate.now().plusMonths(6)
         );
+        Patent overduePatent = savePatent(
+                "Overdue Biz Patent",
+                "APP-DASH-BIZ-4",
+                "반도체",
+                semiconductorDepartment,
+                LocalDate.now().plusMonths(9)
+        );
         Patent otherDepartmentPatent = savePatent(
                 "Other Department Patent",
                 "APP-DASH-BIZ-3",
@@ -230,6 +237,13 @@ class DashboardControllerIntegrationTest {
                 .status(ReviewStatus.SUBMITTED)
                 .submittedAt(Instant.now())
                 .build());
+        Review overdueReview = reviewRepository.save(Review.builder()
+                .patent(overduePatent)
+                .department(semiconductorDepartment)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.OVERDUE)
+                .dueDate(LocalDate.now().minusDays(1))
+                .build());
         reviewRepository.save(Review.builder()
                 .patent(otherDepartmentPatent)
                 .department(batteryDepartment)
@@ -247,9 +261,9 @@ class DashboardControllerIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
-                .andExpect(jsonPath("$.data.kpi.total").value(2))
+                .andExpect(jsonPath("$.data.kpi.total").value(3))
                 .andExpect(jsonPath("$.data.kpi.submitted").value(1))
-                .andExpect(jsonPath("$.data.kpi.notSubmitted").value(1))
+                .andExpect(jsonPath("$.data.kpi.notSubmitted").value(2))
                 .andExpect(jsonPath("$.data.dueDate").doesNotExist())
                 .andExpect(jsonPath("$.data.dDay").doesNotExist())
                 .andExpect(jsonPath("$.data.kpi.requested").doesNotExist())
@@ -260,9 +274,12 @@ class DashboardControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.kpi.unread").doesNotExist())
                 .andExpect(jsonPath("$.data.kpi.unrequested").doesNotExist())
                 .andExpect(jsonPath("$.data.patentStatus.expiringSoon").doesNotExist())
-                .andExpect(jsonPath("$.data.pendingPatents.length()").value(1))
-                .andExpect(jsonPath("$.data.pendingPatents[0].reviewId").value(pendingReview.getId()))
-                .andExpect(jsonPath("$.data.pendingPatents[0].patentId").value(pendingPatent.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents.length()").value(2))
+                .andExpect(jsonPath("$.data.pendingPatents[0].reviewId").value(overdueReview.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents[0].patentId").value(overduePatent.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents[0].dueDate").doesNotExist())
+                .andExpect(jsonPath("$.data.pendingPatents[1].reviewId").value(pendingReview.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents[1].patentId").value(pendingPatent.getId()))
                 .andExpect(jsonPath("$.data.recentSubmissions.length()").value(1))
                 .andExpect(jsonPath("$.data.recentSubmissions[0].patentId").value(submittedPatent.getId()));
     }

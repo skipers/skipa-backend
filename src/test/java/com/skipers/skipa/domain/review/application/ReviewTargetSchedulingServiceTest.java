@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
-class ReevaluationSchedulingServiceTest {
+class ReviewTargetSchedulingServiceTest {
 
     @Mock
     private PatentAnnuityRepository patentAnnuityRepository;
@@ -46,10 +46,10 @@ class ReevaluationSchedulingServiceTest {
     private ReportRepository reportRepository;
 
     @InjectMocks
-    private ReevaluationSchedulingService reevaluationSchedulingService;
+    private ReviewTargetSchedulingService reviewTargetSchedulingService;
 
     @Test
-    void scheduleNextQuarterReevaluationsCreatesScheduledReviewsForUnpaidAnnuities() {
+    void scheduleNextQuarterReviewTargetsCreatesScheduledReviewsForUnpaidAnnuities() {
         Department department = Department.builder().name("통신").build();
         ReflectionTestUtils.setField(department, "id", 1L);
         Patent patent = Patent.builder()
@@ -83,7 +83,7 @@ class ReevaluationSchedulingServiceTest {
                 any()
         )).thenReturn(List.of(annuity));
 
-        int created = reevaluationSchedulingService.scheduleNextQuarterReevaluations();
+        int created = reviewTargetSchedulingService.scheduleNextQuarterReviewTargets();
 
         assertThat(created).isEqualTo(1);
         verify(reviewRepository).save(argThat(review ->
@@ -96,13 +96,13 @@ class ReevaluationSchedulingServiceTest {
     }
 
     @Test
-    void scheduleNextQuarterReevaluationsSkipsWhenActiveCycleIsMissing() {
+    void scheduleNextQuarterReviewTargetsSkipsWhenActiveCycleIsMissing() {
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
                 any(),
                 any()
         )).thenReturn(Optional.empty());
 
-        int created = reevaluationSchedulingService.scheduleNextQuarterReevaluations();
+        int created = reviewTargetSchedulingService.scheduleNextQuarterReviewTargets();
 
         assertThat(created).isZero();
         verify(patentAnnuityRepository, never()).findByStatusAndDueDateBetween(any(), any(), any());

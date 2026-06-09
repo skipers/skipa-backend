@@ -407,8 +407,7 @@ public class PatentService {
                     && review.getStatus() == ReviewStatus.PENDING
                     && !review.getDueDate().isBefore(today);
             case "overdue" -> review != null
-                    && review.getStatus() == ReviewStatus.PENDING
-                    && review.getDueDate().isBefore(today);
+                    && isOverdueReview(review, today);
             case "done" -> review != null && review.getStatus() == ReviewStatus.SUBMITTED;
             default -> throw new PatentException(ErrorCode.INVALID_REQUEST);
         };
@@ -454,7 +453,7 @@ public class PatentService {
                 review == null || review.getOpinion() == null ? null : review.getOpinion().name(),
                 review == null || review.getStatus() != ReviewStatus.SUBMITTED ? null : review.isChecked(),
                 latestReportScore,
-                review != null && review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today)
+                review != null && isOverdueReview(review, today)
         );
     }
 
@@ -468,13 +467,18 @@ public class PatentService {
         if (review.getStatus() == ReviewStatus.SUBMITTED) {
             return "done";
         }
-        if (review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today)) {
+        if (isOverdueReview(review, today)) {
             return "overdue";
         }
         if (review.getStatus() == ReviewStatus.PENDING) {
             return "requested";
         }
         return null;
+    }
+
+    private boolean isOverdueReview(Review review, LocalDate today) {
+        return review.getStatus() == ReviewStatus.OVERDUE
+                || review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today);
     }
 
     private Comparator<PatentListResponse> listSort(String sort) {

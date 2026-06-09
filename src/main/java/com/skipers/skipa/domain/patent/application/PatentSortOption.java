@@ -79,7 +79,7 @@ public record PatentSortOption(
 
     private static Sort.Direction defaultDirection(String field) {
         return switch (field) {
-            case "expiryDate", "applicationDate" -> Sort.Direction.ASC;
+            case "title", "applicationNumber", "expiryDate", "applicationDate" -> Sort.Direction.ASC;
             default -> Sort.Direction.DESC;
         };
     }

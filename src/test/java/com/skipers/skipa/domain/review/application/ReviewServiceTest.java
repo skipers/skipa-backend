@@ -185,7 +185,7 @@ class ReviewServiceTest {
     }
 
     @Test
-    void createRequestsScheduledReevaluationInsteadOfCreatingDuplicate() {
+    void createRequestsScheduledReviewTargetInsteadOfCreatingDuplicate() {
         Review scheduledReview = Review.builder()
                 .patent(patent)
                 .department(department)

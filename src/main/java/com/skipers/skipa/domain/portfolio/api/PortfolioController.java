@@ -25,7 +25,7 @@ public class PortfolioController {
      *
      * @return 포트폴리오 인사이트
      */
-    @Operation(summary = "[Legal] 포트폴리오 인사이트 조회", description = "포트폴리오 분석 화면의 인사이트를 조회합니다. 인사이트 생성 로직은 추후 연동 예정입니다.")
+    @Operation(summary = "[Legal] 포트폴리오 인사이트 조회", description = "포트폴리오 분석 화면의 인사이트를 조회합니다. 인사이트 생성 로직은 추후 연동 예정이며, 현재는 빈 배열을 반환합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/insights")
     public ApiResponse<PortfolioInsightsResponse> getInsights() {
@@ -37,7 +37,7 @@ public class PortfolioController {
      *
      * @return 포트폴리오 분포
      */
-    @Operation(summary = "[Legal] 포트폴리오 분포 조회", description = "기술 분야, 국가, 사업부별 포트폴리오 분포를 조회합니다.")
+    @Operation(summary = "[Legal] 포트폴리오 분포 조회", description = "전체 및 사업부별 평가 등급 분포와 기술 분야, 국가, 사업부별 포트폴리오 분포를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/distribution")
     public ApiResponse<PortfolioDistributionResponse> getDistribution() {

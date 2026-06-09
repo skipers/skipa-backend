@@ -10,7 +10,7 @@ public class ReviewOverdueScheduler {
 
     private final ReviewOverdueService reviewOverdueService;
 
-    @Scheduled(cron = "0 10 2 * * *")
+    @Scheduled(cron = "0 5 9 * * *", zone = "Asia/Seoul")
     public void markOverdueReviews() {
         reviewOverdueService.markOverdueReviews();
     }
