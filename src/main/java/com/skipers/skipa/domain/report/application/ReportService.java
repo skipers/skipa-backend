@@ -79,6 +79,20 @@ public class ReportService {
         return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()));
     }
 
+    public ReportDetailResponse getLatest(User user, Long patentId) {
+        businessPatentAccessValidator.validate(user, patentId);
+
+        if (!patentRepository.existsById(patentId)) {
+            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+        }
+
+        Report report = reportRepository.findFirstByPatentIdOrderByIdDesc(patentId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        String url = report.isCompleted() ? reportStorageService.generatePresignedUrl(report.getReportKey()) : null;
+        return ReportDetailResponse.of(report, url);
+    }
+
     public ReportStatusResponse getStatus(User user, Long patentId, Long reportId) {
         businessPatentAccessValidator.validate(user, patentId);
 

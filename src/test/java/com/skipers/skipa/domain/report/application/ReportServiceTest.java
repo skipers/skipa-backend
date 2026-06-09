@@ -178,6 +178,45 @@ class ReportServiceTest {
         verify(reportStorageService, never()).generatePresignedUrl(any());
     }
 
+    @Test
+    void getLatestReturnsGeneratingReportWithoutUrl() {
+        Report report = report(1L, 10L);
+        when(patentRepository.existsById(10L)).thenReturn(true);
+        when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
+
+        ReportDetailResponse response = reportService.getLatest(null, 10L);
+
+        verify(businessPatentAccessValidator).validate(null, 10L);
+        verify(reportStorageService, never()).generatePresignedUrl(any());
+        assertThat(response.id()).isEqualTo(1L);
+        assertThat(response.patentId()).isEqualTo(10L);
+        assertThat(response.status()).isEqualTo("GENERATING");
+        assertThat(response.url()).isNull();
+    }
+
+    @Test
+    void getLatestReturnsCompletedReportWithPresignedUrl() {
+        Report report = report(1L, 10L);
+        report.complete("reports/1/report.json", null);
+        when(patentRepository.existsById(10L)).thenReturn(true);
+        when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
+        when(reportStorageService.generatePresignedUrl("reports/1/report.json"))
+                .thenReturn("https://minio.example.com/reports/1/report.json?signature=abc");
+
+        ReportDetailResponse response = reportService.getLatest(null, 10L);
+
+        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.url()).isEqualTo("https://minio.example.com/reports/1/report.json?signature=abc");
+    }
+
+    @Test
+    void getLatestRejectsMissingReport() {
+        when(patentRepository.existsById(10L)).thenReturn(true);
+        when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.empty());
+
+        assertReportError(() -> reportService.getLatest(null, 10L), ErrorCode.REPORT_NOT_FOUND);
+    }
+
     private Report report(Long reportId, Long patentId) {
         Patent patent = Patent.builder()
                 .title("Patent")

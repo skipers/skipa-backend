@@ -102,6 +102,13 @@ class ReportAsyncFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("GENERATING"))
                 .andExpect(jsonPath("$.data.evaluatedAt").isEmpty());
 
+        mockMvc.perform(get("/patents/{patentId}/reports/latest", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(reportId))
+                .andExpect(jsonPath("$.data.status").value("GENERATING"))
+                .andExpect(jsonPath("$.data.url").isEmpty());
+
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), reportId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isConflict())
@@ -131,6 +138,14 @@ class ReportAsyncFlowIntegrationTest {
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), reportId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
+                .andExpect(jsonPath("$.data.reportKey").doesNotExist());
+
+        mockMvc.perform(get("/patents/{patentId}/reports/latest", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(reportId))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
                 .andExpect(jsonPath("$.data.reportKey").doesNotExist());
@@ -167,6 +182,13 @@ class ReportAsyncFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("REPORT_NOT_COMPLETED"));
+
+        mockMvc.perform(get("/patents/{patentId}/reports/latest", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(report.getId()))
+                .andExpect(jsonPath("$.data.status").value("FAILED"))
+                .andExpect(jsonPath("$.data.url").isEmpty());
     }
 
     @Test
@@ -181,6 +203,17 @@ class ReportAsyncFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.error.code").value("EXTERNAL_SERVICE_ERROR"));
+    }
+
+    @Test
+    void latestReportReturnsNotFoundWhenPatentHasNoReport() throws Exception {
+        Patent patent = savePatent("APP-LATEST-NONE");
+        String legalToken = createActiveUserToken("legal-latest-none", "legal-latest-none@example.com");
+
+        mockMvc.perform(get("/patents/{patentId}/reports/latest", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("REPORT_NOT_FOUND"));
     }
 
     private Patent savePatent(String applicationNumber) {

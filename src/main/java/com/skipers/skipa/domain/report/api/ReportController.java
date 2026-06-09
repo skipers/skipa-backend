@@ -64,6 +64,23 @@ public class ReportController {
     }
 
     /**
+     * 특허의 최신 평가 보고서를 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param patentId 특허 ID
+     * @return 최신 평가 보고서
+     */
+    @Operation(summary = "최신 평가 보고서 조회", description = "특허의 최신 평가 보고서를 조회합니다. 완료된 보고서는 접근 URL을 함께 반환합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/latest")
+    public ApiResponse<ReportDetailResponse> getLatest(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId
+    ) {
+        return ApiResponse.ok(reportService.getLatest(userDetails.getUser(), patentId));
+    }
+
+    /**
      * 특허의 평가 보고서를 ID로 조회한다.
      *
      * @param userDetails 인증 사용자 정보
