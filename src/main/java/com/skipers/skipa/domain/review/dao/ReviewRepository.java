@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.review.dao;
 
 import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
+import java.time.Instant;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
@@ -21,6 +23,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             from Review review
             where review.department.id = :departmentId
               and review.patent.currentDepartment.id = :departmentId
+              and (:status is null or review.status = :status)
+              and (:opinion is null or review.opinion = :opinion)
+              and (:submittedFrom is null or review.submittedAt >= :submittedFrom)
+              and (:submittedTo is null or review.submittedAt < :submittedTo)
               and review.id = (
                   select max(latestReview.id)
                   from Review latestReview
@@ -28,7 +34,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                     and latestReview.department.id = :departmentId
               )
             """)
-    Page<Review> findLatestBusinessReviewsByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
+    Page<Review> findLatestBusinessReviewsByDepartmentId(
+            @Param("departmentId") Long departmentId,
+            @Param("status") ReviewStatus status,
+            @Param("opinion") BusinessOpinion opinion,
+            @Param("submittedFrom") Instant submittedFrom,
+            @Param("submittedTo") Instant submittedTo,
+            Pageable pageable
+    );
 
     @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
     @Query("""

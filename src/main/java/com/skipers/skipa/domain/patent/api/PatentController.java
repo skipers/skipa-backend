@@ -6,7 +6,6 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
-import com.skipers.skipa.domain.patent.dto.response.PatentStatsResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import com.skipers.skipa.global.security.CustomUserDetails;
@@ -53,18 +52,6 @@ public class PatentController {
     }
 
     /**
-     * 특허 통계를 조회한다.
-     *
-     * @return 특허 통계
-     */
-    @Operation(summary = "특허 통계 조회", description = "특허 권리 상태, 만료 예정, 기술 분야, 국가, 부서별 통계를 조회합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
-    @GetMapping("/stats")
-    public ApiResponse<PatentStatsResponse> getStats() {
-        return ApiResponse.ok(patentService.getStats());
-    }
-
-    /**
      * 특허를 ID로 조회한다.
      *
      * @param patentId 특허 ID
@@ -87,6 +74,7 @@ public class PatentController {
      * @param departmentId 부서 ID(선택, -1은 미배정)
      * @param reviewStatus 재평가 상태(선택)
      * @param decision 사업부 결정(선택)
+     * @param checked 회신 확인 여부(선택)
      * @param status 권리 상태(선택, 복수 가능)
      * @param filingCountry 출원국(선택)
      * @param techField 기술 분야(선택)
@@ -94,7 +82,18 @@ public class PatentController {
      * @param pageable page/size 정보
      * @return 특허 목록 페이지
      */
-    @Operation(summary = "특허 목록 조회", description = "특허 목록을 페이지 단위로 조회합니다. 특허명으로 검색할 수 있습니다.")
+    @Operation(
+            summary = "특허 목록 조회",
+            description = "특허 목록을 페이지 단위로 조회합니다. "
+                    + "필터: keyword(특허명), departmentId(부서 ID, -1은 미배정), "
+                    + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
+                    + "decision(MAINTAIN, ABANDON), checked(true/false), "
+                    + "status(PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
+                    + "filingCountry, techField. "
+                    + "정렬: sort=id(기본값, 최신순), expiryDate(만료일 오름차순), "
+                    + "applicationDate(출원일 오름차순), citationCount(인용 수 내림차순). "
+                    + "BUSINESS 사용자는 본인 소속 부서 특허만 조회합니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentListResponse>> getAll(
@@ -103,6 +102,7 @@ public class PatentController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) String reviewStatus,
             @RequestParam(required = false) String decision,
+            @RequestParam(required = false) Boolean checked,
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) String filingCountry,
             @RequestParam(required = false) String techField,
@@ -115,6 +115,7 @@ public class PatentController {
                 departmentId,
                 reviewStatus,
                 decision,
+                checked,
                 status,
                 filingCountry,
                 techField,

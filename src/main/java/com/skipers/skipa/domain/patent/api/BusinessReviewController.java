@@ -17,9 +17,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
@@ -32,17 +35,38 @@ public class BusinessReviewController {
      * 본인 소속 부서에 요청된 특허 검토 현황 목록을 조회한다(page/size 기반).
      *
      * @param userDetails 인증 사용자 정보
+     * @param status 제출 상태(선택)
+     * @param opinion 사업부 의견(선택)
+     * @param submittedFrom 제출일 시작일(선택)
+     * @param submittedTo 제출일 종료일(선택)
      * @param pageable page/size 정보
      * @return 사업부 검토 현황 목록 페이지
      */
-    @Operation(summary = "사업부 검토 현황 목록 조회", description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황 목록을 조회합니다.")
+    @Operation(
+            summary = "사업부 검토 현황 목록 조회",
+            description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황 목록을 조회합니다. "
+                    + "필터: status(PENDING, SUBMITTED), opinion(MAINTAIN, ABANDON), "
+                    + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
+                    + "정렬: 최신 검토 요청순(id 내림차순) 고정입니다."
+    )
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<BusinessReviewResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String opinion,
+            @RequestParam(required = false) LocalDate submittedFrom,
+            @RequestParam(required = false) LocalDate submittedTo,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
-        return ApiResponse.ok(PageResponse.from(businessReviewService.getAll(userDetails.getUser(), pageable)));
+        return ApiResponse.ok(PageResponse.from(businessReviewService.getAll(
+                userDetails.getUser(),
+                status,
+                opinion,
+                submittedFrom,
+                submittedTo,
+                pageable
+        )));
     }
 
     /**

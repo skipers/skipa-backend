@@ -64,7 +64,12 @@ public class DepartmentController {
      * @param pageable page/size 정보
      * @return 부서 목록 페이지
      */
-    @Operation(summary = "부서 목록 조회", description = "부서 목록을 페이지 단위로 조회합니다. 부서명으로 검색할 수 있습니다.")
+    @Operation(
+            summary = "부서 목록 조회",
+            description = "활성 부서 목록을 페이지 단위로 조회합니다. "
+                    + "필터: keyword(부서명 부분 검색). "
+                    + "정렬: 부서명 오름차순(name ASC) 고정입니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping
     public ApiResponse<PageResponse<DepartmentResponse>> getAll(
