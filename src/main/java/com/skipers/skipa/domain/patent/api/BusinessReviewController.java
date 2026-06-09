@@ -45,7 +45,7 @@ public class BusinessReviewController {
     @Operation(
             summary = "[Business] 사업부 검토 현황 목록 조회",
             description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황 목록을 조회합니다. "
-                    + "필터: status(PENDING, SUBMITTED), opinion(MAINTAIN, ABANDON), "
+                    + "필터: status(PENDING, OVERDUE, SUBMITTED), opinion(MAINTAIN, ABANDON), "
                     + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
                     + "정렬: 최신 검토 요청순(id 내림차순) 고정입니다."
     )

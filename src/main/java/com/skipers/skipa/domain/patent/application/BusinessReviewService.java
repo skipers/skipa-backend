@@ -74,7 +74,7 @@ public class BusinessReviewService {
             ReviewSubmitRequest request
     ) {
         Review review = getOwnedReview(user, patentId);
-        if (review.getStatus() != ReviewStatus.PENDING) {
+        if (review.getStatus() != ReviewStatus.PENDING && review.getStatus() != ReviewStatus.OVERDUE) {
             throw new ReviewException(ErrorCode.OPINION_ALREADY_SUBMITTED);
         }
         if (review.getDueDate().isBefore(LocalDate.now())) {
@@ -100,7 +100,7 @@ public class BusinessReviewService {
         return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
                         patentId,
                         departmentId,
-                        List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED)
+                        List.of(ReviewStatus.PENDING, ReviewStatus.OVERDUE, ReviewStatus.SUBMITTED)
                 )
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
     }

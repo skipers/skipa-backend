@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,6 +15,7 @@ import java.util.Optional;
 import java.util.Collection;
 import java.util.List;
 import java.time.Instant;
+import java.time.LocalDate;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
@@ -86,6 +88,18 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     @EntityGraph(attributePaths = {"patent", "department", "reviewCycle"})
     List<Review> findAllByReviewCycleId(Long reviewCycleId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update Review review
+            set review.status = com.skipers.skipa.domain.review.domain.ReviewStatus.OVERDUE
+            where review.status in :statuses
+              and review.dueDate < :today
+            """)
+    int markOverdueByDueDateBefore(
+            @Param("today") LocalDate today,
+            @Param("statuses") Collection<ReviewStatus> statuses
+    );
 
     boolean existsByReviewCycleId(Long reviewCycleId);
 

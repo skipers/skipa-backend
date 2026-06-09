@@ -72,7 +72,7 @@ public class Review extends BaseTimeEntity {
     private String comment;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20) // 제출 상태(PENDING/SUBMITTED)
+    @Column(name = "status", nullable = false, length = 20) // 검토 상태(SCHEDULED/PENDING/OVERDUE/SUBMITTED)
     private ReviewStatus status;
 
     @Column(name = "submitted_at") // 제출일시
@@ -122,6 +122,10 @@ public class Review extends BaseTimeEntity {
         this.status = ReviewStatus.SUBMITTED;
         this.submittedAt = submittedAt;
         this.checked = false;
+    }
+
+    public void markOverdue() {
+        this.status = ReviewStatus.OVERDUE;
     }
 
     public void confirm() {

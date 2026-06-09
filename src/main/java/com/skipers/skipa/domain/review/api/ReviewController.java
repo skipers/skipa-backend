@@ -70,7 +70,7 @@ public class ReviewController {
     @Operation(
             summary = "[Legal] 이번 분기 검토 대상 특허 목록 조회",
             description = "관리자와 Legal 팀이 현재 활성 검토 주기에 포함된 검토 대상 특허 목록을 조회합니다. "
-                    + "필터: status(SCHEDULED, PENDING, SUBMITTED), departmentId, patentId, checked(true/false). "
+                    + "필터: status(SCHEDULED, PENDING, OVERDUE, SUBMITTED), departmentId, patentId, checked(true/false). "
                     + "정렬: 최신 검토 대상순(id 내림차순) 고정입니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
