@@ -55,16 +55,19 @@ class InternalReportControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "reportKey": "reports/%d/report.html"
+                                  "reportKey": "reports/%d/report.html",
+                                  "totalScore": 82.5
                                 }
                                 """.formatted(report.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reportId").value(report.getId()))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.totalScore").value(82.5));
 
         Report completedReport = reportRepository.findById(report.getId()).orElseThrow();
         assertThat(completedReport.getStatus()).isEqualTo(ReportStatus.COMPLETED);
         assertThat(completedReport.getReportKey()).isEqualTo("reports/%d/report.html".formatted(report.getId()));
+        assertThat(completedReport.getTotalScore()).isEqualByComparingTo("82.50");
         assertThat(completedReport.getEvaluatedAt()).isNotNull();
     }
 
@@ -77,7 +80,8 @@ class InternalReportControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "reportKey": " "
+                                  "reportKey": " ",
+                                  "totalScore": 82.5
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -87,6 +91,26 @@ class InternalReportControllerIntegrationTest {
         Report unchangedReport = reportRepository.findById(report.getId()).orElseThrow();
         assertThat(unchangedReport.getStatus()).isEqualTo(ReportStatus.GENERATING);
         assertThat(unchangedReport.getReportKey()).isNull();
+    }
+
+    @Test
+    void completeRejectsMissingTotalScore() throws Exception {
+        Report report = saveGeneratingReport("APP-MISSING-SCORE");
+
+        mockMvc.perform(patch("/internal/reports/{reportId}/complete", report.getId())
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reportKey": "reports/%d/report.html"
+                                }
+                                """.formatted(report.getId())))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        Report unchangedReport = reportRepository.findById(report.getId()).orElseThrow();
+        assertThat(unchangedReport.getStatus()).isEqualTo(ReportStatus.GENERATING);
+        assertThat(unchangedReport.getTotalScore()).isNull();
     }
 
     @Test

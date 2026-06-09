@@ -15,13 +15,14 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
-import com.skipers.skipa.domain.patent.dto.response.PatentStatsResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJobStatus;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
@@ -44,6 +45,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -99,6 +101,10 @@ class PatentServiceTest {
     void setUp() {
         lenient().when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(any()))
                 .thenReturn(Optional.empty());
+        lenient().when(reportRepository.findFirstByPatentIdAndStatusOrderByIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
+        lenient().when(reportRepository.findAllByStatus(any()))
+                .thenReturn(List.of());
     }
 
     @Test
@@ -218,10 +224,13 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
         when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(1L))
                 .thenReturn(Optional.of(latestStatus));
+        when(reportRepository.findFirstByPatentIdAndStatusOrderByIdDesc(1L, ReportStatus.COMPLETED))
+                .thenReturn(Optional.of(report(1L, patent, new BigDecimal("82.50"))));
 
         PatentDetailResponse response = patentService.get(1L);
 
         assertThat(response.latestLegalStatus()).isEqualTo("REGISTERED");
+        assertThat(response.latestReportScore()).isEqualByComparingTo("82.50");
         assertThat(response.currentDepartmentName()).isEqualTo("통신");
     }
 
@@ -302,6 +311,7 @@ class PatentServiceTest {
         ReviewCycle activeCycle = reviewCycle();
         Review maintainReview = submittedReview(10L, maintainPatent, telecom, activeCycle, BusinessOpinion.MAINTAIN, false);
         Review abandonReview = submittedReview(20L, abandonPatent, battery, activeCycle, BusinessOpinion.ABANDON, true);
+        Report completedReport = report(1L, maintainPatent, new BigDecimal("82.50"));
         when(patentRepository.findAll()).thenReturn(List.of(abandonPatent, maintainPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
                 legalStatus(100L, maintainPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
@@ -310,6 +320,7 @@ class PatentServiceTest {
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(activeCycle));
         when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(maintainReview, abandonReview));
+        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(completedReport));
 
         Page<?> result = patentService.getAll(
                 legalUser(),
@@ -317,6 +328,7 @@ class PatentServiceTest {
                 1L,
                 "done",
                 "MAINTAIN",
+                false,
                 List.of("REGISTERED"),
                 "KR",
                 "반도체",
@@ -328,8 +340,9 @@ class PatentServiceTest {
         Object item = result.getContent().get(0);
         assertThat(item)
                 .extracting("id", "latestLegalStatus", "techField", "currentDepartmentId", "currentDepartmentName",
-                        "reviewStatus", "decision", "isOverdue", "filingCountry")
-                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false, "KR");
+                        "reviewStatus", "decision", "checked", "latestReportScore", "isOverdue", "filingCountry")
+                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false,
+                        new BigDecimal("82.50"), false, "KR");
     }
 
     @Test
@@ -367,6 +380,7 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
+                null,
                 PageRequest.of(0, 20)
         );
 
@@ -377,107 +391,57 @@ class PatentServiceTest {
     }
 
     @Test
-    void getStatsAggregatesPatentPortfolio() {
-        LocalDate today = LocalDate.now();
-        Department telecom = department("통신", 1L);
-        Department battery = department("배터리", 2L);
-        Patent telecomPatent = patent(
+    void getAllFiltersUnrequestedPatentsByReviewStatus() {
+        Department department = department("통신", 1L);
+        Patent unrequestedPatent = patent(
                 1L,
-                "Telecom Patent",
-                "APP-STATS-1",
+                "Unrequested Patent",
+                "APP-LIST-UNREQUESTED",
                 "반도체",
                 "KR",
-                today.plusDays(30),
-                telecom
+                null,
+                department
         );
-        Patent batteryPatent = patent(
+        Patent requestedPatent = patent(
                 2L,
-                "Battery Patent",
-                "APP-STATS-2",
-                "배터리",
-                "US",
-                today.plusDays(120),
-                battery
-        );
-        Patent unassignedPatent = patent(
-                3L,
-                "Unassigned Patent",
-                "APP-STATS-3",
-                null,
-                null,
-                today.plusDays(300),
-                null
-        );
-        Patent expiredPatent = patent(
-                4L,
-                "Expired Patent",
-                "APP-STATS-4",
+                "Requested Patent",
+                "APP-LIST-REQUESTED",
                 "반도체",
                 "KR",
-                today.minusDays(1),
-                telecom
+                null,
+                department
         );
-        PatentLegalStatus oldTelecomStatus = legalStatus(
-                10L,
-                telecomPatent,
-                PatentLegalStatusType.PUBLISHED,
-                today.minusDays(10)
-        );
-        PatentLegalStatus latestTelecomStatus = legalStatus(
-                11L,
-                telecomPatent,
-                PatentLegalStatusType.REGISTERED,
-                today.minusDays(1)
-        );
-        PatentLegalStatus batteryStatus = legalStatus(
-                20L,
-                batteryPatent,
-                PatentLegalStatusType.EXPIRED,
-                today.minusDays(2)
-        );
-        when(patentRepository.findAll()).thenReturn(List.of(
-                telecomPatent,
-                batteryPatent,
-                unassignedPatent,
-                expiredPatent
-        ));
-        when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
-                oldTelecomStatus,
-                latestTelecomStatus,
-                batteryStatus
-        ));
+        ReviewCycle activeCycle = reviewCycle();
+        Review review = Review.builder()
+                .patent(requestedPatent)
+                .department(department)
+                .reviewCycle(activeCycle)
+                .build();
+        ReflectionTestUtils.setField(review, "id", 1L);
+        when(patentRepository.findAll()).thenReturn(List.of(unrequestedPatent, requestedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(activeCycle));
+        when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(review));
 
-        PatentStatsResponse response = patentService.getStats();
+        Page<?> result = patentService.getAll(
+                legalUser(),
+                null,
+                null,
+                "unrequested",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
 
-        assertThat(response.total()).isEqualTo(4);
-        assertThat(response.byLegalStatus().get("PUBLISHED")).isZero();
-        assertThat(response.byLegalStatus().get("REGISTERED")).isEqualTo(1);
-        assertThat(response.byLegalStatus().get("EXPIRED")).isEqualTo(1);
-        assertThat(response.expiring().in3Months()).isEqualTo(1);
-        assertThat(response.expiring().in6Months()).isEqualTo(2);
-        assertThat(response.expiring().in1Year()).isEqualTo(3);
-        assertThat(response.byTechField())
-                .extracting(PatentStatsResponse.NameCount::name, PatentStatsResponse.NameCount::count)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("미분류", 1L),
-                        org.assertj.core.api.Assertions.tuple("반도체", 2L),
-                        org.assertj.core.api.Assertions.tuple("배터리", 1L)
-                );
-        assertThat(response.byFilingCountry())
-                .extracting(PatentStatsResponse.CountryCount::country, PatentStatsResponse.CountryCount::count)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("KR", 2L),
-                        org.assertj.core.api.Assertions.tuple("US", 1L),
-                        org.assertj.core.api.Assertions.tuple("미분류", 1L)
-                );
-        assertThat(response.byDepartment())
-                .extracting(PatentStatsResponse.DepartmentCount::departmentName, PatentStatsResponse.DepartmentCount::count)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("미배정", 1L),
-                        org.assertj.core.api.Assertions.tuple("배터리", 1L),
-                        org.assertj.core.api.Assertions.tuple("통신", 2L)
-                );
-        assertThat(response.byExpiryQuarter()).hasSize(4);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0))
+                .extracting("id", "reviewStatus", "checked")
+                .containsExactly(1L, "unrequested", null);
     }
 
     @Test
@@ -655,6 +619,16 @@ class PatentServiceTest {
                 .build();
         ReflectionTestUtils.setField(review, "id", id);
         return review;
+    }
+
+    private Report report(Long id, Patent patent, BigDecimal totalScore) {
+        Report report = Report.builder()
+                .patent(patent)
+                .status(ReportStatus.COMPLETED)
+                .totalScore(totalScore)
+                .build();
+        ReflectionTestUtils.setField(report, "id", id);
+        return report;
     }
 
     private PatentCreateRequest createRequest(String title, String applicationNumber) {

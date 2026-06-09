@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.patent.dto.response;
 
 import com.skipers.skipa.domain.patent.domain.Patent;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -35,6 +36,7 @@ public record PatentDetailResponse(
         Long currentDepartmentId,
         String currentDepartmentName,
         String latestLegalStatus,
+        BigDecimal latestReportScore,
         List<String> keywords,
         String overview,
         String coreContent,
@@ -43,10 +45,10 @@ public record PatentDetailResponse(
 ) {
 
     public static PatentDetailResponse from(Patent patent) {
-        return of(patent, null);
+        return of(patent, null, null);
     }
 
-    public static PatentDetailResponse of(Patent patent, String latestLegalStatus) {
+    public static PatentDetailResponse of(Patent patent, String latestLegalStatus, BigDecimal latestReportScore) {
         Long currentDepartmentId = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getId();
         String currentDepartmentName = patent.getCurrentDepartment() == null ? null : patent.getCurrentDepartment().getName();
 
@@ -79,6 +81,7 @@ public record PatentDetailResponse(
                 currentDepartmentId,
                 currentDepartmentName,
                 latestLegalStatus,
+                latestReportScore,
                 patent.getKeywords(),
                 patent.getOverview(),
                 patent.getCoreContent(),

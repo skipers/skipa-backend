@@ -20,14 +20,32 @@ public class InternalReportController {
 
     private final ReportService reportService;
 
+    /**
+     * AI 서버의 평가 보고서 생성 완료 콜백을 처리한다.
+     *
+     * @param reportId 평가 보고서 ID
+     * @param request 완료 콜백 요청
+     * @return 완료 처리된 평가 보고서 상태
+     */
     @PatchMapping("/{reportId}/complete")
     public ApiResponse<ReportCallbackResponse> complete(
             @PathVariable Long reportId,
             @Valid @RequestBody ReportCompleteRequest request
     ) {
-        return ApiResponse.ok(ReportCallbackResponse.from(reportService.complete(reportId, request.reportKey())));
+        return ApiResponse.ok(ReportCallbackResponse.from(reportService.complete(
+                reportId,
+                request.reportKey(),
+                request.totalScore()
+        )));
     }
 
+    /**
+     * AI 서버의 평가 보고서 생성 실패 콜백을 처리한다.
+     *
+     * @param reportId 평가 보고서 ID
+     * @param request 실패 콜백 요청
+     * @return 실패 처리된 평가 보고서 상태
+     */
     @PatchMapping("/{reportId}/fail")
     public ApiResponse<ReportCallbackResponse> fail(
             @PathVariable Long reportId,

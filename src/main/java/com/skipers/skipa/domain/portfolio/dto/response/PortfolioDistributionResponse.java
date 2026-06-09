@@ -1,33 +1,22 @@
-package com.skipers.skipa.domain.patent.dto.response;
+package com.skipers.skipa.domain.portfolio.dto.response;
 
 import java.util.List;
-import java.util.Map;
 
-public record PatentStatsResponse(
-        long total,
-        Map<String, Long> byLegalStatus,
-        ExpiringStats expiring,
+public record PortfolioDistributionResponse(
+        List<GradeCount> byValueGrade,
         List<NameCount> byTechField,
-        List<QuarterCount> byExpiryQuarter,
         List<CountryCount> byFilingCountry,
         List<DepartmentCount> byDepartment
 ) {
 
-    public record ExpiringStats(
-            long in3Months,
-            long in6Months,
-            long in1Year
+    public record GradeCount(
+            String grade,
+            long count
     ) {
     }
 
     public record NameCount(
             String name,
-            long count
-    ) {
-    }
-
-    public record QuarterCount(
-            String quarter,
             long count
     ) {
     }

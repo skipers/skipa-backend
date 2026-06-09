@@ -54,7 +54,12 @@ public class PatentLegalStatusController {
      * @param pageable page/size 정보
      * @return 권리 상태 이력 목록 페이지
      */
-    @Operation(summary = "권리 상태 이력 조회", description = "특허의 권리 상태 이력을 페이지 단위로 조회합니다.")
+    @Operation(
+            summary = "권리 상태 이력 조회",
+            description = "특허의 권리 상태 이력을 페이지 단위로 조회합니다. "
+                    + "필터는 제공하지 않습니다. "
+                    + "정렬: 최신 이력순(id 내림차순) 고정입니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentLegalStatusResponse>> getAll(

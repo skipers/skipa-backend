@@ -64,7 +64,12 @@ public class ReviewCycleController {
      * @param pageable page/size 정보
      * @return 검토 주기 목록 페이지
      */
-    @Operation(summary = "검토 주기 목록 조회", description = "관리자와 Legal 팀이 검토 주기 목록을 최근 시작일 순으로 조회합니다.")
+    @Operation(
+            summary = "검토 주기 목록 조회",
+            description = "관리자와 Legal 팀이 검토 주기 목록을 페이지 단위로 조회합니다. "
+                    + "필터는 제공하지 않습니다. "
+                    + "정렬: 시작일 내림차순(startDate DESC) 고정입니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping
     public ApiResponse<PageResponse<ReviewCycleResponse>> getAll(

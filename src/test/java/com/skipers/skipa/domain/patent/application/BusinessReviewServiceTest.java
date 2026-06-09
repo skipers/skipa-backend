@@ -29,6 +29,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Optional;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -85,13 +86,38 @@ class BusinessReviewServiceTest {
     void getAllUsesAuthenticatedUsersDepartmentAndDescendingIdSort() {
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(reviewRepository.findLatestBusinessReviewsByDepartmentId(1L, sortedPageable))
+        when(reviewRepository.findLatestBusinessReviewsByDepartmentId(1L, null, null, null, null, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(businessReviewService.getAll(businessUser, pageable).getContent())
+        assertThat(businessReviewService.getAll(businessUser, null, null, null, null, pageable).getContent())
                 .extracting(BusinessReviewResponse::id)
                 .containsExactly(10L);
-        verify(reviewRepository).findLatestBusinessReviewsByDepartmentId(1L, sortedPageable);
+        verify(reviewRepository).findLatestBusinessReviewsByDepartmentId(1L, null, null, null, null, sortedPageable);
+    }
+
+    @Test
+    void getAllAppliesStatusOpinionAndSubmittedDateFilters() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        LocalDate submittedFrom = LocalDate.of(2026, 6, 1);
+        LocalDate submittedTo = LocalDate.of(2026, 6, 30);
+        when(reviewRepository.findLatestBusinessReviewsByDepartmentId(
+                1L,
+                ReviewStatus.SUBMITTED,
+                BusinessOpinion.MAINTAIN,
+                submittedFrom.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                submittedTo.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                sortedPageable
+        )).thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
+
+        assertThat(businessReviewService.getAll(
+                businessUser,
+                "SUBMITTED",
+                "MAINTAIN",
+                submittedFrom,
+                submittedTo,
+                pageable
+        ).getContent()).hasSize(1);
     }
 
     @Test
@@ -121,10 +147,33 @@ class BusinessReviewServiceTest {
         );
 
         assertReviewError(
-                () -> businessReviewService.getAll(legalUser, PageRequest.of(0, 20)),
+                () -> businessReviewService.getAll(legalUser, null, null, null, null, PageRequest.of(0, 20)),
                 ErrorCode.FORBIDDEN
         );
-        verify(reviewRepository, never()).findLatestBusinessReviewsByDepartmentId(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        verify(reviewRepository, never()).findLatestBusinessReviewsByDepartmentId(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    @Test
+    void getAllRejectsInvalidStatusFilter() {
+        assertReviewError(
+                () -> businessReviewService.getAll(businessUser, "DONE", null, null, null, PageRequest.of(0, 20)),
+                ErrorCode.INVALID_REQUEST
+        );
+    }
+
+    @Test
+    void getAllRejectsInvalidOpinionFilter() {
+        assertReviewError(
+                () -> businessReviewService.getAll(businessUser, null, "HOLD", null, null, PageRequest.of(0, 20)),
+                ErrorCode.INVALID_REQUEST
+        );
     }
 
     @Test

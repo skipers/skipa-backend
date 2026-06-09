@@ -22,6 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Service
@@ -79,6 +80,20 @@ public class ReportService {
         return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()));
     }
 
+    public ReportDetailResponse getLatest(User user, Long patentId) {
+        businessPatentAccessValidator.validate(user, patentId);
+
+        if (!patentRepository.existsById(patentId)) {
+            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+        }
+
+        Report report = reportRepository.findFirstByPatentIdOrderByIdDesc(patentId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        String url = report.isCompleted() ? reportStorageService.generatePresignedUrl(report.getReportKey()) : null;
+        return ReportDetailResponse.of(report, url);
+    }
+
     public ReportStatusResponse getStatus(User user, Long patentId, Long reportId) {
         businessPatentAccessValidator.validate(user, patentId);
 
@@ -89,11 +104,11 @@ public class ReportService {
     }
 
     @Transactional
-    public ReportStatusResponse complete(Long reportId, String reportKey) {
+    public ReportStatusResponse complete(Long reportId, String reportKey, BigDecimal totalScore) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        report.complete(reportKey, Instant.now());
+        report.complete(reportKey, totalScore, Instant.now());
 
         return ReportStatusResponse.from(report);
     }
