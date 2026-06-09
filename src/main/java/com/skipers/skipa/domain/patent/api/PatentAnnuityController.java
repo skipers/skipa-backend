@@ -54,7 +54,12 @@ public class PatentAnnuityController {
      * @param pageable page/size 정보
      * @return 연차료 납부 이력 목록 페이지
      */
-    @Operation(summary = "연차료 납부 이력 조회", description = "특허의 연차료 납부 이력을 페이지 단위로 조회합니다.")
+    @Operation(
+            summary = "연차료 납부 이력 조회",
+            description = "특허의 연차료 납부 이력을 페이지 단위로 조회합니다. "
+                    + "필터는 제공하지 않습니다. "
+                    + "정렬: 최신 이력순(id 내림차순) 고정입니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<PatentAnnuityResponse>> getAll(

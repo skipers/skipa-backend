@@ -67,7 +67,12 @@ public class ReviewController {
      * @param pageable page/size 정보
      * @return 사업부 검토 목록 페이지
      */
-    @Operation(summary = "사업부 검토 목록 조회", description = "관리자와 Legal 팀이 사업부 검토 목록을 조회합니다. 제출 상태, 부서, 특허로 필터링할 수 있습니다.")
+    @Operation(
+            summary = "사업부 검토 목록 조회",
+            description = "관리자와 Legal 팀이 사업부 검토 목록을 조회합니다. "
+                    + "필터: status(PENDING, SUBMITTED), departmentId, patentId, checked(true/false). "
+                    + "정렬: 최신 검토 요청순(id 내림차순) 고정입니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/reviews")
     public ApiResponse<PageResponse<ReviewResponse>> getAll(

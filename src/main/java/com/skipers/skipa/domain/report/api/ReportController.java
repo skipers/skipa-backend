@@ -52,7 +52,12 @@ public class ReportController {
      * @param pageable page/size 정보
      * @return 평가 보고서 목록 페이지
      */
-    @Operation(summary = "평가 보고서 목록 조회", description = "특허의 평가 보고서 목록을 페이지 단위로 조회합니다.")
+    @Operation(
+            summary = "평가 보고서 목록 조회",
+            description = "특허의 평가 보고서 목록을 페이지 단위로 조회합니다. "
+                    + "필터는 제공하지 않습니다. "
+                    + "정렬: 최신 보고서순(id 내림차순) 고정입니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
     public ApiResponse<PageResponse<ReportResponse>> getAll(
@@ -70,7 +75,11 @@ public class ReportController {
      * @param patentId 특허 ID
      * @return 최신 평가 보고서
      */
-    @Operation(summary = "최신 평가 보고서 조회", description = "특허의 최신 평가 보고서를 조회합니다. 완료된 보고서는 접근 URL을 함께 반환합니다.")
+    @Operation(
+            summary = "최신 평가 보고서 조회",
+            description = "특허의 최신 평가 보고서를 조회합니다. "
+                    + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL과 totalScore를 함께 반환합니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/latest")
     public ApiResponse<ReportDetailResponse> getLatest(
