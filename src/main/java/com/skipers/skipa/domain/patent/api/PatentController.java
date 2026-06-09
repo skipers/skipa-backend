@@ -6,7 +6,6 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
-import com.skipers.skipa.domain.patent.dto.response.PatentStatsResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
 import com.skipers.skipa.global.security.CustomUserDetails;
@@ -50,18 +49,6 @@ public class PatentController {
     @PostMapping
     public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(request)));
-    }
-
-    /**
-     * 특허 통계를 조회한다.
-     *
-     * @return 특허 통계
-     */
-    @Operation(summary = "특허 통계 조회", description = "특허 권리 상태, 만료 예정, 기술 분야, 국가, 부서별 통계를 조회합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
-    @GetMapping("/stats")
-    public ApiResponse<PatentStatsResponse> getStats() {
-        return ApiResponse.ok(patentService.getStats());
     }
 
     /**
