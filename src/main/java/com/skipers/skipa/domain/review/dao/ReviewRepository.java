@@ -109,6 +109,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             ReviewStatus status
     );
 
+    Optional<Review> findFirstByPatentIdAndReportIdAndStatusOrderByIdDesc(
+            Long patentId,
+            Long reportId,
+            ReviewStatus status
+    );
+
     @Override
     @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
     Optional<Review> findById(Long id);

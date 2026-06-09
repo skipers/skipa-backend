@@ -86,7 +86,8 @@ public class ReportService {
             throw new ReportException(ErrorCode.REPORT_NOT_COMPLETED);
         }
 
-        return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()));
+        Review review = latestSubmittedReview(patentId, report.getId());
+        return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()), review);
     }
 
     public ReportDetailResponse getLatest(User user, Long patentId) {
@@ -100,7 +101,8 @@ public class ReportService {
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
         String url = report.isCompleted() ? reportStorageService.generatePresignedUrl(report.getReportKey()) : null;
-        return ReportDetailResponse.of(report, url);
+        Review review = latestSubmittedReview(patentId, report.getId());
+        return ReportDetailResponse.of(report, url, review);
     }
 
     public ReportHistoryResponse getHistory(User user, Long patentId) {
@@ -185,5 +187,14 @@ public class ReportService {
                         review -> review,
                         (existing, ignored) -> existing
                 ));
+    }
+
+    private Review latestSubmittedReview(Long patentId, Long reportId) {
+        return reviewRepository.findFirstByPatentIdAndReportIdAndStatusOrderByIdDesc(
+                        patentId,
+                        reportId,
+                        ReviewStatus.SUBMITTED
+                )
+                .orElse(null);
     }
 }

@@ -169,9 +169,12 @@ class ReportServiceTest {
     void getReturnsPresignedUrlWithoutExposingReportKey() {
         Report report = report(1L, 10L);
         report.complete("reports/1/report.html", new BigDecimal("82.50"), "A", null);
+        Review review = submittedReview(20L, report, BusinessOpinion.MAINTAIN, "유지 의견");
         when(reportRepository.findByIdAndPatentId(1L, 10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.html"))
                 .thenReturn("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
+        when(reviewRepository.findFirstByPatentIdAndReportIdAndStatusOrderByIdDesc(10L, 1L, ReviewStatus.SUBMITTED))
+                .thenReturn(Optional.of(review));
 
         ReportDetailResponse response = reportService.get(null, 10L, 1L);
 
@@ -182,6 +185,9 @@ class ReportServiceTest {
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
         assertThat(response.url()).isEqualTo("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
+        assertThat(response.decision()).isEqualTo("MAINTAIN");
+        assertThat(response.opinion()).isEqualTo("유지 의견");
+        assertThat(response.submittedAt()).isEqualTo(Instant.parse("2026-02-01T00:00:00Z"));
         assertThat(ReportDetailResponse.class.getRecordComponents())
                 .extracting(recordComponent -> recordComponent.getName())
                 .doesNotContain("reportKey");
@@ -218,10 +224,13 @@ class ReportServiceTest {
     void getLatestReturnsCompletedReportWithPresignedUrl() {
         Report report = report(1L, 10L);
         report.complete("reports/1/report.json", new BigDecimal("82.50"), "A", null);
+        Review review = submittedReview(20L, report, BusinessOpinion.ABANDON, "포기 의견");
         when(patentRepository.existsById(10L)).thenReturn(true);
         when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.json"))
                 .thenReturn("https://minio.example.com/reports/1/report.json?signature=abc");
+        when(reviewRepository.findFirstByPatentIdAndReportIdAndStatusOrderByIdDesc(10L, 1L, ReviewStatus.SUBMITTED))
+                .thenReturn(Optional.of(review));
 
         ReportDetailResponse response = reportService.getLatest(null, 10L);
 
@@ -229,6 +238,9 @@ class ReportServiceTest {
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
         assertThat(response.url()).isEqualTo("https://minio.example.com/reports/1/report.json?signature=abc");
+        assertThat(response.decision()).isEqualTo("ABANDON");
+        assertThat(response.opinion()).isEqualTo("포기 의견");
+        assertThat(response.submittedAt()).isEqualTo(Instant.parse("2026-02-01T00:00:00Z"));
     }
 
     @Test
@@ -321,7 +333,7 @@ class ReportServiceTest {
                 .status(ReviewStatus.SUBMITTED)
                 .opinion(opinion)
                 .comment(comment)
-                .submittedAt(Instant.now())
+                .submittedAt(Instant.parse("2026-02-01T00:00:00Z"))
                 .build();
         ReflectionTestUtils.setField(review, "id", reviewId);
         return review;
