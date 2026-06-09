@@ -7,10 +7,8 @@ public record ExpiringPatentCalendarResponse(
 ) {
 
     public record MonthBucket(
-            int year,
             int month,
-            long count,
-            List<ExpiringPatentItemResponse> items
+            long count
     ) {
     }
 }

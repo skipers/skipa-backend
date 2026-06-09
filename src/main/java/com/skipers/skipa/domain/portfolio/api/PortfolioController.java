@@ -49,7 +49,7 @@ public class PortfolioController {
      *
      * @return 포트폴리오 추이
      */
-    @Operation(summary = "[Legal] 포트폴리오 추이 조회", description = "연도별 출원/등록/만료 추이와 연차료 추이를 조회합니다.")
+    @Operation(summary = "[Legal] 포트폴리오 추이 조회", description = "연도별 출원/등록/소멸 추이와 연차료 추이를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/trends")
     public ApiResponse<PortfolioTrendsResponse> getTrends() {

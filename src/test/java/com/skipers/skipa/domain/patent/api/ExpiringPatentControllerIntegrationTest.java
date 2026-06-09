@@ -129,23 +129,26 @@ class ExpiringPatentControllerIntegrationTest {
     @Test
     void expiringSummaryReturnsPeriodCountsAndTechFieldBreakdown() throws Exception {
         mockMvc.perform(get("/patents/expiring/summary")
-                        .header("Authorization", "Bearer " + legalToken)
-                        .param("periodMonths", "12"))
+                        .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.byPeriod[0].months").value(3))
-                .andExpect(jsonPath("$.data.byPeriod[0].count").value(1))
-                .andExpect(jsonPath("$.data.byPeriod[2].months").value(12))
-                .andExpect(jsonPath("$.data.byPeriod[2].count").value(2))
-                .andExpect(jsonPath("$.data.byTechField.length()").value(2));
+                .andExpect(jsonPath("$.data.periods.length()").value(6))
+                .andExpect(jsonPath("$.data.periods[0].period").value("전체"))
+                .andExpect(jsonPath("$.data.periods[0].byTechField.length()").value(3))
+                .andExpect(jsonPath("$.data.periods[1].period").value("3개월"))
+                .andExpect(jsonPath("$.data.periods[1].months").value(3))
+                .andExpect(jsonPath("$.data.periods[1].byTechField.length()").value(1))
+                .andExpect(jsonPath("$.data.periods[1].byTechField[0].name").value("반도체"))
+                .andExpect(jsonPath("$.data.periods[1].byTechField[0].count").value(1))
+                .andExpect(jsonPath("$.data.periods[3].period").value("1년"))
+                .andExpect(jsonPath("$.data.periods[3].byTechField.length()").value(2));
     }
 
     @Test
     void expiringPatentListReturnsSelectedPeriodItems() throws Exception {
         mockMvc.perform(get("/patents/expiring")
-                        .header("Authorization", "Bearer " + legalToken)
-                        .param("periodMonths", "3"))
+                        .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalItems").value(1))
+                .andExpect(jsonPath("$.data.totalItems").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(expiringSoonPatent.getId()))
                 .andExpect(jsonPath("$.data.items[0].departmentName").value("반도체 사업부"));
     }
@@ -154,37 +157,26 @@ class ExpiringPatentControllerIntegrationTest {
     void expiringCalendarGroupsItemsByYearAndMonth() throws Exception {
         mockMvc.perform(get("/patents/expiring/calendar")
                         .header("Authorization", "Bearer " + legalToken)
-                        .param("periodMonths", "12"))
+                        .param("year", String.valueOf(LocalDate.now().getYear())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.months.length()").value(2))
-                .andExpect(jsonPath("$.data.months[0].count").value(1))
-                .andExpect(jsonPath("$.data.months[0].items[0].id").value(expiringSoonPatent.getId()));
+                .andExpect(jsonPath("$.data.months.length()").value(12))
+                .andExpect(jsonPath("$.data.months[%d].count".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1));
     }
 
     @Test
     void businessUserOnlySeesOwnDepartmentExpiringPatents() throws Exception {
         mockMvc.perform(get("/patents/expiring")
-                        .header("Authorization", "Bearer " + businessToken)
-                        .param("periodMonths", "12"))
+                        .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalItems").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(expiringSoonPatent.getId()));
 
         mockMvc.perform(get("/patents/expiring/calendar")
                         .header("Authorization", "Bearer " + businessToken)
-                        .param("periodMonths", "12"))
+                        .param("year", String.valueOf(LocalDate.now().getYear())))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.months.length()").value(1))
-                .andExpect(jsonPath("$.data.months[0].items[0].id").value(expiringSoonPatent.getId()));
-    }
-
-    @Test
-    void expiringPatentApisRejectUnsupportedPeriod() throws Exception {
-        mockMvc.perform(get("/patents/expiring/summary")
-                        .header("Authorization", "Bearer " + legalToken)
-                        .param("periodMonths", "2"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+                .andExpect(jsonPath("$.data.months.length()").value(12))
+                .andExpect(jsonPath("$.data.months[%d].count".formatted(LocalDate.now().plusMonths(2).getMonthValue() - 1)).value(1));
     }
 
     private Patent savePatent(
