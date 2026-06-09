@@ -16,7 +16,6 @@ import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
-import com.skipers.skipa.domain.review.dto.response.ReviewStatsResponse;
 import com.skipers.skipa.domain.review.exception.ReviewException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +28,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -155,69 +153,6 @@ public class ReviewService {
         return ReviewResponse.from(review);
     }
 
-    public ReviewStatsResponse getStats() {
-        ReviewCycle reviewCycle = getActiveReviewCycle();
-        LocalDate today = LocalDate.now();
-        List<Review> reviews = reviewRepository.findAllByReviewCycleId(reviewCycle.getId());
-        long unassigned = patentRepository.countByCurrentDepartmentIsNull();
-
-        long requested = 0;
-        long overdue = 0;
-        long done = 0;
-        long unread = 0;
-        long maintain = 0;
-        long abandon = 0;
-        Map<Long, DepartmentOpinionStats> byDepartment = new HashMap<>();
-        Map<String, OpinionStats> byTechField = new HashMap<>();
-
-        for (Review review : reviews) {
-            if (review.getStatus() == ReviewStatus.PENDING) {
-                if (review.getDueDate().isBefore(today)) {
-                    overdue++;
-                } else {
-                    requested++;
-                }
-                continue;
-            }
-
-            if (review.getStatus() != ReviewStatus.SUBMITTED) {
-                continue;
-            }
-
-            done++;
-            if (!review.isChecked()) {
-                unread++;
-            }
-
-            if (review.getOpinion() == BusinessOpinion.MAINTAIN) {
-                maintain++;
-                departmentOpinionStats(byDepartment, review).maintain++;
-                byTechField.computeIfAbsent(techFieldName(review), ignored -> new OpinionStats()).maintain++;
-            } else if (review.getOpinion() == BusinessOpinion.ABANDON) {
-                abandon++;
-                departmentOpinionStats(byDepartment, review).abandon++;
-                byTechField.computeIfAbsent(techFieldName(review), ignored -> new OpinionStats()).abandon++;
-            }
-        }
-
-        long total = reviews.size() + unassigned;
-        return new ReviewStatsResponse(
-                reviewCycle.getId(),
-                reviewCycle.getName(),
-                total,
-                unassigned,
-                requested,
-                overdue,
-                done,
-                unread,
-                maintain,
-                abandon,
-                progressRate(done, total),
-                departmentStats(byDepartment),
-                techFieldStats(byTechField)
-        );
-    }
-
     @Transactional
     public ReviewConfirmResponse confirm(Long reviewId) {
         Review review = reviewRepository.findById(reviewId)
@@ -277,73 +212,4 @@ public class ReviewService {
         return patentId + ":" + departmentId;
     }
 
-    private DepartmentOpinionStats departmentOpinionStats(
-            Map<Long, DepartmentOpinionStats> byDepartment,
-            Review review
-    ) {
-        return byDepartment.computeIfAbsent(
-                review.getDepartment().getId(),
-                departmentId -> new DepartmentOpinionStats(departmentId, review.getDepartment().getName())
-        );
-    }
-
-    private double progressRate(long done, long total) {
-        if (total == 0) {
-            return 0.0;
-        }
-        return Math.round(done * 1000.0 / total) / 10.0;
-    }
-
-    private List<ReviewStatsResponse.DepartmentStats> departmentStats(
-            Map<Long, DepartmentOpinionStats> statsByDepartment
-    ) {
-        return statsByDepartment.values().stream()
-                .sorted(Comparator.comparing(DepartmentOpinionStats::departmentName))
-                .map(stats -> new ReviewStatsResponse.DepartmentStats(
-                        stats.departmentId(),
-                        stats.departmentName(),
-                        stats.maintain,
-                        stats.abandon
-                ))
-                .toList();
-    }
-
-    private List<ReviewStatsResponse.TechFieldStats> techFieldStats(Map<String, OpinionStats> statsByTechField) {
-        return statsByTechField.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new ReviewStatsResponse.TechFieldStats(
-                        entry.getKey(),
-                        entry.getValue().maintain,
-                        entry.getValue().abandon
-                ))
-                .toList();
-    }
-
-    private String techFieldName(Review review) {
-        String techField = review.getPatent().getTechField();
-        return techField == null || techField.isBlank() ? "미분류" : techField;
-    }
-
-    private static class OpinionStats {
-        long maintain;
-        long abandon;
-    }
-
-    private static class DepartmentOpinionStats extends OpinionStats {
-        private final Long departmentId;
-        private final String departmentName;
-
-        private DepartmentOpinionStats(Long departmentId, String departmentName) {
-            this.departmentId = departmentId;
-            this.departmentName = departmentName;
-        }
-
-        private Long departmentId() {
-            return departmentId;
-        }
-
-        private String departmentName() {
-            return departmentName;
-        }
-    }
 }

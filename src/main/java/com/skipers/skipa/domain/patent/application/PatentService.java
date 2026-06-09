@@ -14,7 +14,6 @@ import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
-import com.skipers.skipa.domain.patent.dto.response.PatentStatsResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
@@ -39,13 +38,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -197,62 +193,6 @@ public class PatentService {
                 .toList();
 
         return page(responses, pageable);
-    }
-
-    public PatentStatsResponse getStats() {
-        List<Patent> patents = patentRepository.findAll();
-        List<PatentLegalStatus> legalStatuses = patentLegalStatusRepository.findAll();
-        Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(legalStatuses);
-        LocalDate today = LocalDate.now();
-
-        EnumMap<PatentLegalStatusType, Long> byLegalStatus = emptyLegalStatusCounts();
-        Map<String, Long> byTechField = new HashMap<>();
-        Map<String, Long> byFilingCountry = new HashMap<>();
-        Map<Long, DepartmentCountAccumulator> byDepartment = new HashMap<>();
-        Map<String, Long> byExpiryQuarter = currentExpiryQuarters(today);
-        long in3Months = 0;
-        long in6Months = 0;
-        long in1Year = 0;
-
-        for (Patent patent : patents) {
-            PatentLegalStatusType latestStatus = latestStatuses.get(patent.getId());
-            if (latestStatus != null) {
-                byLegalStatus.merge(latestStatus, 1L, Long::sum);
-            }
-
-            byTechField.merge(normalizeGroupName(patent.getTechField()), 1L, Long::sum);
-            byFilingCountry.merge(normalizeGroupName(patent.getFilingCountry()), 1L, Long::sum);
-            accumulateDepartment(byDepartment, patent);
-
-            LocalDate expiryDate = patent.getExpiryDate();
-            if (expiryDate == null || expiryDate.isBefore(today)) {
-                continue;
-            }
-            if (!expiryDate.isAfter(today.plusDays(90))) {
-                in3Months++;
-            }
-            if (!expiryDate.isAfter(today.plusDays(180))) {
-                in6Months++;
-            }
-            if (!expiryDate.isAfter(today.plusDays(365))) {
-                in1Year++;
-            }
-
-            String quarter = expiryQuarter(expiryDate, today);
-            if (quarter != null) {
-                byExpiryQuarter.merge(quarter, 1L, Long::sum);
-            }
-        }
-
-        return new PatentStatsResponse(
-                patents.size(),
-                legalStatusCounts(byLegalStatus),
-                new PatentStatsResponse.ExpiringStats(in3Months, in6Months, in1Year),
-                nameCounts(byTechField),
-                quarterCounts(byExpiryQuarter),
-                countryCounts(byFilingCountry),
-                departmentCounts(byDepartment)
-        );
     }
 
     @Transactional
@@ -548,101 +488,6 @@ public class PatentService {
         return comparator.compare(left, right);
     }
 
-    private EnumMap<PatentLegalStatusType, Long> emptyLegalStatusCounts() {
-        EnumMap<PatentLegalStatusType, Long> counts = new EnumMap<>(PatentLegalStatusType.class);
-        for (PatentLegalStatusType status : PatentLegalStatusType.values()) {
-            counts.put(status, 0L);
-        }
-        return counts;
-    }
-
-    private Map<String, Long> legalStatusCounts(EnumMap<PatentLegalStatusType, Long> counts) {
-        Map<String, Long> response = new LinkedHashMap<>();
-        for (PatentLegalStatusType status : PatentLegalStatusType.values()) {
-            response.put(status.name(), counts.get(status));
-        }
-        return response;
-    }
-
-    private void accumulateDepartment(Map<Long, DepartmentCountAccumulator> byDepartment, Patent patent) {
-        Department department = patent.getCurrentDepartment();
-        Long departmentId = department == null ? null : department.getId();
-        String departmentName = department == null ? "미배정" : department.getName();
-        byDepartment.computeIfAbsent(
-                departmentId,
-                ignored -> new DepartmentCountAccumulator(departmentId, departmentName)
-        ).count++;
-    }
-
-    private Map<String, Long> currentExpiryQuarters(LocalDate today) {
-        Map<String, Long> quarters = new LinkedHashMap<>();
-        YearMonth currentQuarterStart = quarterStart(today);
-        for (int i = 0; i < 4; i++) {
-            YearMonth quarter = currentQuarterStart.plusMonths((long) i * 3);
-            quarters.put(quarterLabel(quarter), 0L);
-        }
-        return quarters;
-    }
-
-    private String expiryQuarter(LocalDate expiryDate, LocalDate today) {
-        YearMonth currentQuarterStart = quarterStart(today);
-        YearMonth expiryQuarterStart = quarterStart(expiryDate);
-        long monthDiff = (expiryQuarterStart.getYear() - currentQuarterStart.getYear()) * 12L
-                + expiryQuarterStart.getMonthValue()
-                - currentQuarterStart.getMonthValue();
-        if (monthDiff < 0 || monthDiff >= 12) {
-            return null;
-        }
-        return quarterLabel(expiryQuarterStart);
-    }
-
-    private YearMonth quarterStart(LocalDate date) {
-        int quarterStartMonth = ((date.getMonthValue() - 1) / 3) * 3 + 1;
-        return YearMonth.of(date.getYear(), quarterStartMonth);
-    }
-
-    private String quarterLabel(YearMonth quarterStart) {
-        int quarter = (quarterStart.getMonthValue() - 1) / 3 + 1;
-        return quarterStart.getYear() + "Q" + quarter;
-    }
-
-    private String normalizeGroupName(String value) {
-        return value == null || value.isBlank() ? "미분류" : value;
-    }
-
-    private List<PatentStatsResponse.NameCount> nameCounts(Map<String, Long> counts) {
-        return counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new PatentStatsResponse.NameCount(entry.getKey(), entry.getValue()))
-                .toList();
-    }
-
-    private List<PatentStatsResponse.QuarterCount> quarterCounts(Map<String, Long> counts) {
-        return counts.entrySet().stream()
-                .map(entry -> new PatentStatsResponse.QuarterCount(entry.getKey(), entry.getValue()))
-                .toList();
-    }
-
-    private List<PatentStatsResponse.CountryCount> countryCounts(Map<String, Long> counts) {
-        return counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new PatentStatsResponse.CountryCount(entry.getKey(), entry.getValue()))
-                .toList();
-    }
-
-    private List<PatentStatsResponse.DepartmentCount> departmentCounts(
-            Map<Long, DepartmentCountAccumulator> counts
-    ) {
-        return counts.values().stream()
-                .sorted(Comparator.comparing(DepartmentCountAccumulator::departmentName))
-                .map(accumulator -> new PatentStatsResponse.DepartmentCount(
-                        accumulator.departmentId(),
-                        accumulator.departmentName(),
-                        accumulator.count
-                ))
-                .toList();
-    }
-
     private String resolveOriginalPdfKey(PatentCreateRequest request) {
         if (request.extractJobId() == null) {
             return request.originalPdfKey();
@@ -670,24 +515,5 @@ public class PatentService {
                 .map(legalStatus -> legalStatus.getStatus().name())
                 .orElse(null);
         return PatentDetailResponse.of(patent, latestLegalStatus);
-    }
-
-    private static class DepartmentCountAccumulator {
-        private final Long departmentId;
-        private final String departmentName;
-        private long count;
-
-        private DepartmentCountAccumulator(Long departmentId, String departmentName) {
-            this.departmentId = departmentId;
-            this.departmentName = departmentName;
-        }
-
-        private Long departmentId() {
-            return departmentId;
-        }
-
-        private String departmentName() {
-            return departmentName;
-        }
     }
 }

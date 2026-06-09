@@ -15,7 +15,6 @@ import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
-import com.skipers.skipa.domain.patent.dto.response.PatentStatsResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
@@ -430,110 +429,6 @@ class PatentServiceTest {
         assertThat(result.getContent().get(0))
                 .extracting("id", "reviewStatus", "checked")
                 .containsExactly(1L, "unrequested", null);
-    }
-
-    @Test
-    void getStatsAggregatesPatentPortfolio() {
-        LocalDate today = LocalDate.now();
-        Department telecom = department("통신", 1L);
-        Department battery = department("배터리", 2L);
-        Patent telecomPatent = patent(
-                1L,
-                "Telecom Patent",
-                "APP-STATS-1",
-                "반도체",
-                "KR",
-                today.plusDays(30),
-                telecom
-        );
-        Patent batteryPatent = patent(
-                2L,
-                "Battery Patent",
-                "APP-STATS-2",
-                "배터리",
-                "US",
-                today.plusDays(120),
-                battery
-        );
-        Patent unassignedPatent = patent(
-                3L,
-                "Unassigned Patent",
-                "APP-STATS-3",
-                null,
-                null,
-                today.plusDays(300),
-                null
-        );
-        Patent expiredPatent = patent(
-                4L,
-                "Expired Patent",
-                "APP-STATS-4",
-                "반도체",
-                "KR",
-                today.minusDays(1),
-                telecom
-        );
-        PatentLegalStatus oldTelecomStatus = legalStatus(
-                10L,
-                telecomPatent,
-                PatentLegalStatusType.PUBLISHED,
-                today.minusDays(10)
-        );
-        PatentLegalStatus latestTelecomStatus = legalStatus(
-                11L,
-                telecomPatent,
-                PatentLegalStatusType.REGISTERED,
-                today.minusDays(1)
-        );
-        PatentLegalStatus batteryStatus = legalStatus(
-                20L,
-                batteryPatent,
-                PatentLegalStatusType.EXPIRED,
-                today.minusDays(2)
-        );
-        when(patentRepository.findAll()).thenReturn(List.of(
-                telecomPatent,
-                batteryPatent,
-                unassignedPatent,
-                expiredPatent
-        ));
-        when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
-                oldTelecomStatus,
-                latestTelecomStatus,
-                batteryStatus
-        ));
-
-        PatentStatsResponse response = patentService.getStats();
-
-        assertThat(response.total()).isEqualTo(4);
-        assertThat(response.byLegalStatus().get("PUBLISHED")).isZero();
-        assertThat(response.byLegalStatus().get("REGISTERED")).isEqualTo(1);
-        assertThat(response.byLegalStatus().get("EXPIRED")).isEqualTo(1);
-        assertThat(response.expiring().in3Months()).isEqualTo(1);
-        assertThat(response.expiring().in6Months()).isEqualTo(2);
-        assertThat(response.expiring().in1Year()).isEqualTo(3);
-        assertThat(response.byTechField())
-                .extracting(PatentStatsResponse.NameCount::name, PatentStatsResponse.NameCount::count)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("미분류", 1L),
-                        org.assertj.core.api.Assertions.tuple("반도체", 2L),
-                        org.assertj.core.api.Assertions.tuple("배터리", 1L)
-                );
-        assertThat(response.byFilingCountry())
-                .extracting(PatentStatsResponse.CountryCount::country, PatentStatsResponse.CountryCount::count)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("KR", 2L),
-                        org.assertj.core.api.Assertions.tuple("US", 1L),
-                        org.assertj.core.api.Assertions.tuple("미분류", 1L)
-                );
-        assertThat(response.byDepartment())
-                .extracting(PatentStatsResponse.DepartmentCount::departmentName, PatentStatsResponse.DepartmentCount::count)
-                .containsExactly(
-                        org.assertj.core.api.Assertions.tuple("미배정", 1L),
-                        org.assertj.core.api.Assertions.tuple("배터리", 1L),
-                        org.assertj.core.api.Assertions.tuple("통신", 2L)
-                );
-        assertThat(response.byExpiryQuarter()).hasSize(4);
     }
 
     @Test
