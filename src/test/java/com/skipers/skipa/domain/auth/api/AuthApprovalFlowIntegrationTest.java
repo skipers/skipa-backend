@@ -770,7 +770,7 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken)
                         .param("departmentId", department.getId().toString())
                         .param("reviewStatus", "done")
-                        .param("decision", "MAINTAIN")
+                        .param("opinion", "MAINTAIN")
                         .param("checked", "false")
                         .param("status", "REGISTERED")
                         .param("filingCountry", "KR")
@@ -791,7 +791,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].currentDepartmentId").value(department.getId()))
                 .andExpect(jsonPath("$.data.items[0].currentDepartmentName").value(department.getName()))
                 .andExpect(jsonPath("$.data.items[0].reviewStatus").value("done"))
-                .andExpect(jsonPath("$.data.items[0].decision").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.items[0].checked").value(false))
                 .andExpect(jsonPath("$.data.items[0].isOverdue").value(false));
     }
