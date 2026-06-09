@@ -86,8 +86,8 @@ public class PatentService {
                 .registrationDate(request.registrationDate())
                 .publicationDate(request.publicationDate())
                 .announcementDate(request.announcementDate())
-                .ipcCode(request.ipcCode())
-                .cpcCode(request.cpcCode())
+                .ipcCodes(request.ipcCodes())
+                .cpcCodes(request.cpcCodes())
                 .applicant(request.applicant())
                 .inventor(request.inventor())
                 .expiryDate(request.expiryDate())
@@ -235,8 +235,8 @@ public class PatentService {
                 request.registrationDate(),
                 request.publicationDate(),
                 request.announcementDate(),
-                request.ipcCode(),
-                request.cpcCode(),
+                request.ipcCodes(),
+                request.cpcCodes(),
                 request.applicant(),
                 request.inventor(),
                 request.expiryDate(),

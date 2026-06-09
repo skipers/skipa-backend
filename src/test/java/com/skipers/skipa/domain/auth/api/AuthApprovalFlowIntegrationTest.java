@@ -580,6 +580,8 @@ class AuthApprovalFlowIntegrationTest {
                                 {
                                   "title": "  Chip Patent  ",
                                   "applicationNumber": " APP-1 ",
+                                  "ipcCodes": [" H01L 21/00 "],
+                                  "cpcCodes": [" H01L 23/00 "],
                                   "relatedProducts": [" Product "],
                                   "initialDepartment": " Initial Legal ",
                                   "keywords": [" Keyword "]
@@ -588,6 +590,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.title").value("  Chip Patent  "))
                 .andExpect(jsonPath("$.data.applicationNumber").value(" APP-1 "))
+                .andExpect(jsonPath("$.data.ipcCodes[0]").value(" H01L 21/00 "))
+                .andExpect(jsonPath("$.data.cpcCodes[0]").value(" H01L 23/00 "))
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
                 .andExpect(jsonPath("$.data.initialDepartment").value(" Initial Legal "))
                 .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "))
@@ -601,6 +605,8 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.ipcCodes[0]").value(" H01L 21/00 "))
+                .andExpect(jsonPath("$.data.cpcCodes[0]").value(" H01L 23/00 "))
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value(" Product "))
                 .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "))
                 .andExpect(jsonPath("$.data.latestLegalStatus").value(nullValue()));
@@ -612,7 +618,9 @@ class AuthApprovalFlowIntegrationTest {
                         .param("size", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
-                .andExpect(jsonPath("$.data.items[0].title").value("  Chip Patent  "));
+                .andExpect(jsonPath("$.data.items[0].title").value("  Chip Patent  "))
+                .andExpect(jsonPath("$.data.items[0].ipcCodes[0]").value(" H01L 21/00 "))
+                .andExpect(jsonPath("$.data.items[0].cpcCodes[0]").value(" H01L 23/00 "));
 
         mockMvc.perform(put("/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + legalToken)
@@ -621,6 +629,8 @@ class AuthApprovalFlowIntegrationTest {
                                 {
                                   "title": "Updated Patent",
                                   "applicationNumber": "APP-UPDATED",
+                                  "ipcCodes": ["Updated IPC"],
+                                  "cpcCodes": ["Updated CPC"],
                                   "relatedProducts": ["Updated Product"],
                                   "initialDepartment": "Updated Legal",
                                   "keywords": ["Updated Keyword"]
@@ -628,6 +638,8 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.title").value("Updated Patent"))
+                .andExpect(jsonPath("$.data.ipcCodes[0]").value("Updated IPC"))
+                .andExpect(jsonPath("$.data.cpcCodes[0]").value("Updated CPC"))
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value("Updated Product"))
                 .andExpect(jsonPath("$.data.initialDepartment").value("Updated Legal"));
 

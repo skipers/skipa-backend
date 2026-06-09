@@ -43,13 +43,11 @@ public record PatentCreateRequest(
         @Schema(description = "공고일자", example = "2026-05-26")
         LocalDate announcementDate,
 
-        @Size(max = 200, message = "IPC 코드는 200자 이하여야 합니다.")
-        @Schema(description = "IPC 코드", example = "H01L 21/00")
-        String ipcCode,
+        @Schema(description = "IPC 코드", example = "[\"H01L 21/00\",\"H01L 23/00\"]")
+        List<String> ipcCodes,
 
-        @Size(max = 200, message = "CPC 코드는 200자 이하여야 합니다.")
-        @Schema(description = "CPC 코드", example = "H01L 21/00")
-        String cpcCode,
+        @Schema(description = "CPC 코드", example = "[\"H01L 21/00\",\"H01L 23/00\"]")
+        List<String> cpcCodes,
 
         @Size(max = 200, message = "출원인은 200자 이하여야 합니다.")
         @Schema(description = "출원인", example = "SK")

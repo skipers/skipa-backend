@@ -56,11 +56,13 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "announcement_date") // 공고일자
     private LocalDate announcementDate;
 
-    @Column(name = "ipc_code", length = 200) // IPC 코드
-    private String ipcCode;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ipc_codes") // IPC 코드
+    private List<String> ipcCodes;
 
-    @Column(name = "cpc_code", length = 200) // CPC 코드
-    private String cpcCode;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "cpc_codes") // CPC 코드
+    private List<String> cpcCodes;
 
     @Column(name = "applicant", length = 200) // 출원인명
     private String applicant;
@@ -130,8 +132,8 @@ public class Patent extends BaseTimeEntity {
             LocalDate registrationDate,
             LocalDate publicationDate,
             LocalDate announcementDate,
-            String ipcCode,
-            String cpcCode,
+            List<String> ipcCodes,
+            List<String> cpcCodes,
             String applicant,
             String inventor,
             LocalDate expiryDate,
@@ -160,8 +162,8 @@ public class Patent extends BaseTimeEntity {
         this.registrationDate = registrationDate;
         this.publicationDate = publicationDate;
         this.announcementDate = announcementDate;
-        this.ipcCode = ipcCode;
-        this.cpcCode = cpcCode;
+        this.ipcCodes = ipcCodes;
+        this.cpcCodes = cpcCodes;
         this.applicant = applicant;
         this.inventor = inventor;
         this.expiryDate = expiryDate;
@@ -192,8 +194,8 @@ public class Patent extends BaseTimeEntity {
             LocalDate registrationDate,
             LocalDate publicationDate,
             LocalDate announcementDate,
-            String ipcCode,
-            String cpcCode,
+            List<String> ipcCodes,
+            List<String> cpcCodes,
             String applicant,
             String inventor,
             LocalDate expiryDate,
@@ -221,8 +223,8 @@ public class Patent extends BaseTimeEntity {
         this.registrationDate = registrationDate;
         this.publicationDate = publicationDate;
         this.announcementDate = announcementDate;
-        this.ipcCode = ipcCode;
-        this.cpcCode = cpcCode;
+        this.ipcCodes = ipcCodes;
+        this.cpcCodes = cpcCodes;
         this.applicant = applicant;
         this.inventor = inventor;
         this.expiryDate = expiryDate;

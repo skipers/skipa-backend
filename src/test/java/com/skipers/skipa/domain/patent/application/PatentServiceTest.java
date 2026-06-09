@@ -120,6 +120,8 @@ class PatentServiceTest {
         ));
         assertThat(response.title()).isEqualTo("  Patent Title  ");
         assertThat(response.initialDepartment()).isEqualTo(" Initial Department ");
+        assertThat(response.ipcCodes()).containsExactly("IPC");
+        assertThat(response.cpcCodes()).containsExactly("CPC");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
     }
@@ -575,6 +577,8 @@ class PatentServiceTest {
         assertThat(response.applicationDate()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(response.applicant()).isEqualTo("Applicant");
         assertThat(response.examinationClaimCount()).isEqualTo(5);
+        assertThat(response.ipcCodes()).containsExactly("IPC");
+        assertThat(response.cpcCodes()).containsExactly("CPC");
         assertThat(response.initialDepartment()).isEqualTo("Initial Department");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
@@ -758,8 +762,8 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
-                null,
+                List.of("IPC"),
+                List.of("CPC"),
                 null,
                 null,
                 null,
@@ -843,8 +847,8 @@ class PatentServiceTest {
                 LocalDate.of(2026, 1, 2),
                 LocalDate.of(2026, 1, 3),
                 LocalDate.of(2026, 1, 4),
-                "IPC",
-                "CPC",
+                List.of("IPC"),
+                List.of("CPC"),
                 "Applicant",
                 "Inventor",
                 LocalDate.of(2046, 1, 1),
