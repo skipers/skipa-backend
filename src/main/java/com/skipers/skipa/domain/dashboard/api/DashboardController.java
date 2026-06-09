@@ -21,6 +21,12 @@ public class DashboardController {
 
     private final DashboardService dashboardService;
 
+    /**
+     * Legal 홈 대시보드를 조회한다.
+     *
+     * @param reviewCycleId 검토 주기 ID(선택)
+     * @return Legal 홈 대시보드
+     */
     @Operation(summary = "Legal 홈 대시보드 조회", description = "Legal 홈 화면에 필요한 검토 현황, 분포, 최근 회신 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/legal")
@@ -30,6 +36,13 @@ public class DashboardController {
         return ApiResponse.ok(dashboardService.getLegalDashboard(reviewCycleId));
     }
 
+    /**
+     * Business 홈 대시보드를 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param reviewCycleId 검토 주기 ID(선택)
+     * @return Business 홈 대시보드
+     */
     @Operation(summary = "Business 홈 대시보드 조회", description = "Business 홈 화면에 필요한 소속 사업부 기준 검토 현황과 특허 요약을 조회합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping("/business")
