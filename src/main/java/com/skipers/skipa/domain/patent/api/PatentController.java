@@ -111,8 +111,10 @@ public class PatentController {
                     + "decision(MAINTAIN, ABANDON), checked(true/false), "
                     + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
                     + "filingCountry, techField. "
-                    + "정렬: sort=id(기본값, 최신순), expiryDate(소멸일 오름차순), "
-                    + "applicationDate(출원일 오름차순), citationCount(인용 수 내림차순). "
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
+                    + "applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "기존 sort=id, expiryDate, applicationDate, citationCount도 지원합니다. "
+                    + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다. "
                     + "BUSINESS 사용자는 본인 소속 부서 특허만 조회합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")

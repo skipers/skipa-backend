@@ -143,7 +143,7 @@ public class PatentService {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "id")
+                Sort.by(Sort.Direction.ASC, "applicationNumber").and(Sort.by(Sort.Direction.DESC, "id"))
         );
 
         Page<Patent> patents = user.getRole() == UserRole.BUSINESS
@@ -478,23 +478,20 @@ public class PatentService {
     }
 
     private Comparator<PatentListResponse> listSort(String sort) {
-        Comparator<PatentListResponse> comparator = switch (sort == null ? "" : sort) {
-            case "expiryDate" -> Comparator.comparing(
-                    PatentListResponse::expiryDate,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-            case "applicationDate" -> Comparator.comparing(
-                    PatentListResponse::applicationDate,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            );
-            case "citationCount" -> Comparator.comparing(
-                    PatentListResponse::citationCount,
-                    Comparator.nullsLast(Comparator.naturalOrder())
-            ).reversed();
-            case "", "id" -> Comparator.comparing(PatentListResponse::id).reversed();
-            default -> throw new PatentException(ErrorCode.INVALID_REQUEST);
-        };
-        return comparator.thenComparing(PatentListResponse::id, Comparator.reverseOrder());
+        PatentSortOption sortOption = PatentSortOption.parse(sort);
+        return PatentSortOption.comparator(
+                sortOption,
+                switch (sortOption.field()) {
+                    case "title" -> PatentListResponse::title;
+                    case "applicationNumber" -> PatentListResponse::applicationNumber;
+                    case "applicationDate" -> PatentListResponse::applicationDate;
+                    case "expiryDate" -> PatentListResponse::expiryDate;
+                    case "citationCount" -> PatentListResponse::citationCount;
+                    case "id" -> PatentListResponse::id;
+                    default -> throw new PatentException(ErrorCode.INVALID_REQUEST);
+                },
+                PatentListResponse::id
+        );
     }
 
     private Page<PatentListResponse> page(List<PatentListResponse> responses, Pageable pageable) {

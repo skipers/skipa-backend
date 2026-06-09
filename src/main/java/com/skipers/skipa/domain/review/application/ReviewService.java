@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.review.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.application.PatentSortOption;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
@@ -22,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -150,6 +150,7 @@ public class ReviewService {
             Long departmentId,
             Long patentId,
             Boolean checked,
+            String sort,
             Pageable pageable
     ) {
         ReviewStatus parsedStatus = parseStatus(status);
@@ -157,7 +158,7 @@ public class ReviewService {
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(Sort.Direction.DESC, "id")
+                PatentSortOption.parse(sort).reviewSort()
         );
 
         return reviewRepository.findAllByFilters(

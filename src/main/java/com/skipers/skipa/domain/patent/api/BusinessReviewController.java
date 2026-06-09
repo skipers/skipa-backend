@@ -59,6 +59,7 @@ public class BusinessReviewController {
      * @param opinion 사업부 의견(선택)
      * @param submittedFrom 제출일 시작일(선택)
      * @param submittedTo 제출일 종료일(선택)
+     * @param sort 정렬 기준(선택)
      * @param pageable page/size 정보
      * @return 사업부 검토 현황 목록 페이지
      */
@@ -68,7 +69,8 @@ public class BusinessReviewController {
                     + "각 특허의 최신 완료 평가 보고서 점수와 등급을 함께 반환합니다. "
                     + "필터: status(PENDING, OVERDUE, SUBMITTED), opinion(MAINTAIN, ABANDON), "
                     + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
-                    + "정렬: 최신 검토 요청순(id 내림차순) 고정입니다."
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
     )
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping
@@ -78,6 +80,7 @@ public class BusinessReviewController {
             @RequestParam(required = false) String opinion,
             @RequestParam(required = false) LocalDate submittedFrom,
             @RequestParam(required = false) LocalDate submittedTo,
+            @RequestParam(required = false) String sort,
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(businessReviewService.getAll(
@@ -86,6 +89,7 @@ public class BusinessReviewController {
                 opinion,
                 submittedFrom,
                 submittedTo,
+                sort,
                 pageable
         )));
     }

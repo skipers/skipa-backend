@@ -304,25 +304,51 @@ class ReviewServiceTest {
     }
 
     @Test
-    void getAllUsesFiltersAndDescendingIdSort() {
+    void getAllUsesFiltersAndDefaultApplicationNumberSort() {
         PageRequest pageable = PageRequest.of(0, 20);
-        PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "patent.applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         Review review = review();
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(reviewCycle));
         when(reviewRepository.findAllByFilters(1L, ReviewStatus.PENDING, 1L, 10L, false, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, pageable).getContent())
+        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, null, pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
         verify(reviewRepository).findAllByFilters(1L, ReviewStatus.PENDING, 1L, 10L, false, sortedPageable);
     }
 
     @Test
+    void getAllSortsByPatentFieldsWithDirection() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "patent.applicationDate")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        Review review = review();
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.findAllByFilters(1L, null, null, null, null, sortedPageable))
+                .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
+
+        assertThat(reviewService.getAll(null, null, null, null, "applicationDate,asc", pageable).getContent())
+                .extracting(ReviewResponse::id)
+                .containsExactly(100L);
+        verify(reviewRepository).findAllByFilters(1L, null, null, null, null, sortedPageable);
+    }
+
+    @Test
     void getAllRejectsInvalidStatus() {
         assertError(
-                () -> reviewService.getAll("대기", null, null, null, PageRequest.of(0, 20)),
+                () -> reviewService.getAll("대기", null, null, null, null, PageRequest.of(0, 20)),
                 ReviewException.class,
                 ErrorCode.INVALID_REQUEST
         );

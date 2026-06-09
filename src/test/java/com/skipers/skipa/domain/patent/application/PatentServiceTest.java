@@ -237,7 +237,12 @@ class PatentServiceTest {
     void getAllWithoutKeywordUsesPagedFindAll() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
-        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         when(patentRepository.findAll(sortedPageable)).thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(legalUser(), "  ", pageable);
@@ -250,7 +255,12 @@ class PatentServiceTest {
     void getAllWithKeywordSearchesTitle() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
-        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         when(patentRepository.findByTitleContainingIgnoreCase("patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
@@ -266,7 +276,12 @@ class PatentServiceTest {
         ReflectionTestUtils.setField(department, "id", 1L);
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
-        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         when(patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
@@ -390,6 +405,59 @@ class PatentServiceTest {
                         "reviewStatus", "decision", "checked", "latestReportScore", "isOverdue", "filingCountry")
                 .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false,
                         new BigDecimal("82.50"), false, "KR");
+    }
+
+    @Test
+    void getAllSortsByPatentFieldsWithDirection() {
+        Patent alphaFirstPatent = patent(
+                1L,
+                "Alpha Patent",
+                "APP-SORT-B",
+                "반도체",
+                "KR",
+                LocalDate.now().plusDays(10),
+                null
+        );
+        Patent alphaSecondPatent = patent(
+                2L,
+                "Alpha Patent",
+                "APP-SORT-C",
+                "반도체",
+                "KR",
+                LocalDate.now().plusDays(20),
+                null
+        );
+        Patent betaPatent = patent(
+                3L,
+                "Beta Patent",
+                "APP-SORT-A",
+                "반도체",
+                "KR",
+                LocalDate.now().plusDays(30),
+                null
+        );
+        when(patentRepository.findAll()).thenReturn(List.of(betaPatent, alphaFirstPatent, alphaSecondPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        Page<?> result = patentService.getAll(
+                legalUser(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "title,desc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id")
+                .containsExactly(3L, 2L, 1L);
     }
 
     @Test

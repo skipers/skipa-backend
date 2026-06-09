@@ -1556,8 +1556,16 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
-                .andExpect(jsonPath("$.data.items[0].id").value(secondReview.getId()))
-                .andExpect(jsonPath("$.data.items[1].id").value(firstReview.getId()));
+                .andExpect(jsonPath("$.data.items[0].id").value(firstReview.getId()))
+                .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
+
+        mockMvc.perform(get("/review-targets")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("sort", "title,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].id").value(firstReview.getId()))
+                .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
 
         mockMvc.perform(get("/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
@@ -1626,6 +1634,12 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "대기"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+
+        mockMvc.perform(get("/review-targets")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("sort", "inventor,asc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 

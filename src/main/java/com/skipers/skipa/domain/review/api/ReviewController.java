@@ -64,6 +64,7 @@ public class ReviewController {
      * @param departmentId 부서 ID(선택)
      * @param patentId 특허 ID(선택)
      * @param checked 회신 확인 여부(선택)
+     * @param sort 정렬 기준(선택)
      * @param pageable page/size 정보
      * @return 이번 분기 검토 대상 특허 목록 페이지
      */
@@ -71,7 +72,8 @@ public class ReviewController {
             summary = "[Legal] 이번 분기 검토 대상 특허 목록 조회",
             description = "관리자와 Legal 팀이 현재 활성 검토 주기에 포함된 검토 대상 특허 목록을 조회합니다. "
                     + "필터: status(SCHEDULED, PENDING, OVERDUE, SUBMITTED), departmentId, patentId, checked(true/false). "
-                    + "정렬: 최신 검토 대상순(id 내림차순) 고정입니다."
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/review-targets")
@@ -80,6 +82,7 @@ public class ReviewController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long patentId,
             @RequestParam(required = false) Boolean checked,
+            @RequestParam(required = false) String sort,
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(reviewService.getAll(
@@ -87,6 +90,7 @@ public class ReviewController {
                 departmentId,
                 patentId,
                 checked,
+                sort,
                 pageable
         )));
     }

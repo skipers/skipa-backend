@@ -94,9 +94,14 @@ class BusinessReviewServiceTest {
     }
 
     @Test
-    void getAllUsesAuthenticatedUsersDepartmentAndDescendingIdSort() {
+    void getAllUsesAuthenticatedUsersDepartmentAndDefaultApplicationNumberSort() {
         PageRequest pageable = PageRequest.of(0, 20);
-        PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "patent.applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         Report report = Report.builder()
                 .patent(review.getPatent())
                 .totalScore(new BigDecimal("92.50"))
@@ -111,6 +116,7 @@ class BusinessReviewServiceTest {
 
         List<BusinessReviewResponse> responses = businessReviewService.getAll(
                 businessUser,
+                null,
                 null,
                 null,
                 null,
@@ -162,7 +168,12 @@ class BusinessReviewServiceTest {
     @Test
     void getAllAppliesStatusOpinionAndSubmittedDateFilters() {
         PageRequest pageable = PageRequest.of(0, 20);
-        PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "patent.applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         LocalDate submittedFrom = LocalDate.of(2026, 6, 1);
         LocalDate submittedTo = LocalDate.of(2026, 6, 30);
         stubActiveReviewCycle();
@@ -182,8 +193,49 @@ class BusinessReviewServiceTest {
                 "MAINTAIN",
                 submittedFrom,
                 submittedTo,
+                null,
                 pageable
         ).getContent()).hasSize(1);
+    }
+
+    @Test
+    void getAllSortsByPatentFieldsWithDirection() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.DESC, "patent.expiryDate")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        stubActiveReviewCycle();
+        when(reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
+                1L,
+                null,
+                null,
+                null,
+                null,
+                sortedPageable
+        )).thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
+
+        assertThat(businessReviewService.getAll(
+                businessUser,
+                null,
+                null,
+                null,
+                null,
+                "expiryDate,desc",
+                pageable
+        ).getContent()).hasSize(1);
+        verify(reviewRepository).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
+                1L,
+                null,
+                null,
+                null,
+                null,
+                sortedPageable
+        );
     }
 
     @Test
@@ -273,7 +325,7 @@ class BusinessReviewServiceTest {
         );
 
         assertReviewError(
-                () -> businessReviewService.getAll(legalUser, null, null, null, null, PageRequest.of(0, 20)),
+                () -> businessReviewService.getAll(legalUser, null, null, null, null, null, PageRequest.of(0, 20)),
                 ErrorCode.FORBIDDEN
         );
         verify(reviewRepository, never()).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
@@ -290,7 +342,7 @@ class BusinessReviewServiceTest {
     @Test
     void getAllRejectsInvalidStatusFilter() {
         assertReviewError(
-                () -> businessReviewService.getAll(businessUser, "DONE", null, null, null, PageRequest.of(0, 20)),
+                () -> businessReviewService.getAll(businessUser, "DONE", null, null, null, null, PageRequest.of(0, 20)),
                 ErrorCode.INVALID_REQUEST
         );
     }
@@ -298,7 +350,7 @@ class BusinessReviewServiceTest {
     @Test
     void getAllRejectsInvalidOpinionFilter() {
         assertReviewError(
-                () -> businessReviewService.getAll(businessUser, null, "HOLD", null, null, PageRequest.of(0, 20)),
+                () -> businessReviewService.getAll(businessUser, null, "HOLD", null, null, null, PageRequest.of(0, 20)),
                 ErrorCode.INVALID_REQUEST
         );
     }
