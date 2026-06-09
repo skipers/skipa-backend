@@ -30,13 +30,13 @@ public class PatentAnnuityController {
     private final PatentAnnuityService patentAnnuityService;
 
     /**
-     * 특허의 연차료 납부 이력을 생성한다.
+     * 특허의 연차료를 납부 처리한다.
      *
      * @param patentId 특허 ID
-     * @param request 생성 요청
-     * @return 생성된 연차료 납부 이력
+     * @param request 납부 처리 요청
+     * @return 납부 처리된 연차료 이력
      */
-    @Operation(summary = "[Legal] 연차료 납부 이력 생성", description = "특허에 연차료 납부 이력을 추가합니다.")
+    @Operation(summary = "[Legal] 연차료 납부 처리", description = "특허의 최신 미납 연차료를 납부 처리하고 다음 미납 연차료를 생성합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentAnnuityResponse>> create(

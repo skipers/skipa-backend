@@ -29,11 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -52,11 +50,16 @@ public class ReviewService {
         Department department = validateDepartment(patent);
         ReviewCycle reviewCycle = getActiveReviewCycle();
 
-        if (reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
+        Review existingReview = reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(
                 reviewCycle.getId(),
                 patentId,
                 department.getId()
-        )) {
+        ).orElse(null);
+        if (existingReview != null && existingReview.getStatus() == ReviewStatus.SCHEDULED) {
+            existingReview.request(findLatestReport(patent.getId()));
+            return ReviewResponse.from(existingReview);
+        }
+        if (existingReview != null) {
             throw new ReviewException(ErrorCode.DUPLICATE_REVIEW_REQUEST);
         }
 
@@ -77,14 +80,18 @@ public class ReviewService {
         Map<Long, Patent> patentsById = new HashMap<>();
         patentRepository.findAllById(patentIds).forEach(patent -> patentsById.put(patent.getId(), patent));
 
-        Set<String> existingReviewKeys = new HashSet<>();
+        Map<String, Review> existingReviewsByKey = new HashMap<>();
         if (!patentsById.isEmpty()) {
             reviewRepository.findAllByReviewCycleIdAndPatentIdIn(reviewCycle.getId(), patentsById.keySet())
-                    .forEach(review -> existingReviewKeys.add(reviewKey(review.getPatent().getId(), review.getDepartment().getId())));
+                    .forEach(review -> existingReviewsByKey.put(
+                            reviewKey(review.getPatent().getId(), review.getDepartment().getId()),
+                            review
+                    ));
         }
 
         List<Review> reviews = new ArrayList<>();
         List<BulkReviewCreateResponse.Item> items = new ArrayList<>();
+        int requestedCount = 0;
         for (Long patentId : patentIds) {
             Patent patent = patentsById.get(patentId);
             if (patent == null) {
@@ -104,18 +111,27 @@ public class ReviewService {
                 items.add(BulkReviewCreateResponse.Item.skipped(patentId, ErrorCode.DEPARTMENT_INACTIVE.getCode()));
                 continue;
             }
-            if (existingReviewKeys.contains(reviewKey(patentId, department.getId()))) {
+            Review existingReview = existingReviewsByKey.get(reviewKey(patentId, department.getId()));
+            if (existingReview != null && existingReview.getStatus() == ReviewStatus.SCHEDULED) {
+                existingReview.request(findLatestReport(patentId));
+                items.add(BulkReviewCreateResponse.Item.created(patentId));
+                requestedCount++;
+                continue;
+            }
+            if (existingReview != null) {
                 items.add(BulkReviewCreateResponse.Item.skipped(patentId, ErrorCode.DUPLICATE_REVIEW_REQUEST.getCode()));
                 continue;
             }
 
-            reviews.add(createReview(
+            Review review = createReview(
                     patent,
                     department,
                     reviewCycle,
                     findLatestReport(patentId)
-            ));
+            );
+            reviews.add(review);
             items.add(BulkReviewCreateResponse.Item.created(patentId));
+            requestedCount++;
         }
 
         if (!reviews.isEmpty()) {
@@ -123,8 +139,8 @@ public class ReviewService {
         }
         return new BulkReviewCreateResponse(
                 reviewCycle.getId(),
-                reviews.size(),
-                items.size() - reviews.size(),
+                requestedCount,
+                items.size() - requestedCount,
                 items
         );
     }
@@ -136,13 +152,22 @@ public class ReviewService {
             Boolean checked,
             Pageable pageable
     ) {
+        ReviewStatus parsedStatus = parseStatus(status);
+        ReviewCycle reviewCycle = getActiveReviewCycle();
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return reviewRepository.findAllByFilters(parseStatus(status), departmentId, patentId, checked, sortedPageable)
+        return reviewRepository.findAllByFilters(
+                        reviewCycle.getId(),
+                        parsedStatus,
+                        departmentId,
+                        patentId,
+                        checked,
+                        sortedPageable
+                )
                 .map(ReviewResponse::from);
     }
 

@@ -84,6 +84,7 @@ class LegalApiRepositoryIntegrationTest {
                 .build());
 
         Page<Review> result = reviewRepository.findAllByFilters(
+                reviewCycle.getId(),
                 ReviewStatus.SUBMITTED,
                 department.getId(),
                 patent.getId(),

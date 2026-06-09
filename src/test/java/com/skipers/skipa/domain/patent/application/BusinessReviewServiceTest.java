@@ -129,7 +129,7 @@ class BusinessReviewServiceTest {
 
     @Test
     void getRejectsMissingSubmission() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L)).thenReturn(Optional.empty());
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED))).thenReturn(Optional.empty());
 
         assertReviewError(() -> businessReviewService.get(businessUser, 10L), ErrorCode.REVIEW_NOT_FOUND);
     }
@@ -177,7 +177,7 @@ class BusinessReviewServiceTest {
 
     @Test
     void submitUpdatesOpinionCommentStatusAndSubmittedAt() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(review));
 
         BusinessReviewResponse response = businessReviewService.submit(
@@ -197,7 +197,7 @@ class BusinessReviewServiceTest {
     @Test
     void submitRejectsAlreadySubmittedRequest() {
         review.submit(BusinessOpinion.MAINTAIN, "기존 의견", java.time.Instant.now());
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(review));
 
         assertReviewError(
@@ -212,7 +212,7 @@ class BusinessReviewServiceTest {
 
     @Test
     void submitRejectsInvalidOpinion() {
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(review));
 
         assertReviewError(
@@ -233,7 +233,7 @@ class BusinessReviewServiceTest {
                 .reviewCycle(reviewCycle())
                 .dueDate(LocalDate.now().minusDays(1))
                 .build();
-        when(reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(10L, 1L))
+        when(reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(10L, 1L, java.util.List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED)))
                 .thenReturn(Optional.of(expiredReview));
 
         assertReviewError(

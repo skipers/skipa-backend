@@ -8,7 +8,8 @@ import java.time.LocalDate;
 public record PatentAnnuityResponse(
         Long id,
         Long patentId,
-        Integer annuityYear,
+        Integer startYear,
+        Integer endYear,
         LocalDate dueDate,
         LocalDate paidDate,
         String status,
@@ -21,7 +22,8 @@ public record PatentAnnuityResponse(
         return new PatentAnnuityResponse(
                 patentAnnuity.getId(),
                 patentAnnuity.getPatent().getId(),
-                patentAnnuity.getAnnuityYear(),
+                patentAnnuity.getStartYear(),
+                patentAnnuity.getEndYear(),
                 patentAnnuity.getDueDate(),
                 patentAnnuity.getPaidDate(),
                 patentAnnuity.getStatus().name(),

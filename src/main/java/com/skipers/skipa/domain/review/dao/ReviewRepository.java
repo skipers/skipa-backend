@@ -23,6 +23,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             from Review review
             where review.department.id = :departmentId
               and review.patent.currentDepartment.id = :departmentId
+              and review.status <> com.skipers.skipa.domain.review.domain.ReviewStatus.SCHEDULED
               and (:status is null or review.status = :status)
               and (:opinion is null or review.opinion = :opinion)
               and (:submittedFrom is null or review.submittedAt >= :submittedFrom)
@@ -32,6 +33,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
                   from Review latestReview
                   where latestReview.patent.id = review.patent.id
                     and latestReview.department.id = :departmentId
+                    and latestReview.status <> com.skipers.skipa.domain.review.domain.ReviewStatus.SCHEDULED
               )
             """)
     Page<Review> findLatestBusinessReviewsByDepartmentId(
@@ -47,12 +49,14 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("""
             select review
             from Review review
-            where (:status is null or review.status = :status)
+            where review.reviewCycle.id = :reviewCycleId
+              and (:status is null or review.status = :status)
               and (:departmentId is null or review.department.id = :departmentId)
               and (:patentId is null or review.patent.id = :patentId)
               and (:checked is null or review.checked = :checked)
             """)
     Page<Review> findAllByFilters(
+            @Param("reviewCycleId") Long reviewCycleId,
             @Param("status") ReviewStatus status,
             @Param("departmentId") Long departmentId,
             @Param("patentId") Long patentId,
@@ -63,9 +67,18 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"patent", "department", "report"})
     Optional<Review> findFirstByPatentIdAndDepartmentIdOrderByIdDesc(Long patentId, Long departmentId);
 
+    @EntityGraph(attributePaths = {"patent", "department", "report"})
+    Optional<Review> findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
+            Long patentId,
+            Long departmentId,
+            Collection<ReviewStatus> statuses
+    );
+
     @Override
     @EntityGraph(attributePaths = {"patent", "department", "reviewCycle", "report"})
     Optional<Review> findById(Long id);
+
+    Optional<Review> findByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
 
     boolean existsByReviewCycleIdAndPatentIdAndDepartmentId(Long reviewCycleId, Long patentId, Long departmentId);
 

@@ -15,6 +15,8 @@ public interface ReviewCycleRepository extends JpaRepository<ReviewCycle, Long> 
             LocalDate endDate
     );
 
+    Optional<ReviewCycle> findByYearAndQuarter(Integer year, Integer quarter);
+
     Page<ReviewCycle> findAllByOrderByStartDateDesc(Pageable pageable);
 
     boolean existsByYearAndQuarter(Integer year, Integer quarter);

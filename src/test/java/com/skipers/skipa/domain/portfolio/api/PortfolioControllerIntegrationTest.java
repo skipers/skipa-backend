@@ -125,7 +125,8 @@ class PortfolioControllerIntegrationTest {
         );
         patentAnnuityRepository.save(PatentAnnuity.builder()
                 .patent(semiconductorPatent)
-                .annuityYear(3)
+                .startYear(3)
+                .endYear(3)
                 .dueDate(LocalDate.of(2026, 5, 1))
                 .status(PatentAnnuityStatus.PAID)
                 .amount(100_000)

@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -96,7 +97,11 @@ public class BusinessReviewService {
         Long departmentId = getDepartmentId(user);
         businessPatentAccessValidator.validate(user, patentId);
 
-        return reviewRepository.findFirstByPatentIdAndDepartmentIdOrderByIdDesc(patentId, departmentId)
+        return reviewRepository.findFirstByPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
+                        patentId,
+                        departmentId,
+                        List.of(ReviewStatus.PENDING, ReviewStatus.SUBMITTED)
+                )
                 .orElseThrow(() -> new ReviewException(ErrorCode.REVIEW_NOT_FOUND));
     }
 
