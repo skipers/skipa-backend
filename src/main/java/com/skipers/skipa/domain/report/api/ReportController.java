@@ -35,7 +35,7 @@ public class ReportController {
      * @param patentId 특허 ID
      * @return 생성 요청된 평가 보고서
      */
-    @Operation(summary = "평가 보고서 생성 요청", description = "특허의 평가 보고서 생성을 요청합니다.")
+    @Operation(summary = "[Legal] 평가 보고서 생성 요청", description = "특허의 평가 보고서 생성을 요청합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<ReportCreateResponse>> create(
@@ -53,7 +53,7 @@ public class ReportController {
      * @return 평가 보고서 목록 페이지
      */
     @Operation(
-            summary = "평가 보고서 목록 조회",
+            summary = "[Common] 평가 보고서 목록 조회",
             description = "특허의 평가 보고서 목록을 페이지 단위로 조회합니다. "
                     + "필터는 제공하지 않습니다. "
                     + "정렬: 최신 보고서순(id 내림차순) 고정입니다."
@@ -76,7 +76,7 @@ public class ReportController {
      * @return 최신 평가 보고서
      */
     @Operation(
-            summary = "최신 평가 보고서 조회",
+            summary = "[Common] 최신 평가 보고서 조회",
             description = "특허의 최신 평가 보고서를 조회합니다. "
                     + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL과 totalScore를 함께 반환합니다."
     )
@@ -97,7 +97,7 @@ public class ReportController {
      * @param reportId 평가 보고서 ID
      * @return 평가 보고서
      */
-    @Operation(summary = "평가 보고서 단일 조회", description = "평가 보고서 ID로 상세 정보를 조회합니다.")
+    @Operation(summary = "[Common] 평가 보고서 단일 조회", description = "평가 보고서 ID로 상세 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}")
     public ApiResponse<ReportDetailResponse> get(
@@ -116,7 +116,7 @@ public class ReportController {
      * @param reportId 평가 보고서 ID
      * @return 평가 보고서 생성 상태
      */
-    @Operation(summary = "평가 보고서 생성 상태 조회", description = "평가 보고서의 생성 상태를 조회합니다.")
+    @Operation(summary = "[Common] 평가 보고서 생성 상태 조회", description = "평가 보고서의 생성 상태를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}/status")
     public ApiResponse<ReportStatusResponse> getStatus(

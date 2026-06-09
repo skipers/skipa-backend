@@ -35,7 +35,7 @@ public class ReviewController {
      * @param patentId 특허 ID
      * @return 생성된 사업부 검토
      */
-    @Operation(summary = "사업부 검토 요청", description = "Legal 팀이 특허를 담당 부서에 검토 요청합니다.")
+    @Operation(summary = "[Legal] 사업부 검토 요청", description = "Legal 팀이 특허를 담당 부서에 검토 요청합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping("/patents/{patentId}/reviews")
     public ResponseEntity<ApiResponse<ReviewResponse>> create(@PathVariable Long patentId) {
@@ -48,7 +48,7 @@ public class ReviewController {
      * @param request 특허 ID 목록
      * @return 생성 및 건너뜀 결과
      */
-    @Operation(summary = "사업부 검토 일괄 요청", description = "Legal 팀이 여러 특허를 담당 부서에 검토 요청합니다.")
+    @Operation(summary = "[Legal] 사업부 검토 일괄 요청", description = "Legal 팀이 여러 특허를 담당 부서에 검토 요청합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping("/reviews/bulk")
     public ResponseEntity<ApiResponse<BulkReviewCreateResponse>> createBulk(
@@ -68,7 +68,7 @@ public class ReviewController {
      * @return 사업부 검토 목록 페이지
      */
     @Operation(
-            summary = "사업부 검토 목록 조회",
+            summary = "[Legal] 사업부 검토 목록 조회",
             description = "관리자와 Legal 팀이 사업부 검토 목록을 조회합니다. "
                     + "필터: status(PENDING, SUBMITTED), departmentId, patentId, checked(true/false). "
                     + "정렬: 최신 검토 요청순(id 내림차순) 고정입니다."
@@ -97,7 +97,7 @@ public class ReviewController {
      * @param reviewId 사업부 검토 ID
      * @return 사업부 검토 상세 정보
      */
-    @Operation(summary = "사업부 검토 단일 조회", description = "관리자와 Legal 팀이 검토 요청과 사업부의 의견 제출 정보를 조회합니다.")
+    @Operation(summary = "[Legal] 사업부 검토 단일 조회", description = "관리자와 Legal 팀이 검토 요청과 사업부의 의견 제출 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/reviews/{reviewId}")
     public ApiResponse<ReviewResponse> get(@PathVariable Long reviewId) {
@@ -110,7 +110,7 @@ public class ReviewController {
      * @param reviewId 사업부 검토 ID
      * @return 확인 처리 결과
      */
-    @Operation(summary = "사업부 검토 회신 확인", description = "Legal 팀이 제출된 사업부 회신을 확인 처리합니다.")
+    @Operation(summary = "[Legal] 사업부 검토 회신 확인", description = "Legal 팀이 제출된 사업부 회신을 확인 처리합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PatchMapping("/reviews/{reviewId}/confirm")
     public ApiResponse<ReviewConfirmResponse> confirm(@PathVariable Long reviewId) {

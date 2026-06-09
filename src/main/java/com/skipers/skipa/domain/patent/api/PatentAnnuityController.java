@@ -36,7 +36,7 @@ public class PatentAnnuityController {
      * @param request 생성 요청
      * @return 생성된 연차료 납부 이력
      */
-    @Operation(summary = "연차료 납부 이력 생성", description = "특허에 연차료 납부 이력을 추가합니다.")
+    @Operation(summary = "[Legal] 연차료 납부 이력 생성", description = "특허에 연차료 납부 이력을 추가합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentAnnuityResponse>> create(
@@ -55,7 +55,7 @@ public class PatentAnnuityController {
      * @return 연차료 납부 이력 목록 페이지
      */
     @Operation(
-            summary = "연차료 납부 이력 조회",
+            summary = "[Common] 연차료 납부 이력 조회",
             description = "특허의 연차료 납부 이력을 페이지 단위로 조회합니다. "
                     + "필터는 제공하지 않습니다. "
                     + "정렬: 최신 이력순(id 내림차순) 고정입니다."

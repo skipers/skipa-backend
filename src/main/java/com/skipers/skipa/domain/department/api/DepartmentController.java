@@ -37,7 +37,7 @@ public class DepartmentController {
      * @param request 생성 요청
      * @return 생성된 부서
      */
-    @Operation(summary = "부서 생성", description = "새로운 부서를 생성합니다.")
+    @Operation(summary = "[Admin] 부서 생성", description = "새로운 부서를 생성합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(@Valid @RequestBody DepartmentCreateRequest request) {
@@ -50,7 +50,7 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 부서
      */
-    @Operation(summary = "부서 단일 조회", description = "부서 ID로 부서 정보를 조회합니다.")
+    @Operation(summary = "[Common] 부서 단일 조회", description = "부서 ID로 부서 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> get(@PathVariable Long departmentId) {
@@ -65,7 +65,7 @@ public class DepartmentController {
      * @return 부서 목록 페이지
      */
     @Operation(
-            summary = "부서 목록 조회",
+            summary = "[Common] 부서 목록 조회",
             description = "활성 부서 목록을 페이지 단위로 조회합니다. "
                     + "필터: keyword(부서명 부분 검색). "
                     + "정렬: 부서명 오름차순(name ASC) 고정입니다."
@@ -86,7 +86,7 @@ public class DepartmentController {
      * @param request 수정 요청
      * @return 수정된 부서
      */
-    @Operation(summary = "부서 수정", description = "부서 ID에 해당하는 부서 정보를 수정합니다.")
+    @Operation(summary = "[Admin] 부서 수정", description = "부서 ID에 해당하는 부서 정보를 수정합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> update(
@@ -102,7 +102,7 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 성공 응답
      */
-    @Operation(summary = "부서 비활성화", description = "부서 ID에 해당하는 부서를 비활성화합니다.")
+    @Operation(summary = "[Admin] 부서 비활성화", description = "부서 ID에 해당하는 부서를 비활성화합니다.")
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {

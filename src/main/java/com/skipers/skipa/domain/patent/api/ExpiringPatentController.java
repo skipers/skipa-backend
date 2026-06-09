@@ -33,7 +33,7 @@ public class ExpiringPatentController {
      * @return 만료 예정 특허 요약
      */
     @Operation(
-            summary = "만료 예정 특허 요약 조회",
+            summary = "[Common] 만료 예정 특허 요약 조회",
             description = "기간별 만료 예정 건수와 선택 기간의 기술 분야별 구성을 조회합니다. "
                     + "필터: periodMonths(개월 수, 미지정 시 12개월 기준). "
                     + "BUSINESS 사용자는 본인 소속 부서 특허만 집계합니다."
@@ -56,7 +56,7 @@ public class ExpiringPatentController {
      * @return 만료 예정 특허 목록 페이지
      */
     @Operation(
-            summary = "만료 예정 특허 목록 조회",
+            summary = "[Common] 만료 예정 특허 목록 조회",
             description = "선택 기간 내 만료 예정 특허 목록을 페이지 단위로 조회합니다. "
                     + "필터: periodMonths(개월 수, 미지정 시 12개월 기준). "
                     + "정렬: 만료일 오름차순 고정입니다. "
@@ -84,7 +84,7 @@ public class ExpiringPatentController {
      * @return 만료 예정 특허 캘린더
      */
     @Operation(
-            summary = "만료 예정 특허 캘린더 조회",
+            summary = "[Common] 만료 예정 특허 캘린더 조회",
             description = "선택 기간 내 만료 예정 특허를 연도/월별로 조회합니다. "
                     + "필터: periodMonths(개월 수, 미지정 시 12개월 기준). "
                     + "BUSINESS 사용자는 본인 소속 부서 특허만 조회합니다."

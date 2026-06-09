@@ -43,7 +43,7 @@ public class BusinessReviewController {
      * @return 사업부 검토 현황 목록 페이지
      */
     @Operation(
-            summary = "사업부 검토 현황 목록 조회",
+            summary = "[Business] 사업부 검토 현황 목록 조회",
             description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황 목록을 조회합니다. "
                     + "필터: status(PENDING, SUBMITTED), opinion(MAINTAIN, ABANDON), "
                     + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
@@ -76,7 +76,7 @@ public class BusinessReviewController {
      * @param patentId 특허 ID
      * @return 사업부 검토 현황 상세 정보
      */
-    @Operation(summary = "사업부 검토 현황 단일 조회", description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황과 의견 제출 정보를 조회합니다.")
+    @Operation(summary = "[Business] 사업부 검토 현황 단일 조회", description = "사업부 사용자의 소속 부서에 요청된 특허 검토 현황과 의견 제출 정보를 조회합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping("/{patentId}")
     public ApiResponse<BusinessReviewDetailResponse> get(
@@ -94,7 +94,7 @@ public class BusinessReviewController {
      * @param request 의견 제출 요청
      * @return 의견이 반영된 사업부 검토 현황
      */
-    @Operation(summary = "사업부 검토 의견 제출", description = "사업부 사용자가 요청된 특허 검토에 MAINTAIN 또는 ABANDON 의견을 제출합니다.")
+    @Operation(summary = "[Business] 사업부 검토 의견 제출", description = "사업부 사용자가 요청된 특허 검토에 MAINTAIN 또는 ABANDON 의견을 제출합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @PostMapping("/{patentId}/opinions")
     public ApiResponse<BusinessReviewResponse> submit(

@@ -36,7 +36,7 @@ public class PatentLegalStatusController {
      * @param request 생성 요청
      * @return 생성된 권리 상태 이력
      */
-    @Operation(summary = "권리 상태 이력 생성", description = "특허에 권리 상태 이력을 추가합니다.")
+    @Operation(summary = "[Legal] 권리 상태 이력 생성", description = "특허에 권리 상태 이력을 추가합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentLegalStatusResponse>> create(
@@ -55,7 +55,7 @@ public class PatentLegalStatusController {
      * @return 권리 상태 이력 목록 페이지
      */
     @Operation(
-            summary = "권리 상태 이력 조회",
+            summary = "[Common] 권리 상태 이력 조회",
             description = "특허의 권리 상태 이력을 페이지 단위로 조회합니다. "
                     + "필터는 제공하지 않습니다. "
                     + "정렬: 최신 이력순(id 내림차순) 고정입니다."

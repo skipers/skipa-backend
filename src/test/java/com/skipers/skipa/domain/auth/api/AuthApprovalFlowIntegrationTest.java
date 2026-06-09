@@ -1538,39 +1538,11 @@ class AuthApprovalFlowIntegrationTest {
                                 """.formatted(patent.getId())))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/review-cycles")
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "year": 2027,
-                                  "quarter": 1,
-                                  "startDate": "2027-01-01",
-                                  "endDate": "2027-03-31"
-                                }
-                                """))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(put("/review-cycles/{reviewCycleId}", reviewCycle.getId())
-                        .header("Authorization", "Bearer " + adminToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "year": 2027,
-                                  "quarter": 1,
-                                  "startDate": "2027-01-01",
-                                  "endDate": "2027-03-31"
-                                }
-                                """))
-                .andExpect(status().isForbidden());
-
-        mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycle.getId())
-                        .header("Authorization", "Bearer " + adminToken))
-                .andExpect(status().isForbidden());
     }
 
     @Test
-    void legalUserCanManageReviewCycles() throws Exception {
+    void adminCanManageReviewCyclesAndUsersCanReadThem() throws Exception {
+        String adminToken = loginAndGetAccessToken("admin", "admin-password");
         String legalToken = createActiveUserToken("legal-review-cycle", "legal-review-cycle@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review-cycle", "business-review-cycle@example.com", UserRole.BUSINESS);
         LocalDate startDate = LocalDate.now().plusMonths(1);
@@ -1578,11 +1550,29 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(get("/review-cycles")
                         .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/review-cycles/current")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(reviewCycle.getId()));
+
+        mockMvc.perform(post("/review-cycles")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "year": 2027,
+                                  "quarter": 1,
+                                  "startDate": "%s",
+                                  "endDate": "%s"
+                                }
+                                """.formatted(startDate, endDate)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
         MvcResult createResult = mockMvc.perform(post("/review-cycles")
-                        .header("Authorization", "Bearer " + legalToken)
+                        .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -1605,7 +1595,7 @@ class AuthApprovalFlowIntegrationTest {
                 .asLong();
 
         mockMvc.perform(get("/review-cycles")
-                        .header("Authorization", "Bearer " + legalToken))
+                        .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(reviewCycleId));
@@ -1628,6 +1618,20 @@ class AuthApprovalFlowIntegrationTest {
                                   "endDate": "%s"
                                 }
                                 """.formatted(updatedStartDate, updatedEndDate)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(put("/review-cycles/{reviewCycleId}", reviewCycleId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "year": 2027,
+                                  "quarter": 2,
+                                  "startDate": "%s",
+                                  "endDate": "%s"
+                                }
+                                """.formatted(updatedStartDate, updatedEndDate)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.year").value(2027))
                 .andExpect(jsonPath("$.data.quarter").value(2))
@@ -1636,10 +1640,15 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+
+        mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycleId)
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycleId)
-                        .header("Authorization", "Bearer " + legalToken))
+                        .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_CYCLE_NOT_FOUND"));
     }

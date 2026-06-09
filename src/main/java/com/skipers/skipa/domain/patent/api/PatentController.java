@@ -44,7 +44,7 @@ public class PatentController {
      * @param request 생성 요청
      * @return 생성된 특허
      */
-    @Operation(summary = "특허 생성", description = "새로운 특허 정보를 생성합니다.")
+    @Operation(summary = "[Legal] 특허 생성", description = "새로운 특허 정보를 생성합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) {
@@ -57,7 +57,7 @@ public class PatentController {
      * @param patentId 특허 ID
      * @return 특허
      */
-    @Operation(summary = "특허 단일 조회", description = "특허 ID로 상세 정보를 조회합니다.")
+    @Operation(summary = "[Common] 특허 단일 조회", description = "특허 ID로 상세 정보를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{patentId}")
     public ApiResponse<PatentDetailResponse> get(
@@ -83,7 +83,7 @@ public class PatentController {
      * @return 특허 목록 페이지
      */
     @Operation(
-            summary = "특허 목록 조회",
+            summary = "[Common] 특허 목록 조회",
             description = "특허 목록을 페이지 단위로 조회합니다. "
                     + "필터: keyword(특허명), departmentId(부서 ID, -1은 미배정), "
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
@@ -131,7 +131,7 @@ public class PatentController {
      * @param request 수정 요청
      * @return 수정된 특허
      */
-    @Operation(summary = "특허 수정", description = "특허 ID에 해당하는 특허 정보를 수정합니다.")
+    @Operation(summary = "[Legal] 특허 수정", description = "특허 ID에 해당하는 특허 정보를 수정합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PutMapping("/{patentId}")
     public ApiResponse<PatentDetailResponse> update(
@@ -148,7 +148,7 @@ public class PatentController {
      * @param request 담당 부서 변경 요청
      * @return 변경된 특허
      */
-    @Operation(summary = "특허 담당 부서 변경", description = "특허의 현재 담당 부서를 변경합니다.")
+    @Operation(summary = "[Legal] 특허 담당 부서 변경", description = "특허의 현재 담당 부서를 변경합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PatchMapping("/{patentId}/department")
     public ApiResponse<PatentDetailResponse> changeDepartment(
@@ -164,7 +164,7 @@ public class PatentController {
      * @param patentId 특허 ID
      * @return 성공 응답
      */
-    @Operation(summary = "특허 삭제", description = "특허 ID에 해당하는 특허와 연관 데이터를 삭제합니다.")
+    @Operation(summary = "[Legal] 특허 삭제", description = "특허 ID에 해당하는 특허와 연관 데이터를 삭제합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @DeleteMapping("/{patentId}")
     public ApiResponse<Void> delete(@PathVariable Long patentId) {
