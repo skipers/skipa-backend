@@ -73,7 +73,7 @@ class BusinessReviewServiceTest {
         Patent patent = Patent.builder()
                 .title("Patent")
                 .applicationNumber("APP-1")
-                .overview("Overview")
+                .summary("Summary")
                 .keywords(List.of("Keyword"))
                 .currentDepartment(department)
                 .build();
@@ -132,7 +132,7 @@ class BusinessReviewServiceTest {
         assertThat(responses)
                 .extracting(BusinessReviewResponse::patentId)
                 .containsExactly(10L);
-        assertThat(responses.get(0).overview()).isEqualTo("Overview");
+        assertThat(responses.get(0).summary()).isEqualTo("Summary");
         assertThat(responses.get(0).keywords()).containsExactly("Keyword");
         assertThat(responses.get(0))
                 .extracting(BusinessReviewResponse::totalScore, BusinessReviewResponse::valueGrade)

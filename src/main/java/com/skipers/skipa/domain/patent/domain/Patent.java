@@ -115,11 +115,8 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "keywords") // 키워드
     private List<String> keywords;
 
-    @Column(name = "overview", columnDefinition = "text") // 개요
-    private String overview;
-
-    @Column(name = "core_content", columnDefinition = "text") // 핵심 내용
-    private String coreContent;
+    @Column(name = "summary", columnDefinition = "text") // 요약
+    private String summary;
 
     @Builder
     private Patent(
@@ -150,8 +147,7 @@ public class Patent extends BaseTimeEntity {
             String initialDepartment,
             Department currentDepartment,
             List<String> keywords,
-            String overview,
-            String coreContent
+            String summary
     ) {
         this.title = title;
         this.applicationNumber = applicationNumber;
@@ -180,8 +176,7 @@ public class Patent extends BaseTimeEntity {
         this.initialDepartment = initialDepartment;
         this.currentDepartment = currentDepartment;
         this.keywords = keywords;
-        this.overview = overview;
-        this.coreContent = coreContent;
+        this.summary = summary;
     }
 
     public void update(
@@ -211,8 +206,7 @@ public class Patent extends BaseTimeEntity {
             String jointApplicant,
             String initialDepartment,
             List<String> keywords,
-            String overview,
-            String coreContent
+            String summary
     ) {
         this.title = title;
         this.applicationNumber = applicationNumber;
@@ -240,8 +234,7 @@ public class Patent extends BaseTimeEntity {
         this.jointApplicant = jointApplicant;
         this.initialDepartment = initialDepartment;
         this.keywords = keywords;
-        this.overview = overview;
-        this.coreContent = coreContent;
+        this.summary = summary;
     }
 
     public void changeCurrentDepartment(Department department) {

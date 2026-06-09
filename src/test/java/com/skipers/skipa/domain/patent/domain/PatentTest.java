@@ -48,8 +48,7 @@ class PatentTest {
                 "Joint Applicant",
                 "Initial Department",
                 List.of("Keyword"),
-                "Overview",
-                "Core Content"
+                "Summary"
         );
 
         assertThat(patent.getTitle()).isEqualTo("Updated");
@@ -78,8 +77,7 @@ class PatentTest {
         assertThat(patent.getJointApplicant()).isEqualTo("Joint Applicant");
         assertThat(patent.getInitialDepartment()).isEqualTo("Initial Department");
         assertThat(patent.getKeywords()).containsExactly("Keyword");
-        assertThat(patent.getOverview()).isEqualTo("Overview");
-        assertThat(patent.getCoreContent()).isEqualTo("Core Content");
+        assertThat(patent.getSummary()).isEqualTo("Summary");
     }
 
     @Test
@@ -105,6 +103,7 @@ class PatentTest {
         ReflectionTestUtils.setField(patent, "ipcCodes", List.of("IPC"));
         ReflectionTestUtils.setField(patent, "cpcCodes", List.of("CPC"));
         ReflectionTestUtils.setField(patent, "keywords", List.of("Keyword"));
+        ReflectionTestUtils.setField(patent, "summary", "Summary");
 
         PatentDetailResponse detailResponse = PatentDetailResponse.from(patent);
         PatentListResponse listResponse = PatentListResponse.from(patent);
@@ -114,6 +113,7 @@ class PatentTest {
         assertThat(detailResponse.ipcCodes()).containsExactly("IPC");
         assertThat(detailResponse.cpcCodes()).containsExactly("CPC");
         assertThat(detailResponse.keywords()).containsExactly("Keyword");
+        assertThat(detailResponse.summary()).isEqualTo("Summary");
         assertThat(detailResponse.examinationClaimCount()).isEqualTo(7);
         assertThat(detailResponse.initialDepartment()).isEqualTo("Legal");
         assertThat(detailResponse.currentDepartmentId()).isEqualTo(10L);
@@ -123,6 +123,7 @@ class PatentTest {
         assertThat(listResponse.applicationNumber()).isEqualTo("APP-1");
         assertThat(listResponse.ipcCodes()).containsExactly("IPC");
         assertThat(listResponse.cpcCodes()).containsExactly("CPC");
+        assertThat(listResponse.summary()).isEqualTo("Summary");
         assertThat(listResponse.examinationClaimCount()).isEqualTo(7);
         assertThat(listResponse.updatedAt()).isEqualTo(updatedAt);
     }

@@ -106,9 +106,6 @@ public record PatentCreateRequest(
         @Schema(description = "키워드", example = "[\"패키지\",\"반도체\"]")
         List<String> keywords,
 
-        @Schema(description = "개요", example = "특허 개요")
-        String overview,
-
-        @Schema(description = "핵심 내용", example = "특허 핵심 내용")
-        String coreContent
+        @Schema(description = "요약", example = "특허 요약")
+        String summary
 ) {}

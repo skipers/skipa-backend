@@ -582,7 +582,7 @@ class PatentServiceTest {
         assertThat(response.initialDepartment()).isEqualTo("Initial Department");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
-        assertThat(response.overview()).isEqualTo("Overview");
+        assertThat(response.summary()).isEqualTo("Summary");
         verify(patentRepository).existsByApplicationNumber(" NEW-APP ");
     }
 
@@ -780,7 +780,6 @@ class PatentServiceTest {
                 null,
                 " Initial Department ",
                 List.of("Keyword"),
-                null,
                 null
         );
     }
@@ -814,7 +813,6 @@ class PatentServiceTest {
                 null,
                 " Initial Department ",
                 List.of("Keyword"),
-                null,
                 null
         );
     }
@@ -864,8 +862,7 @@ class PatentServiceTest {
                 "Joint Applicant",
                 "Initial Department",
                 List.of("Keyword"),
-                "Overview",
-                "Core Content"
+                "Summary"
         );
     }
 

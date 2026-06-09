@@ -103,8 +103,7 @@ public class PatentService {
                 .jointApplicant(request.jointApplicant())
                 .initialDepartment(request.initialDepartment())
                 .keywords(request.keywords())
-                .overview(request.overview())
-                .coreContent(request.coreContent())
+                .summary(request.summary())
                 .build());
 
         return toDetailResponse(patent);
@@ -252,8 +251,7 @@ public class PatentService {
                 request.jointApplicant(),
                 request.initialDepartment(),
                 request.keywords(),
-                request.overview(),
-                request.coreContent()
+                request.summary()
         );
 
         return toDetailResponse(patent);

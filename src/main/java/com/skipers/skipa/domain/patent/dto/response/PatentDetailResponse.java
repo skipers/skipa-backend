@@ -39,8 +39,7 @@ public record PatentDetailResponse(
         String latestLegalStatus,
         BigDecimal latestReportScore,
         List<String> keywords,
-        String overview,
-        String coreContent,
+        String summary,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -85,8 +84,7 @@ public record PatentDetailResponse(
                 latestLegalStatus,
                 latestReportScore,
                 patent.getKeywords(),
-                patent.getOverview(),
-                patent.getCoreContent(),
+                patent.getSummary(),
                 patent.getCreatedAt(),
                 patent.getUpdatedAt()
         );
