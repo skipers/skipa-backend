@@ -17,9 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -29,7 +29,7 @@ import java.util.Map;
 public class ExpiringPatentService {
 
     private static final List<Integer> SUMMARY_PERIOD_MONTHS = List.of(3, 6, 12, 36, 60);
-    private static final int LIST_PERIOD_YEARS = 5;
+    private static final int DEFAULT_LIST_PERIOD_MONTHS = 60;
 
     private final PatentRepository patentRepository;
 
@@ -38,22 +38,21 @@ public class ExpiringPatentService {
         List<Patent> patents = scopedPatents(user);
 
         return new ExpiringPatentSummaryResponse(
-                summaryPeriods().stream()
-                        .map(period -> new ExpiringPatentSummaryResponse.PeriodTechFieldCount(
-                                period.name(),
-                                period.months(),
-                                techFieldCounts(expiringPatents(patents, today, period.endDate(today)))
+                SUMMARY_PERIOD_MONTHS.stream()
+                        .map(months -> new ExpiringPatentSummaryResponse.PeriodTechFieldCount(
+                                months,
+                                techFieldCounts(expiringPatents(patents, today, today.plusMonths(months)))
                         ))
                         .toList()
         );
     }
 
-    public Page<ExpiringPatentItemResponse> getAll(User user, Pageable pageable) {
+    public Page<ExpiringPatentItemResponse> getAll(User user, Integer months, Pageable pageable) {
         LocalDate today = LocalDate.now();
-        LocalDate endDate = today.plusYears(LIST_PERIOD_YEARS);
+        LocalDate endDate = today.plusMonths(normalizeListMonths(months));
         List<ExpiringPatentItemResponse> responses = expiringPatents(scopedPatents(user), today, endDate).stream()
                 .sorted(Comparator.comparing(Patent::getExpiryDate).thenComparing(Patent::getId))
-                .map(patent -> ExpiringPatentItemResponse.from(patent, today))
+                .map(ExpiringPatentItemResponse::from)
                 .toList();
 
         int start = Math.min((int) pageable.getOffset(), responses.size());
@@ -113,31 +112,17 @@ public class ExpiringPatentService {
                 .toList();
     }
 
-    private List<SummaryPeriod> summaryPeriods() {
-        List<SummaryPeriod> periods = new ArrayList<>();
-        periods.add(new SummaryPeriod("전체", null));
-        SUMMARY_PERIOD_MONTHS.forEach(months -> periods.add(new SummaryPeriod(periodName(months), months)));
-        return periods;
-    }
-
-    private String periodName(int months) {
-        return switch (months) {
-            case 3 -> "3개월";
-            case 6 -> "6개월";
-            case 12 -> "1년";
-            case 36 -> "3년";
-            case 60 -> "5년";
-            default -> months + "개월";
-        };
-    }
-
     private String normalizeGroupName(String value) {
         return value == null || value.isBlank() ? "미분류" : value;
     }
 
-    private record SummaryPeriod(String name, Integer months) {
-        private LocalDate endDate(LocalDate today) {
-            return months == null ? null : today.plusMonths(months);
+    private int normalizeListMonths(Integer months) {
+        if (months == null) {
+            return DEFAULT_LIST_PERIOD_MONTHS;
         }
+        if (months <= 0) {
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
+        }
+        return months;
     }
 }

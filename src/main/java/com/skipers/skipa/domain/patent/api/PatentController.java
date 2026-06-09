@@ -88,7 +88,7 @@ public class PatentController {
                     + "필터: keyword(특허명), departmentId(부서 ID, -1은 미배정), "
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
                     + "decision(MAINTAIN, ABANDON), checked(true/false), "
-                    + "status(PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
+                    + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
                     + "filingCountry, techField. "
                     + "정렬: sort=id(기본값, 최신순), expiryDate(소멸일 오름차순), "
                     + "applicationDate(출원일 오름차순), citationCount(인용 수 내림차순). "

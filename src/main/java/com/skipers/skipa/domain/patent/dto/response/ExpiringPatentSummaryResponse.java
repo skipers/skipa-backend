@@ -7,7 +7,6 @@ public record ExpiringPatentSummaryResponse(
 ) {
 
     public record PeriodTechFieldCount(
-            String period,
             Integer months,
             List<TechFieldCount> byTechField
     ) {

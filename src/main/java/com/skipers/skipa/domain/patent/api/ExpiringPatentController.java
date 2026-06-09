@@ -33,7 +33,7 @@ public class ExpiringPatentController {
      */
     @Operation(
             summary = "[Common] 소멸 예정 특허 요약 조회",
-            description = "전체, 3개월, 6개월, 1년, 3년, 5년 기준 소멸 예정 특허의 기술 분야별 개수를 조회합니다. "
+            description = "3개월, 6개월, 1년, 3년, 5년 기준 소멸 예정 특허의 기술 분야별 개수를 조회합니다. "
                     + "BUSINESS 사용자는 본인 소속 부서 특허만 집계합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
@@ -48,12 +48,14 @@ public class ExpiringPatentController {
      * 소멸 예정 특허 목록을 조회한다(page/size 기반).
      *
      * @param userDetails 인증 사용자 정보
+     * @param months 조회 기간(개월, 선택)
      * @param pageable page/size 정보
      * @return 소멸 예정 특허 목록 페이지
      */
     @Operation(
             summary = "[Common] 소멸 예정 특허 목록 조회",
-            description = "오늘부터 5년 내 소멸 예정인 특허 목록을 Patent.expiryDate 기준으로 페이지 단위 조회합니다. "
+            description = "선택 기간 내 소멸 예정인 특허 목록을 Patent.expiryDate 기준으로 페이지 단위 조회합니다. "
+                    + "필터: months(개월 수, 미지정 시 60개월 기준). "
                     + "정렬: 소멸일 오름차순 고정입니다. "
                     + "BUSINESS 사용자는 본인 소속 부서 특허만 조회합니다."
     )
@@ -61,10 +63,12 @@ public class ExpiringPatentController {
     @GetMapping
     public ApiResponse<PageResponse<ExpiringPatentItemResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) Integer months,
             @PageableDefault(page = 0, size = 20) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(expiringPatentService.getAll(
                 userDetails.getUser(),
+                months,
                 pageable
         )));
     }
