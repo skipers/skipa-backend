@@ -159,15 +159,11 @@ class PortfolioControllerIntegrationTest {
     }
 
     @Test
-    void portfolioSummaryReturnsCoreMetrics() throws Exception {
-        mockMvc.perform(get("/portfolio/summary")
+    void portfolioInsightsReturnsEmptyInsights() throws Exception {
+        mockMvc.perform(get("/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalPatents").value(2))
-                .andExpect(jsonPath("$.data.expiringWithinYear").value(1))
-                .andExpect(jsonPath("$.data.countryCount").value(2))
-                .andExpect(jsonPath("$.data.techFieldCount").value(2))
-                .andExpect(jsonPath("$.data.insights.length()").value(3));
+                .andExpect(jsonPath("$.data.insights.length()").value(0));
     }
 
     @Test
@@ -214,7 +210,7 @@ class PortfolioControllerIntegrationTest {
     void portfolioApisForbidBusinessUsers() throws Exception {
         String businessToken = createActiveUserToken("business-portfolio", "business-portfolio@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/portfolio/summary")
+        mockMvc.perform(get("/portfolio/insights")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
     }

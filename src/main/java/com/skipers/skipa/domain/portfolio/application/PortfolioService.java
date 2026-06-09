@@ -7,7 +7,7 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
-import com.skipers.skipa.domain.portfolio.dto.response.PortfolioSummaryResponse;
+import com.skipers.skipa.domain.portfolio.dto.response.PortfolioInsightsResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioTrendsResponse;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
@@ -25,12 +25,9 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -42,25 +39,8 @@ public class PortfolioService {
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
 
-    public PortfolioSummaryResponse getSummary() {
-        LocalDate today = LocalDate.now();
-        List<Patent> patents = patentRepository.findAll();
-        long expiringWithinYear = patents.stream()
-                .map(Patent::getExpiryDate)
-                .filter(expiryDate -> expiryDate != null)
-                .filter(expiryDate -> !expiryDate.isBefore(today))
-                .filter(expiryDate -> !expiryDate.isAfter(today.plusYears(1)))
-                .count();
-        Set<String> countries = distinctNormalized(patents.stream().map(Patent::getFilingCountry).toList());
-        Set<String> techFields = distinctNormalized(patents.stream().map(Patent::getTechField).toList());
-
-        return new PortfolioSummaryResponse(
-                patents.size(),
-                expiringWithinYear,
-                countries.size(),
-                techFields.size(),
-                insights(patents.size(), expiringWithinYear, countries.size(), techFields.size())
-        );
+    public PortfolioInsightsResponse getInsights() {
+        return new PortfolioInsightsResponse(List.of());
     }
 
     public PortfolioDistributionResponse getDistribution() {
@@ -183,24 +163,6 @@ public class PortfolioService {
                 departmentDecisions(byDepartment),
                 techFieldDecisions(byTechField)
         );
-    }
-
-    private List<String> insights(long total, long expiringWithinYear, long countryCount, long techFieldCount) {
-        List<String> insights = new ArrayList<>();
-        insights.add("전체 보유 특허는 " + total + "건입니다.");
-        if (expiringWithinYear > 0) {
-            insights.add("1년 내 만료 예정 특허 " + expiringWithinYear + "건에 대한 재평가 우선순위 검토가 필요합니다.");
-        }
-        if (countryCount > 1 || techFieldCount > 1) {
-            insights.add("국가 및 기술 분야별 분포를 기준으로 포트폴리오 편중 여부를 확인할 수 있습니다.");
-        }
-        return insights;
-    }
-
-    private Set<String> distinctNormalized(List<String> values) {
-        return values.stream()
-                .map(this::normalizeGroupName)
-                .collect(Collectors.toCollection(HashSet::new));
     }
 
     private String submittedQuarter(Review review) {

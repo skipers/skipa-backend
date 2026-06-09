@@ -3,7 +3,7 @@ package com.skipers.skipa.domain.portfolio.api;
 import com.skipers.skipa.domain.portfolio.application.PortfolioService;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
-import com.skipers.skipa.domain.portfolio.dto.response.PortfolioSummaryResponse;
+import com.skipers.skipa.domain.portfolio.dto.response.PortfolioInsightsResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioTrendsResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,15 +21,15 @@ public class PortfolioController {
     private final PortfolioService portfolioService;
 
     /**
-     * 포트폴리오 요약을 조회한다.
+     * 포트폴리오 인사이트를 조회한다.
      *
-     * @return 포트폴리오 요약
+     * @return 포트폴리오 인사이트
      */
-    @Operation(summary = "[Legal] 포트폴리오 요약 조회", description = "포트폴리오 분석 화면의 핵심 요약과 인사이트를 조회합니다.")
+    @Operation(summary = "[Legal] 포트폴리오 인사이트 조회", description = "포트폴리오 분석 화면의 인사이트를 조회합니다. 인사이트 생성 로직은 추후 연동 예정입니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
-    @GetMapping("/summary")
-    public ApiResponse<PortfolioSummaryResponse> getSummary() {
-        return ApiResponse.ok(portfolioService.getSummary());
+    @GetMapping("/insights")
+    public ApiResponse<PortfolioInsightsResponse> getInsights() {
+        return ApiResponse.ok(portfolioService.getInsights());
     }
 
     /**
