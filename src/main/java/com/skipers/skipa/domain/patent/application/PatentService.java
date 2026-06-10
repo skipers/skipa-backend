@@ -74,7 +74,8 @@ public class PatentService {
             throw new PatentException(ErrorCode.DUPLICATE_APPLICATION_NUMBER);
         }
 
-        String originalPdfKey = resolveOriginalPdfKey(request);
+        PatentExtractJob extractJob = getCompletedExtractJob(request.extractJobId());
+        String originalPdfKey = extractJob == null ? request.originalPdfKey() : null;
 
         Patent patent = patentRepository.save(Patent.builder()
                 .title(request.title())
@@ -105,6 +106,10 @@ public class PatentService {
                 .keywords(request.keywords())
                 .summary(request.summary())
                 .build());
+
+        if (extractJob != null) {
+            assignExtractedStorageKeys(patent, extractJob);
+        }
 
         return toDetailResponse(patent);
     }
@@ -515,25 +520,36 @@ public class PatentService {
         return comparator.compare(left, right);
     }
 
-    private String resolveOriginalPdfKey(PatentCreateRequest request) {
-        if (request.extractJobId() == null) {
-            return request.originalPdfKey();
+    private PatentExtractJob getCompletedExtractJob(Long extractJobId) {
+        if (extractJobId == null) {
+            return null;
         }
 
-        PatentExtractJob extractJob = patentExtractJobRepository.findById(request.extractJobId())
+        PatentExtractJob extractJob = patentExtractJobRepository.findById(extractJobId)
                 .orElseThrow(() -> new PatentExtractException(ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND));
 
         if (!extractJob.isCompleted()) {
             throw new PatentExtractException(ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
         }
 
-        String finalObjectKey = buildFinalPdfObjectKey(request.applicationNumber());
-        patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), finalObjectKey);
-        return finalObjectKey;
+        return extractJob;
     }
 
-    private String buildFinalPdfObjectKey(String applicationNumber) {
-        return "patents/%s/patent.pdf".formatted(applicationNumber);
+    private void assignExtractedStorageKeys(Patent patent, PatentExtractJob extractJob) {
+        String originalPdfKey = buildFinalPdfObjectKey(patent.getId());
+        String parsedJsonKey = buildParsedJsonObjectKey(patent.getId());
+
+        patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), originalPdfKey);
+        patentOriginalPdfStorageService.saveJson(parsedJsonKey, extractJob.getResultJson());
+        patent.assignStorageKeys(originalPdfKey, parsedJsonKey);
+    }
+
+    private String buildFinalPdfObjectKey(Long patentId) {
+        return "patents/%d/original.pdf".formatted(patentId);
+    }
+
+    private String buildParsedJsonObjectKey(Long patentId) {
+        return "patents/%d/parsed.json".formatted(patentId);
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {

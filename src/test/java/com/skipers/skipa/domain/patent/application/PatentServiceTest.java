@@ -151,20 +151,26 @@ class PatentServiceTest {
 
     @Test
     void createWithExtractJobCopiesTemporaryPdfAndStoresFinalPdfKey() {
-        PatentExtractJob extractJob = completedExtractJob(7L, "patents/extract-jobs/7/patent.pdf");
+        PatentExtractJob extractJob = completedExtractJob(7L, "tmp/patent-extract-jobs/7/original.pdf");
         when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
-        when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> {
+            Patent patent = invocation.getArgument(0);
+            ReflectionTestUtils.setField(patent, "id", 1L);
+            return patent;
+        });
 
         PatentDetailResponse response = patentService.create(createRequestWithExtractJob("Patent", "10-2026-0000000", 7L));
 
-        assertThat(response.originalPdfKey()).isEqualTo("patents/10-2026-0000000/patent.pdf");
+        assertThat(response.originalPdfKey()).isEqualTo("patents/1/original.pdf");
+        assertThat(response.parsedJsonKey()).isEqualTo("patents/1/parsed.json");
         verify(patentOriginalPdfStorageService).copy(
-                "patents/extract-jobs/7/patent.pdf",
-                "patents/10-2026-0000000/patent.pdf"
+                "tmp/patent-extract-jobs/7/original.pdf",
+                "patents/1/original.pdf"
         );
-        verify(patentRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
-                saved.getOriginalPdfKey().equals("patents/10-2026-0000000/patent.pdf")
-        ));
+        verify(patentOriginalPdfStorageService).saveJson(
+                org.mockito.ArgumentMatchers.eq("patents/1/parsed.json"),
+                org.mockito.ArgumentMatchers.same(extractJob.getResultJson())
+        );
     }
 
     @Test
@@ -183,7 +189,7 @@ class PatentServiceTest {
     @Test
     void createRejectsExtractJobThatIsNotCompleted() {
         PatentExtractJob extractJob = PatentExtractJob.builder()
-                .objectKey("patents/extract-jobs/7/patent.pdf")
+                .objectKey("tmp/patent-extract-jobs/7/original.pdf")
                 .status(PatentExtractJobStatus.ANALYZING)
                 .build();
         ReflectionTestUtils.setField(extractJob, "id", 7L);

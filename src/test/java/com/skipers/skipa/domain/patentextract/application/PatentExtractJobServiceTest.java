@@ -53,17 +53,17 @@ class PatentExtractJobServiceTest {
             ReflectionTestUtils.setField(job, "id", 1L);
             return job;
         });
-        when(patentExtractStorageService.generateUploadPresignedUrl("patents/extract-jobs/1/patent.pdf"))
-                .thenReturn("https://minio.example.com/skipa/patents/extract-jobs/1/patent.pdf?signature=abc");
+        when(patentExtractStorageService.generateUploadPresignedUrl("tmp/patent-extract-jobs/1/original.pdf"))
+                .thenReturn("https://minio.example.com/skipa/tmp/patent-extract-jobs/1/original.pdf?signature=abc");
 
         PatentExtractUploadUrlResponse response = patentExtractJobService.createUploadUrl();
 
         assertThat(response.extractJobId()).isEqualTo(1L);
-        assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
-        assertThat(response.uploadUrl()).isEqualTo("https://minio.example.com/skipa/patents/extract-jobs/1/patent.pdf?signature=abc");
+        assertThat(response.objectKey()).isEqualTo("tmp/patent-extract-jobs/1/original.pdf");
+        assertThat(response.uploadUrl()).isEqualTo("https://minio.example.com/skipa/tmp/patent-extract-jobs/1/original.pdf?signature=abc");
         assertThat(response.expiresInSeconds()).isEqualTo(600);
         assertThat(response.status()).isEqualTo(PatentExtractJobStatus.UPLOAD_PENDING.name());
-        verify(patentExtractStorageService).generateUploadPresignedUrl("patents/extract-jobs/1/patent.pdf");
+        verify(patentExtractStorageService).generateUploadPresignedUrl("tmp/patent-extract-jobs/1/original.pdf");
     }
 
     @Test
@@ -76,7 +76,7 @@ class PatentExtractJobServiceTest {
         });
         doThrow(new RuntimeException("MinIO unavailable"))
                 .when(patentExtractStorageService)
-                .generateUploadPresignedUrl("patents/extract-jobs/1/patent.pdf");
+                .generateUploadPresignedUrl("tmp/patent-extract-jobs/1/original.pdf");
 
         assertThatThrownBy(() -> patentExtractJobService.createUploadUrl())
                 .isInstanceOfSatisfying(PatentExtractException.class,
@@ -87,16 +87,16 @@ class PatentExtractJobServiceTest {
     void completeUploadVerifiesObjectAndPublishesMessage() {
         PatentExtractJob job = uploadPendingJob(1L);
         when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
-        when(patentExtractStorageService.exists("patents/extract-jobs/1/patent.pdf")).thenReturn(true);
+        when(patentExtractStorageService.exists("tmp/patent-extract-jobs/1/original.pdf")).thenReturn(true);
 
         PatentExtractJobStatusResponse response = patentExtractJobService.completeUpload(1L);
 
         assertThat(response.extractJobId()).isEqualTo(1L);
-        assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(response.objectKey()).isEqualTo("tmp/patent-extract-jobs/1/original.pdf");
         assertThat(response.status()).isEqualTo(PatentExtractJobStatus.ANALYZING.name());
         assertThat(response.uploadedAt()).isNotNull();
         assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.ANALYZING);
-        verify(patentExtractPublisher).publish(1L, "patents/extract-jobs/1/patent.pdf");
+        verify(patentExtractPublisher).publish(1L, "tmp/patent-extract-jobs/1/original.pdf");
     }
 
     @Test
@@ -113,7 +113,7 @@ class PatentExtractJobServiceTest {
     void completeUploadRejectsMissingPdfWithoutPublishing() {
         PatentExtractJob job = uploadPendingJob(1L);
         when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
-        when(patentExtractStorageService.exists("patents/extract-jobs/1/patent.pdf")).thenReturn(false);
+        when(patentExtractStorageService.exists("tmp/patent-extract-jobs/1/original.pdf")).thenReturn(false);
 
         assertPatentExtractError(() -> patentExtractJobService.completeUpload(1L), ErrorCode.PATENT_DOCUMENT_NOT_FOUND);
 
@@ -125,10 +125,10 @@ class PatentExtractJobServiceTest {
     void completeUploadWrapsPublisherFailure() {
         PatentExtractJob job = uploadPendingJob(1L);
         when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
-        when(patentExtractStorageService.exists("patents/extract-jobs/1/patent.pdf")).thenReturn(true);
+        when(patentExtractStorageService.exists("tmp/patent-extract-jobs/1/original.pdf")).thenReturn(true);
         doThrow(new RuntimeException("RabbitMQ unavailable"))
                 .when(patentExtractPublisher)
-                .publish(1L, "patents/extract-jobs/1/patent.pdf");
+                .publish(1L, "tmp/patent-extract-jobs/1/original.pdf");
 
         assertPatentExtractError(() -> patentExtractJobService.completeUpload(1L), ErrorCode.EXTERNAL_SERVICE_ERROR);
     }
@@ -141,7 +141,7 @@ class PatentExtractJobServiceTest {
         PatentExtractJobStatusResponse response = patentExtractJobService.getStatus(1L);
 
         assertThat(response.extractJobId()).isEqualTo(1L);
-        assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(response.objectKey()).isEqualTo("tmp/patent-extract-jobs/1/original.pdf");
         assertThat(response.status()).isEqualTo(PatentExtractJobStatus.UPLOAD_PENDING.name());
     }
 
@@ -160,7 +160,7 @@ class PatentExtractJobServiceTest {
         PatentExtractResultResponse response = patentExtractJobService.getResult(1L);
 
         assertThat(response.extractJobId()).isEqualTo(1L);
-        assertThat(response.objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(response.objectKey()).isEqualTo("tmp/patent-extract-jobs/1/original.pdf");
         assertThat(response.status()).isEqualTo(PatentExtractJobStatus.COMPLETED.name());
         assertThat(response.result()).isInstanceOfSatisfying(java.util.Map.class,
                 result -> assertThat(result.get("title")).isEqualTo("Patent"));
@@ -266,7 +266,7 @@ class PatentExtractJobServiceTest {
     private PatentExtractJob uploadPendingJob(Long extractJobId) {
         PatentExtractJob job = PatentExtractJob.createUploadPending();
         ReflectionTestUtils.setField(job, "id", extractJobId);
-        job.assignObjectKey("patents/extract-jobs/%d/patent.pdf".formatted(extractJobId));
+        job.assignObjectKey("tmp/patent-extract-jobs/%d/original.pdf".formatted(extractJobId));
         return job;
     }
 

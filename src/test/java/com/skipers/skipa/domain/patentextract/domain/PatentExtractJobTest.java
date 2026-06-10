@@ -28,9 +28,9 @@ class PatentExtractJobTest {
     void assignObjectKeyStoresTemporaryPdfKey() {
         PatentExtractJob job = PatentExtractJob.createUploadPending();
 
-        job.assignObjectKey("patents/extract-jobs/1/patent.pdf");
+        job.assignObjectKey("tmp/patent-extract-jobs/1/original.pdf");
 
-        assertThat(job.getObjectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(job.getObjectKey()).isEqualTo("tmp/patent-extract-jobs/1/original.pdf");
         assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.UPLOAD_PENDING);
     }
 
@@ -127,7 +127,7 @@ class PatentExtractJobTest {
 
     private PatentExtractJob uploadPendingJob() {
         PatentExtractJob job = PatentExtractJob.createUploadPending();
-        job.assignObjectKey("patents/extract-jobs/1/patent.pdf");
+        job.assignObjectKey("tmp/patent-extract-jobs/1/original.pdf");
         return job;
     }
 

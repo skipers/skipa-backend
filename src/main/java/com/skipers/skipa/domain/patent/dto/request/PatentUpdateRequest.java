@@ -67,7 +67,7 @@ public record PatentUpdateRequest(
         Integer examinationClaimCount,
 
         @Size(max = 500, message = "원문 파일 키는 500자 이하여야 합니다.")
-        @Schema(description = "원문 파일 키", example = "patents/original/xxx.pdf")
+        @Schema(description = "원문 파일 키", example = "patents/1/original.pdf")
         String originalPdfKey,
 
         @Size(max = 50, message = "관리번호는 50자 이하여야 합니다.")
