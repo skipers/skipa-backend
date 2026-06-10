@@ -1,0 +1,116 @@
+package com.skipers.skipa.domain.preevaluation.domain;
+
+import com.skipers.skipa.domain.preevaluation.exception.PreEvaluationException;
+import com.skipers.skipa.domain.user.domain.User;
+import com.skipers.skipa.global.common.entity.BaseTimeEntity;
+import com.skipers.skipa.global.exception.ErrorCode;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "pre_evaluations")
+public class PreEvaluation extends BaseTimeEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "title", length = 200, nullable = false)
+    private String title;
+
+    @Column(name = "technical_description", columnDefinition = "text", nullable = false)
+    private String technicalDescription;
+
+    @Column(name = "claims", columnDefinition = "text", nullable = false)
+    private String claims;
+
+    @Column(name = "related_business", length = 500)
+    private String relatedBusiness;
+
+    @Column(name = "target_countries", length = 500)
+    private String targetCountries;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private PreEvaluationStatus status;
+
+    @Column(name = "report_url", length = 1000)
+    private String reportUrl;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    @Builder
+    private PreEvaluation(
+            User user,
+            String title,
+            String technicalDescription,
+            String claims,
+            String relatedBusiness,
+            String targetCountries,
+            PreEvaluationStatus status,
+            String reportUrl,
+            Instant completedAt
+    ) {
+        this.user = user;
+        this.title = title;
+        this.technicalDescription = technicalDescription;
+        this.claims = claims;
+        this.relatedBusiness = relatedBusiness;
+        this.targetCountries = targetCountries;
+        this.status = status != null ? status : PreEvaluationStatus.PROCESSING;
+        this.reportUrl = reportUrl;
+        this.completedAt = completedAt;
+    }
+
+    public void complete(String reportUrl, Instant completedAt) {
+        validateProcessing();
+
+        if (reportUrl == null || reportUrl.isBlank()) {
+            throw new PreEvaluationException(ErrorCode.INVALID_REQUEST);
+        }
+
+        this.reportUrl = reportUrl;
+        this.status = PreEvaluationStatus.COMPLETED;
+        this.completedAt = completedAt != null ? completedAt : Instant.now();
+    }
+
+    public void fail() {
+        validateProcessing();
+
+        this.status = PreEvaluationStatus.FAILED;
+        this.completedAt = Instant.now();
+    }
+
+    public boolean isCompleted() {
+        return status == PreEvaluationStatus.COMPLETED;
+    }
+
+    private void validateProcessing() {
+        if (status != PreEvaluationStatus.PROCESSING) {
+            throw new PreEvaluationException(ErrorCode.PRE_EVALUATION_ALREADY_PROCESSED);
+        }
+    }
+}
