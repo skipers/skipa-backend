@@ -1,6 +1,6 @@
 # API 명세서
 
-변경 날짜: 2026-06-08
+변경 날짜: 2026-06-10
 
 ## 기본 정보
 
@@ -71,6 +71,8 @@
 | 연차료 납부 상태 | `PAID`, `UNPAID`, `ABANDONED` |
 | 특허 추출 작업 상태 | `UPLOAD_PENDING`, `ANALYZING`, `COMPLETED`, `FAILED` |
 | 보고서 생성 상태 | `GENERATING`, `COMPLETED`, `FAILED` |
+| 사전 평가 상태 | `PROCESSING`, `COMPLETED`, `FAILED` |
+| 사전 평가 채팅 역할 | `USER`, `ASSISTANT` |
 | 검토 주기 유형 | `QUARTERLY`, `AD_HOC` |
 | 검토 제출 상태 | `PENDING`, `SUBMITTED` |
 | 사업부 의견 | `MAINTAIN`, `ABANDON` |
@@ -1391,7 +1393,499 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-### 12. 대시보드
+### 12. 사전 평가
+
+정식 특허 출원 전에 특허 아이디어의 가치와 심사 통과 가능성을 확인하기 위한 기능입니다.
+사전 평가는 정식 `Patent`와 별도 이력으로 저장되며, `BUSINESS` 사용자 본인이 생성한 이력만 조회할 수 있습니다.
+
+| 이름 | Method | URL | 설명 | 권한 |
+| --- | --- | --- | --- | --- |
+| 사전 평가 시작 | `POST` | `/pre-evaluations` | 임시 특허 정보를 저장하고 AI 서버에 사전 평가 보고서 생성을 요청 | `BUSINESS` |
+| 사전 평가 목록 조회 | `GET` | `/pre-evaluations` | 현재 사용자의 사전 평가 이력 목록 조회 | `BUSINESS` |
+| 사전 평가 상세 조회 | `GET` | `/pre-evaluations/{preEvaluationId}` | 사전 평가 입력 정보, 상태, 보고서 URL 조회 | `BUSINESS` |
+| 사전 평가 상태 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/status` | 보고서 생성 상태 polling | `BUSINESS` |
+| 사전 평가 이력 삭제 | `DELETE` | `/pre-evaluations/{preEvaluationId}` | 사전 평가와 관련 채팅 메시지 삭제 | `BUSINESS` |
+| 채팅 이력 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가별 채팅 메시지 목록 조회 | `BUSINESS` |
+| 채팅 메시지 전송 | `POST` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `BUSINESS` |
+| 채팅 초기화 | `DELETE` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 해당 사전 평가의 채팅 메시지 전체 삭제 | `BUSINESS` |
+| 사전 평가 완료 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/complete` | AI 서버가 보고서 생성 완료 후 호출 | Internal API Key |
+| 사전 평가 실패 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/fail` | AI 서버가 보고서 생성 실패 후 호출 | Internal API Key |
+
+사전 평가 상태값은 다음과 같습니다.
+
+| status | 설명 |
+| --- | --- |
+| `PROCESSING` | 사전 평가 보고서 생성 중 |
+| `COMPLETED` | 보고서 생성 완료 |
+| `FAILED` | 보고서 생성 실패 |
+
+---
+
+#### `POST /pre-evaluations`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| title | string | * | 특허명. 최대 200자 |
+| technicalDescription | string | * | 기술 설명 |
+| claims | array[string] | * | 청구항 목록. 빈 배열 불가 |
+| relatedBusiness | string | N | 관련 사업. 최대 500자 |
+| targetCountries | string | N | 출원 예정 국가. 예: `한국, 미국`. 최대 500자 |
+
+**요청 예시**
+
+```json
+{
+  "title": "배터리 열폭주 감지 시스템",
+  "technicalDescription": "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술",
+  "claims": [
+    "센서부를 포함하는 배터리 열폭주 감지 시스템",
+    "분석부가 센서 데이터를 기반으로 위험도를 산출하는 시스템"
+  ],
+  "relatedBusiness": "전기차 배터리 안전 관리",
+  "targetCountries": "한국, 미국"
+}
+```
+
+**처리**
+
+- 사전 평가 row를 생성하고 `status = PROCESSING`으로 저장
+- AI 서버에 사전 평가 보고서 생성 메시지 발행
+
+**발행 메시지 예시**
+
+```json
+{
+  "type": "PRE_EVALUATION_GENERATE",
+  "preEvaluationId": 1,
+  "userId": 10,
+  "title": "배터리 열폭주 감지 시스템",
+  "technicalDescription": "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술",
+  "claims": [
+    "센서부를 포함하는 배터리 열폭주 감지 시스템",
+    "분석부가 센서 데이터를 기반으로 위험도를 산출하는 시스템"
+  ],
+  "relatedBusiness": "전기차 배터리 안전 관리",
+  "targetCountries": "한국, 미국"
+}
+```
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 사전 평가 ID |
+| userId | long | 생성 사용자 ID |
+| status | string | `PROCESSING` |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "userId": 10,
+    "status": "PROCESSING",
+    "createdAt": "2026-06-10T08:55:00Z",
+    "updatedAt": "2026-06-10T08:55:00Z"
+  }
+}
+```
+
+**에러**: `INVALID_REQUEST`(400), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `EXTERNAL_SERVICE_ERROR`(502)
+
+---
+
+#### `GET /pre-evaluations`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
+
+정렬은 최신 생성순(`id` 내림차순)입니다.
+
+**응답 items[] 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 사전 평가 ID |
+| title | string | 특허명 |
+| status | string | `PROCESSING` / `COMPLETED` / `FAILED` |
+| reportUrl | string | 보고서 URL. 완료 전에는 `null` |
+| completedAt | datetime | 완료 또는 실패 시각. 처리 중에는 `null` |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "title": "배터리 열폭주 감지 시스템",
+        "status": "COMPLETED",
+        "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html",
+        "completedAt": "2026-06-10T09:01:00Z",
+        "createdAt": "2026-06-10T08:55:00Z",
+        "updatedAt": "2026-06-10T09:01:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /pre-evaluations/{preEvaluationId}`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 사전 평가 ID |
+| userId | long | 생성 사용자 ID |
+| title | string | 특허명 |
+| technicalDescription | string | 기술 설명 |
+| claims | array[string] | 청구항 목록 |
+| relatedBusiness | string | 관련 사업 |
+| targetCountries | string | 출원 예정 국가 |
+| status | string | `PROCESSING` / `COMPLETED` / `FAILED` |
+| reportUrl | string | 보고서 URL. 완료 전에는 `null` |
+| completedAt | datetime | 완료 또는 실패 시각 |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "userId": 10,
+    "title": "배터리 열폭주 감지 시스템",
+    "technicalDescription": "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술",
+    "claims": [
+      "센서부를 포함하는 배터리 열폭주 감지 시스템",
+      "분석부가 센서 데이터를 기반으로 위험도를 산출하는 시스템"
+    ],
+    "relatedBusiness": "전기차 배터리 안전 관리",
+    "targetCountries": "한국, 미국",
+    "status": "COMPLETED",
+    "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html",
+    "completedAt": "2026-06-10T09:01:00Z",
+    "createdAt": "2026-06-10T08:55:00Z",
+    "updatedAt": "2026-06-10T09:01:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `GET /pre-evaluations/{preEvaluationId}/status`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 사전 평가 ID |
+| status | string | `PROCESSING` / `COMPLETED` / `FAILED` |
+| reportUrl | string | 보고서 URL. 완료 전에는 `null` |
+| completedAt | datetime | 완료 또는 실패 시각 |
+| updatedAt | datetime | 수정 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "status": "PROCESSING",
+    "reportUrl": null,
+    "completedAt": null,
+    "updatedAt": "2026-06-10T08:55:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `DELETE /pre-evaluations/{preEvaluationId}`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+사전 평가 이력과 해당 사전 평가의 채팅 메시지를 삭제합니다.
+
+**응답 예시**
+
+```json
+{ "success": true, "data": null }
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `GET /pre-evaluations/{preEvaluationId}/chat/messages`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**응답 items[] 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 메시지 ID |
+| preEvaluationId | long | 사전 평가 ID |
+| role | string | `USER` / `ASSISTANT` |
+| content | string | 메시지 내용 |
+| createdAt | datetime | 생성 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 100,
+      "preEvaluationId": 1,
+      "role": "USER",
+      "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+      "createdAt": "2026-06-10T09:10:00Z"
+    },
+    {
+      "id": 101,
+      "preEvaluationId": 1,
+      "role": "ASSISTANT",
+      "content": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+      "createdAt": "2026-06-10T09:10:02Z"
+    }
+  ]
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `POST /pre-evaluations/{preEvaluationId}/chat/messages`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | * | 사용자 채팅 메시지 |
+
+**요청 예시**
+
+```json
+{
+  "message": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?"
+}
+```
+
+**처리**
+
+- 사용자 메시지를 `USER` 역할로 저장
+- 이전 대화 이력과 현재 메시지를 포함해 AI 서버 채팅 API를 직접 호출
+- AI 응답을 `ASSISTANT` 역할로 저장
+
+**AI 서버 채팅 요청 예시**
+
+```json
+{
+  "preEvaluationId": 1,
+  "userId": 10,
+  "title": "배터리 열폭주 감지 시스템",
+  "technicalDescription": "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술",
+  "claims": [
+    "센서부를 포함하는 배터리 열폭주 감지 시스템"
+  ],
+  "relatedBusiness": "전기차 배터리 안전 관리",
+  "targetCountries": "한국, 미국",
+  "message": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+  "history": [
+    {
+      "role": "USER",
+      "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?"
+    }
+  ]
+}
+```
+
+**AI 서버 채팅 응답 형식**
+
+```json
+{
+  "message": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다."
+}
+```
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "userMessage": {
+      "id": 100,
+      "preEvaluationId": 1,
+      "role": "USER",
+      "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+      "createdAt": "2026-06-10T09:10:00Z"
+    },
+    "assistantMessage": {
+      "id": 101,
+      "preEvaluationId": 1,
+      "role": "ASSISTANT",
+      "content": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+      "createdAt": "2026-06-10T09:10:02Z"
+    }
+  }
+}
+```
+
+**에러**: `INVALID_REQUEST`(400), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `AI_SERVER_ERROR`(500)
+
+---
+
+#### `DELETE /pre-evaluations/{preEvaluationId}/chat/messages`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+해당 사전 평가의 채팅 메시지를 모두 삭제합니다.
+
+**응답 예시**
+
+```json
+{ "success": true, "data": null }
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `PATCH /internal/pre-evaluations/{preEvaluationId}/complete`
+
+AI 서버가 사전 평가 보고서 생성 완료 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| reportUrl | string | * | MinIO에 저장된 사전 평가 보고서 접근 URL |
+
+**요청 예시**
+
+```json
+{
+  "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html"
+}
+```
+
+**처리**
+
+- `reportUrl` 저장
+- 사전 평가 상태를 `COMPLETED`로 변경
+- `completedAt`에 완료 시각 기록
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "preEvaluationId": 1,
+    "status": "COMPLETED",
+    "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html",
+    "completedAt": "2026-06-10T09:01:00Z"
+  }
+}
+```
+
+**에러**: `INVALID_REQUEST`(400), `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
+
+---
+
+#### `PATCH /internal/pre-evaluations/{preEvaluationId}/fail`
+
+AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| errorMessage | string | N | 실패 사유. 현재 DB에는 저장하지 않음 |
+
+**요청 예시**
+
+```json
+{
+  "errorMessage": "AI pre-evaluation generation failed"
+}
+```
+
+**처리**
+
+- 사전 평가 상태를 `FAILED`로 변경
+- `completedAt`에 실패 처리 시각 기록
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "preEvaluationId": 1,
+    "status": "FAILED",
+    "reportUrl": null,
+    "completedAt": "2026-06-10T09:01:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
+
+---
+
+### 13. 대시보드
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
