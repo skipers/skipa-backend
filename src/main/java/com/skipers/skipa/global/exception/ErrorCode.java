@@ -51,6 +51,10 @@ public enum ErrorCode {
     REPORT_NOT_COMPLETED(HttpStatus.CONFLICT, "REPORT_NOT_COMPLETED", "아직 생성이 완료되지 않은 보고서입니다."),
     REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "REPORT_ALREADY_PROCESSED", "이미 처리된 보고서입니다."),
 
+    // Pre Evaluation
+    PRE_EVALUATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PRE_EVALUATION_NOT_FOUND", "사전 평가를 찾을 수 없습니다."),
+    PRE_EVALUATION_ALREADY_PROCESSED(HttpStatus.CONFLICT, "PRE_EVALUATION_ALREADY_PROCESSED", "이미 처리된 사전 평가입니다."),
+
     // Review
     REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_NOT_FOUND", "사업부 검토를 찾을 수 없습니다."),
     REVIEW_CYCLE_NOT_FOUND(HttpStatus.NOT_FOUND, "REVIEW_CYCLE_NOT_FOUND", "검토 주기를 찾을 수 없습니다."),
