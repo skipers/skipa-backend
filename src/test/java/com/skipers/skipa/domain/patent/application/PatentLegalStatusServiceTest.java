@@ -66,6 +66,21 @@ class PatentLegalStatusServiceTest {
     }
 
     @Test
+    void createSupportsAppliedStatus() {
+        Patent patent = patent();
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(patentLegalStatusRepository.save(any(PatentLegalStatus.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PatentLegalStatusResponse response = patentLegalStatusService.create(1L, request("APPLIED"));
+
+        assertThat(response.status()).isEqualTo("APPLIED");
+        verify(patentLegalStatusRepository).save(org.mockito.ArgumentMatchers.argThat(status ->
+                status.getPatent() == patent && status.getStatus() == PatentLegalStatusType.APPLIED
+        ));
+    }
+
+    @Test
     void createRejectsMissingPatent() {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 

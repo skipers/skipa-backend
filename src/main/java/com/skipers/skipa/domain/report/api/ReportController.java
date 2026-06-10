@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.report.api;
 import com.skipers.skipa.domain.report.application.ReportService;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportHistoryResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.global.response.ApiResponse;
@@ -35,7 +36,7 @@ public class ReportController {
      * @param patentId 특허 ID
      * @return 생성 요청된 평가 보고서
      */
-    @Operation(summary = "평가 보고서 생성 요청", description = "특허의 평가 보고서 생성을 요청합니다.")
+    @Operation(summary = "[Legal] 평가 보고서 생성 요청", description = "특허의 평가 보고서 생성을 요청합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<ReportCreateResponse>> create(
@@ -53,7 +54,7 @@ public class ReportController {
      * @return 평가 보고서 목록 페이지
      */
     @Operation(
-            summary = "평가 보고서 목록 조회",
+            summary = "[Common] 평가 보고서 목록 조회",
             description = "특허의 평가 보고서 목록을 페이지 단위로 조회합니다. "
                     + "필터는 제공하지 않습니다. "
                     + "정렬: 최신 보고서순(id 내림차순) 고정입니다."
@@ -63,7 +64,7 @@ public class ReportController {
     public ApiResponse<PageResponse<ReportResponse>> getAll(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long patentId,
-            @PageableDefault(page = 0, size = 20) Pageable pageable
+            @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(reportService.getAll(userDetails.getUser(), patentId, pageable)));
     }
@@ -76,9 +77,10 @@ public class ReportController {
      * @return 최신 평가 보고서
      */
     @Operation(
-            summary = "최신 평가 보고서 조회",
+            summary = "[Common] 최신 평가 보고서 조회",
             description = "특허의 최신 평가 보고서를 조회합니다. "
-                    + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL과 totalScore를 함께 반환합니다."
+                    + "가장 최근 생성된 보고서 1건을 반환하며, 완료된 보고서는 접근 URL, totalScore, valueGrade를 함께 반환합니다. "
+                    + "해당 보고서에 매칭되는 제출 의견이 있으면 opinion, comment, submittedAt을 함께 반환합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/latest")
@@ -90,6 +92,27 @@ public class ReportController {
     }
 
     /**
+     * 특허의 과거 평가 이력을 조회한다.
+     *
+     * @param userDetails 인증 사용자 정보
+     * @param patentId 특허 ID
+     * @return 과거 평가 이력
+     */
+    @Operation(
+            summary = "[Common] 과거 평가 이력 조회",
+            description = "특허의 완료된 평가 보고서 중 가장 최근 1건을 제외한 과거 평가 이력을 조회합니다. "
+                    + "평가 날짜, 점수, 등급, 사업부 결정, 사업부 의견, 보고서 ID를 반환합니다."
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/history")
+    public ApiResponse<ReportHistoryResponse> getHistory(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId
+    ) {
+        return ApiResponse.ok(reportService.getHistory(userDetails.getUser(), patentId));
+    }
+
+    /**
      * 특허의 평가 보고서를 ID로 조회한다.
      *
      * @param userDetails 인증 사용자 정보
@@ -97,7 +120,11 @@ public class ReportController {
      * @param reportId 평가 보고서 ID
      * @return 평가 보고서
      */
-    @Operation(summary = "평가 보고서 단일 조회", description = "평가 보고서 ID로 상세 정보를 조회합니다.")
+    @Operation(
+            summary = "[Common] 평가 보고서 단일 조회",
+            description = "평가 보고서 ID로 상세 정보를 조회합니다. "
+                    + "해당 보고서에 매칭되는 제출 의견이 있으면 opinion, comment, submittedAt을 함께 반환합니다."
+    )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}")
     public ApiResponse<ReportDetailResponse> get(
@@ -116,7 +143,7 @@ public class ReportController {
      * @param reportId 평가 보고서 ID
      * @return 평가 보고서 생성 상태
      */
-    @Operation(summary = "평가 보고서 생성 상태 조회", description = "평가 보고서의 생성 상태를 조회합니다.")
+    @Operation(summary = "[Common] 평가 보고서 생성 상태 조회", description = "평가 보고서의 생성 상태를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}/status")
     public ApiResponse<ReportStatusResponse> getStatus(

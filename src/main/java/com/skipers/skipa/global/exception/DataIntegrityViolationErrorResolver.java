@@ -11,7 +11,7 @@ public class DataIntegrityViolationErrorResolver {
 
     private static final Map<String, ErrorCode> ERROR_CODE_BY_CONSTRAINT = Map.of(
             "uk_patents_application_number", ErrorCode.DUPLICATE_APPLICATION_NUMBER,
-            "uk_review_cycles_name", ErrorCode.DUPLICATE_REVIEW_CYCLE_NAME,
+            "uk_review_cycles_year_quarter", ErrorCode.DUPLICATE_REVIEW_CYCLE,
             "uk_reviews_cycle_patent_department", ErrorCode.DUPLICATE_REVIEW_REQUEST
     );
 

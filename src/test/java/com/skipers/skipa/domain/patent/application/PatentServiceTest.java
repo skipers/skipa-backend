@@ -28,7 +28,6 @@ import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,6 +120,8 @@ class PatentServiceTest {
         ));
         assertThat(response.title()).isEqualTo("  Patent Title  ");
         assertThat(response.initialDepartment()).isEqualTo(" Initial Department ");
+        assertThat(response.ipcCodes()).containsExactly("IPC");
+        assertThat(response.cpcCodes()).containsExactly("CPC");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
     }
@@ -238,7 +239,12 @@ class PatentServiceTest {
     void getAllWithoutKeywordUsesPagedFindAll() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
-        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         when(patentRepository.findAll(sortedPageable)).thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(legalUser(), "  ", pageable);
@@ -248,17 +254,22 @@ class PatentServiceTest {
     }
 
     @Test
-    void getAllWithKeywordSearchesTitle() {
+    void getAllWithKeywordSearchesPatentFields() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
-        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(patentRepository.findByTitleContainingIgnoreCase("patent", sortedPageable))
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        when(patentRepository.searchByKeyword("patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(legalUser(), " patent ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(patentRepository).findByTitleContainingIgnoreCase("patent", sortedPageable);
+        verify(patentRepository).searchByKeyword("patent", sortedPageable);
     }
 
     @Test
@@ -267,21 +278,74 @@ class PatentServiceTest {
         ReflectionTestUtils.setField(department, "id", 1L);
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);
-        Pageable sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(patentRepository.findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable))
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        when(patentRepository.searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(businessUser(department), " patent ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(patentRepository).findByCurrentDepartmentIdAndTitleContainingIgnoreCase(1L, "patent", sortedPageable);
-        verify(patentRepository, never()).findByTitleContainingIgnoreCase("patent", sortedPageable);
+        verify(patentRepository).searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable);
+        verify(patentRepository, never()).searchByKeyword("patent", sortedPageable);
     }
 
     @Test
     void getAllRejectsBusinessUserWithoutDepartment() {
         assertPatentError(
                 () -> patentService.getAll(businessUser(null), null, PageRequest.of(0, 20)),
+                ErrorCode.FORBIDDEN
+        );
+    }
+
+    @Test
+    void getSummaryCountsMaintainAndAbandonStatusesForLegalUser() {
+        Patent appliedPatent = patent(1L, "Applied Patent", "APP-SUM-1", null, null, null, null);
+        Patent registeredPatent = patent(2L, "Registered Patent", "APP-SUM-2", null, null, null, null);
+        Patent expiredPatent = patent(3L, "Expired Patent", "APP-SUM-3", null, null, null, null);
+        Patent noStatusPatent = patent(4L, "No Status Patent", "APP-SUM-4", null, null, null, null);
+        when(patentRepository.findAll()).thenReturn(List.of(appliedPatent, registeredPatent, expiredPatent, noStatusPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
+                legalStatus(10L, appliedPatent, PatentLegalStatusType.APPLIED, LocalDate.now()),
+                legalStatus(20L, registeredPatent, PatentLegalStatusType.PUBLISHED, LocalDate.now().minusDays(1)),
+                legalStatus(21L, registeredPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
+                legalStatus(30L, expiredPatent, PatentLegalStatusType.EXPIRED, LocalDate.now())
+        ));
+
+        var response = patentService.getSummary(legalUser());
+
+        assertThat(response.active()).isEqualTo(2);
+        assertThat(response.inactive()).isEqualTo(2);
+    }
+
+    @Test
+    void getSummaryCountsOnlyBusinessUsersDepartmentPatents() {
+        Department department = department("통신", 1L);
+        Patent maintainPatent = patent(1L, "Maintain Patent", "APP-SUM-BIZ-1", null, null, null, department);
+        Patent abandonPatent = patent(2L, "Abandon Patent", "APP-SUM-BIZ-2", null, null, null, department);
+        when(patentRepository.findByCurrentDepartmentId(1L, Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(maintainPatent, abandonPatent)));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
+                legalStatus(10L, maintainPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
+                legalStatus(20L, abandonPatent, PatentLegalStatusType.WITHDRAWN, LocalDate.now())
+        ));
+
+        var response = patentService.getSummary(businessUser(department));
+
+        assertThat(response.active()).isEqualTo(1);
+        assertThat(response.inactive()).isEqualTo(1);
+        verify(patentRepository).findByCurrentDepartmentId(1L, Pageable.unpaged());
+        verify(patentRepository, never()).findAll();
+    }
+
+    @Test
+    void getSummaryRejectsBusinessUserWithoutDepartment() {
+        assertPatentError(
+                () -> patentService.getSummary(businessUser(null)),
                 ErrorCode.FORBIDDEN
         );
     }
@@ -340,9 +404,62 @@ class PatentServiceTest {
         Object item = result.getContent().get(0);
         assertThat(item)
                 .extracting("id", "latestLegalStatus", "techField", "currentDepartmentId", "currentDepartmentName",
-                        "reviewStatus", "decision", "checked", "latestReportScore", "isOverdue", "filingCountry")
+                        "reviewStatus", "opinion", "checked", "latestReportScore", "isOverdue", "filingCountry")
                 .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false,
                         new BigDecimal("82.50"), false, "KR");
+    }
+
+    @Test
+    void getAllSortsByPatentFieldsWithDirection() {
+        Patent alphaFirstPatent = patent(
+                1L,
+                "Alpha Patent",
+                "APP-SORT-B",
+                "반도체",
+                "KR",
+                LocalDate.now().plusDays(10),
+                null
+        );
+        Patent alphaSecondPatent = patent(
+                2L,
+                "Alpha Patent",
+                "APP-SORT-C",
+                "반도체",
+                "KR",
+                LocalDate.now().plusDays(20),
+                null
+        );
+        Patent betaPatent = patent(
+                3L,
+                "Beta Patent",
+                "APP-SORT-A",
+                "반도체",
+                "KR",
+                LocalDate.now().plusDays(30),
+                null
+        );
+        when(patentRepository.findAll()).thenReturn(List.of(betaPatent, alphaFirstPatent, alphaSecondPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        Page<?> result = patentService.getAll(
+                legalUser(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "title,desc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id")
+                .containsExactly(3L, 2L, 1L);
     }
 
     @Test
@@ -459,10 +576,13 @@ class PatentServiceTest {
         assertThat(response.registrationNumber()).isEqualTo("REG-1");
         assertThat(response.applicationDate()).isEqualTo(LocalDate.of(2026, 1, 1));
         assertThat(response.applicant()).isEqualTo("Applicant");
+        assertThat(response.examinationClaimCount()).isEqualTo(5);
+        assertThat(response.ipcCodes()).containsExactly("IPC");
+        assertThat(response.cpcCodes()).containsExactly("CPC");
         assertThat(response.initialDepartment()).isEqualTo("Initial Department");
         assertThat(response.relatedProducts()).containsExactly("Product");
         assertThat(response.keywords()).containsExactly("Keyword");
-        assertThat(response.overview()).isEqualTo("Overview");
+        assertThat(response.summary()).isEqualTo("Summary");
         verify(patentRepository).existsByApplicationNumber(" NEW-APP ");
     }
 
@@ -591,8 +711,8 @@ class PatentServiceTest {
 
     private ReviewCycle reviewCycle() {
         ReviewCycle reviewCycle = ReviewCycle.builder()
-                .name("2026년 2분기")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(1))
                 .build();
@@ -642,7 +762,8 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
+                List.of("IPC"),
+                List.of("CPC"),
                 null,
                 null,
                 null,
@@ -659,7 +780,6 @@ class PatentServiceTest {
                 null,
                 " Initial Department ",
                 List.of("Keyword"),
-                null,
                 null
         );
     }
@@ -668,6 +788,7 @@ class PatentServiceTest {
         return new PatentCreateRequest(
                 title,
                 applicationNumber,
+                null,
                 null,
                 null,
                 null,
@@ -692,7 +813,6 @@ class PatentServiceTest {
                 null,
                 " Initial Department ",
                 List.of("Keyword"),
-                null,
                 null
         );
     }
@@ -725,12 +845,13 @@ class PatentServiceTest {
                 LocalDate.of(2026, 1, 2),
                 LocalDate.of(2026, 1, 3),
                 LocalDate.of(2026, 1, 4),
-                "IPC",
-                "CPC",
+                List.of("IPC"),
+                List.of("CPC"),
                 "Applicant",
                 "Inventor",
                 LocalDate.of(2046, 1, 1),
                 3,
+                5,
                 "pdf-key",
                 "management",
                 "business",
@@ -741,8 +862,7 @@ class PatentServiceTest {
                 "Joint Applicant",
                 "Initial Department",
                 List.of("Keyword"),
-                "Overview",
-                "Core Content"
+                "Summary"
         );
     }
 

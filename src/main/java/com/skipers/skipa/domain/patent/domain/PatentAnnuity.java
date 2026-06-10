@@ -34,8 +34,11 @@ public class PatentAnnuity extends BaseTimeEntity {
     @JoinColumn(name = "patent_id", nullable = false)
     private Patent patent;
 
-    @Column(name = "annuity_year", nullable = false) // 연차
-    private Integer annuityYear;
+    @Column(name = "start_year", nullable = false) // 납부 시작 연차
+    private Integer startYear;
+
+    @Column(name = "end_year") // 납부 종료 연차
+    private Integer endYear;
 
     @Column(name = "due_date") // 납부 기한
     private LocalDate dueDate;
@@ -51,12 +54,28 @@ public class PatentAnnuity extends BaseTimeEntity {
     private Integer amount;
 
     @Builder
-    private PatentAnnuity(Patent patent, Integer annuityYear, LocalDate dueDate, LocalDate paidDate, PatentAnnuityStatus status, Integer amount) {
+    private PatentAnnuity(
+            Patent patent,
+            Integer startYear,
+            Integer endYear,
+            LocalDate dueDate,
+            LocalDate paidDate,
+            PatentAnnuityStatus status,
+            Integer amount
+    ) {
         this.patent = patent;
-        this.annuityYear = annuityYear;
+        this.startYear = startYear;
+        this.endYear = endYear;
         this.dueDate = dueDate;
         this.paidDate = paidDate;
         this.status = status;
         this.amount = amount;
+    }
+
+    public void pay(Integer paymentYears, Integer amount, LocalDate paidDate) {
+        this.endYear = this.startYear + paymentYears - 1;
+        this.amount = amount;
+        this.paidDate = paidDate;
+        this.status = PatentAnnuityStatus.PAID;
     }
 }

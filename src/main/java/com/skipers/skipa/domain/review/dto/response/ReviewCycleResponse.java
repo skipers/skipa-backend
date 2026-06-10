@@ -7,8 +7,8 @@ import java.time.LocalDate;
 
 public record ReviewCycleResponse(
         Long id,
-        String name,
-        String type,
+        Integer year,
+        Integer quarter,
         LocalDate startDate,
         LocalDate endDate,
         Instant createdAt,
@@ -18,8 +18,8 @@ public record ReviewCycleResponse(
     public static ReviewCycleResponse from(ReviewCycle reviewCycle) {
         return new ReviewCycleResponse(
                 reviewCycle.getId(),
-                reviewCycle.getName(),
-                reviewCycle.getType().name(),
+                reviewCycle.getYear(),
+                reviewCycle.getQuarter(),
                 reviewCycle.getStartDate(),
                 reviewCycle.getEndDate(),
                 reviewCycle.getCreatedAt(),

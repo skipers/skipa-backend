@@ -23,7 +23,7 @@ public class PatentExtractJobController {
 
     private final PatentExtractJobService patentExtractJobService;
 
-    @Operation(summary = "특허 원문 PDF 업로드 URL 발급", description = "특허 추출 작업을 생성하고 PDF 업로드용 presigned URL을 발급합니다.")
+    @Operation(summary = "[Legal] 특허 원문 PDF 업로드 URL 발급", description = "특허 추출 작업을 생성하고 PDF 업로드용 presigned URL을 발급합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PostMapping("/upload-url")
     public ResponseEntity<ApiResponse<PatentExtractUploadUrlResponse>> createUploadUrl() {
@@ -31,21 +31,21 @@ public class PatentExtractJobController {
                 .body(ApiResponse.ok(patentExtractJobService.createUploadUrl()));
     }
 
-    @Operation(summary = "특허 원문 PDF 업로드 완료", description = "업로드된 PDF 존재 여부를 확인하고 특허 추출 작업을 AI Worker 큐에 발행합니다.")
+    @Operation(summary = "[Legal] 특허 원문 PDF 업로드 완료", description = "업로드된 PDF 존재 여부를 확인하고 특허 추출 작업을 AI Worker 큐에 발행합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PostMapping("/{extractJobId}/upload-complete")
     public ApiResponse<PatentExtractJobStatusResponse> completeUpload(@PathVariable Long extractJobId) {
         return ApiResponse.ok(patentExtractJobService.completeUpload(extractJobId));
     }
 
-    @Operation(summary = "특허 추출 작업 상태 조회", description = "특허 추출 작업 상태를 조회합니다.")
+    @Operation(summary = "[Legal] 특허 추출 작업 상태 조회", description = "특허 추출 작업 상태를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/{extractJobId}/status")
     public ApiResponse<PatentExtractJobStatusResponse> getStatus(@PathVariable Long extractJobId) {
         return ApiResponse.ok(patentExtractJobService.getStatus(extractJobId));
     }
 
-    @Operation(summary = "특허 추출 결과 조회", description = "완료된 특허 추출 작업의 결과 JSON을 조회합니다.")
+    @Operation(summary = "[Legal] 특허 추출 결과 조회", description = "완료된 특허 추출 작업의 결과 JSON을 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/{extractJobId}/result")
     public ApiResponse<PatentExtractResultResponse> getResult(@PathVariable Long extractJobId) {

@@ -67,7 +67,7 @@ class PatentExtractJobTest {
         PatentExtractJob job = analyzingJob();
         JsonNode resultJson = objectMapper.createObjectNode()
                 .put("title", "Patent")
-                .put("overview", "Overview");
+                .put("summary", "Summary");
         Instant completedAt = Instant.parse("2026-06-08T01:10:00Z");
 
         job.complete(resultJson, completedAt);

@@ -3,15 +3,20 @@ package com.skipers.skipa.domain.portfolio.dto.response;
 import java.util.List;
 
 public record PortfolioDistributionResponse(
-        List<GradeCount> byValueGrade,
+        List<GradeDistribution> byGrade,
         List<NameCount> byTechField,
         List<CountryCount> byFilingCountry,
         List<DepartmentCount> byDepartment
 ) {
 
-    public record GradeCount(
-            String grade,
-            long count
+    public record GradeDistribution(
+            Long departmentId,
+            String departmentName,
+            long s,
+            long a,
+            long b,
+            long c,
+            long d
     ) {
     }
 

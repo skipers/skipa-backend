@@ -9,12 +9,14 @@ import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
@@ -61,6 +63,9 @@ class PortfolioControllerIntegrationTest {
     private ReviewRepository reviewRepository;
 
     @Autowired
+    private ReportRepository reportRepository;
+
+    @Autowired
     private ReviewCycleRepository reviewCycleRepository;
 
     @Autowired
@@ -98,8 +103,8 @@ class PortfolioControllerIntegrationTest {
                 .name("배터리 사업부")
                 .build());
         reviewCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name("2026년 2분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(10))
                 .build());
@@ -126,7 +131,8 @@ class PortfolioControllerIntegrationTest {
         );
         patentAnnuityRepository.save(PatentAnnuity.builder()
                 .patent(semiconductorPatent)
-                .annuityYear(3)
+                .startYear(3)
+                .endYear(3)
                 .dueDate(LocalDate.of(2026, 5, 1))
                 .status(PatentAnnuityStatus.PAID)
                 .amount(100_000)
@@ -147,19 +153,17 @@ class PortfolioControllerIntegrationTest {
                 .status(ReviewStatus.SUBMITTED)
                 .submittedAt(Instant.now())
                 .build());
+        reportRepository.save(completedReport(semiconductorPatent, "S"));
+        reportRepository.save(completedReport(batteryPatent, "A"));
         legalToken = createActiveUserToken("legal-portfolio", "legal-portfolio@example.com", UserRole.LEGAL);
     }
 
     @Test
-    void portfolioSummaryReturnsCoreMetrics() throws Exception {
-        mockMvc.perform(get("/portfolio/summary")
+    void portfolioInsightsReturnsEmptyInsights() throws Exception {
+        mockMvc.perform(get("/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalPatents").value(2))
-                .andExpect(jsonPath("$.data.expiringWithinYear").value(1))
-                .andExpect(jsonPath("$.data.countryCount").value(2))
-                .andExpect(jsonPath("$.data.techFieldCount").value(2))
-                .andExpect(jsonPath("$.data.insights.length()").value(3));
+                .andExpect(jsonPath("$.data.insights.length()").value(0));
     }
 
     @Test
@@ -167,7 +171,14 @@ class PortfolioControllerIntegrationTest {
         mockMvc.perform(get("/portfolio/distribution")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.byValueGrade.length()").value(0))
+                .andExpect(jsonPath("$.data.byGrade.length()").value(3))
+                .andExpect(jsonPath("$.data.byGrade[0].departmentName").value("전체"))
+                .andExpect(jsonPath("$.data.byGrade[0].s").value(1))
+                .andExpect(jsonPath("$.data.byGrade[0].a").value(1))
+                .andExpect(jsonPath("$.data.byGrade[1].departmentName").value("반도체 사업부"))
+                .andExpect(jsonPath("$.data.byGrade[1].s").value(1))
+                .andExpect(jsonPath("$.data.byGrade[2].departmentName").value("배터리 사업부"))
+                .andExpect(jsonPath("$.data.byGrade[2].a").value(1))
                 .andExpect(jsonPath("$.data.byTechField.length()").value(2))
                 .andExpect(jsonPath("$.data.byFilingCountry.length()").value(2))
                 .andExpect(jsonPath("$.data.byDepartment.length()").value(2));
@@ -199,7 +210,7 @@ class PortfolioControllerIntegrationTest {
     void portfolioApisForbidBusinessUsers() throws Exception {
         String businessToken = createActiveUserToken("business-portfolio", "business-portfolio@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/portfolio/summary")
+        mockMvc.perform(get("/portfolio/insights")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
     }
@@ -236,5 +247,16 @@ class PortfolioControllerIntegrationTest {
                 role == UserRole.BUSINESS ? semiconductorDepartment : null
         ));
         return jwtProvider.createAccessToken(user.getId(), role);
+    }
+
+    private Report completedReport(Patent patent, String valueGrade) {
+        return Report.builder()
+                .patent(patent)
+                .reportKey("reports/%s/report.html".formatted(patent.getId()))
+                .totalScore(valueGrade.equals("S") ? new java.math.BigDecimal("95.00") : new java.math.BigDecimal("85.00"))
+                .valueGrade(valueGrade)
+                .status(ReportStatus.COMPLETED)
+                .evaluatedAt(Instant.now())
+                .build();
     }
 }

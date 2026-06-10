@@ -28,7 +28,7 @@ public class DashboardController {
      * @return Legal 홈 대시보드
      */
     @Operation(
-            summary = "Legal 홈 대시보드 조회",
+            summary = "[Legal] 홈 대시보드 조회",
             description = "Legal 홈 화면에 필요한 검토 현황, 분포, 최근 회신 정보를 조회합니다. "
                     + "필터: reviewCycleId(미지정 시 현재 활성 검토 주기 기준). "
                     + "목록성 데이터는 최근 회신순으로 제한해 반환합니다."
@@ -49,7 +49,7 @@ public class DashboardController {
      * @return Business 홈 대시보드
      */
     @Operation(
-            summary = "Business 홈 대시보드 조회",
+            summary = "[Business] 홈 대시보드 조회",
             description = "Business 홈 화면에 필요한 소속 사업부 기준 검토 현황과 특허 요약을 조회합니다. "
                     + "필터: reviewCycleId(미지정 시 현재 활성 검토 주기 기준). "
                     + "BUSINESS 사용자의 소속 부서 범위로만 집계합니다."

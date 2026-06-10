@@ -1,29 +1,18 @@
 package com.skipers.skipa.domain.patent.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-
-import java.time.LocalDate;
 
 public record PatentAnnuityCreateRequest(
 
-        @NotNull(message = "연차는 필수입니다.")
-        @Schema(description = "연차", example = "1")
-        Integer annuityYear,
+        @NotNull(message = "납부 연수는 필수입니다.")
+        @Min(value = 1, message = "납부 연수는 1 이상이어야 합니다.")
+        @Schema(description = "납부 연수", example = "2")
+        Integer paymentYears,
 
-        @Schema(description = "납부 기한", example = "2026-12-31")
-        LocalDate dueDate,
-
-        @Schema(description = "실제 납부일자", example = "2026-12-30")
-        LocalDate paidDate,
-
-        @NotBlank(message = "납부 상태는 필수입니다.")
-        @Pattern(regexp = "^(PAID|UNPAID|ABANDONED)$", message = "납부 상태는 PAID/UNPAID/ABANDONED 중 하나여야 합니다.")
-        @Schema(description = "납부 상태", example = "UNPAID")
-        String status,
-
+        @NotNull(message = "납부 금액은 필수입니다.")
+        @Min(value = 0, message = "납부 금액은 0 이상이어야 합니다.")
         @Schema(description = "납부 금액", example = "1000000")
         Integer amount
 ) {}

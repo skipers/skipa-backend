@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.review.domain;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
@@ -59,6 +60,10 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "report_id")
     private Report report;
 
+    @ManyToOne(fetch = FetchType.LAZY) // 검토 대상 연차료(N) : (1) 사업부 검토
+    @JoinColumn(name = "patent_annuity_id")
+    private PatentAnnuity patentAnnuity;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "opinion", length = 20) // 사업부 의견(MAINTAIN/ABANDON)
     private BusinessOpinion opinion;
@@ -67,7 +72,7 @@ public class Review extends BaseTimeEntity {
     private String comment;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20) // 제출 상태(PENDING/SUBMITTED)
+    @Column(name = "status", nullable = false, length = 20) // 검토 상태(SCHEDULED/PENDING/OVERDUE/SUBMITTED)
     private ReviewStatus status;
 
     @Column(name = "submitted_at") // 제출일시
@@ -85,6 +90,7 @@ public class Review extends BaseTimeEntity {
             Department department,
             ReviewCycle reviewCycle,
             Report report,
+            PatentAnnuity patentAnnuity,
             BusinessOpinion opinion,
             String comment,
             ReviewStatus status,
@@ -96,12 +102,18 @@ public class Review extends BaseTimeEntity {
         this.department = department;
         this.reviewCycle = reviewCycle;
         this.report = report;
+        this.patentAnnuity = patentAnnuity;
         this.opinion = opinion;
         this.comment = comment;
         this.status = status != null ? status : ReviewStatus.PENDING;
         this.submittedAt = submittedAt;
-        this.dueDate = dueDate != null ? dueDate : reviewCycle.getEndDate();
+        this.dueDate = dueDate != null ? dueDate : reviewCycle.getEndDate().minusDays(14);
         this.checked = checked != null && checked;
+    }
+
+    public void request(Report report) {
+        this.report = report;
+        this.status = ReviewStatus.PENDING;
     }
 
     public void submit(BusinessOpinion opinion, String comment, Instant submittedAt) {
@@ -110,6 +122,10 @@ public class Review extends BaseTimeEntity {
         this.status = ReviewStatus.SUBMITTED;
         this.submittedAt = submittedAt;
         this.checked = false;
+    }
+
+    public void markOverdue() {
+        this.status = ReviewStatus.OVERDUE;
     }
 
     public void confirm() {

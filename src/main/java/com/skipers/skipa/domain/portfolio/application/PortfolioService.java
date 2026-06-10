@@ -7,8 +7,11 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
-import com.skipers.skipa.domain.portfolio.dto.response.PortfolioSummaryResponse;
+import com.skipers.skipa.domain.portfolio.dto.response.PortfolioInsightsResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioTrendsResponse;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -22,12 +25,9 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,26 +37,10 @@ public class PortfolioService {
     private final PatentRepository patentRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
+    private final ReportRepository reportRepository;
 
-    public PortfolioSummaryResponse getSummary() {
-        LocalDate today = LocalDate.now();
-        List<Patent> patents = patentRepository.findAll();
-        long expiringWithinYear = patents.stream()
-                .map(Patent::getExpiryDate)
-                .filter(expiryDate -> expiryDate != null)
-                .filter(expiryDate -> !expiryDate.isBefore(today))
-                .filter(expiryDate -> !expiryDate.isAfter(today.plusYears(1)))
-                .count();
-        Set<String> countries = distinctNormalized(patents.stream().map(Patent::getFilingCountry).toList());
-        Set<String> techFields = distinctNormalized(patents.stream().map(Patent::getTechField).toList());
-
-        return new PortfolioSummaryResponse(
-                patents.size(),
-                expiringWithinYear,
-                countries.size(),
-                techFields.size(),
-                insights(patents.size(), expiringWithinYear, countries.size(), techFields.size())
-        );
+    public PortfolioInsightsResponse getInsights() {
+        return new PortfolioInsightsResponse(List.of());
     }
 
     public PortfolioDistributionResponse getDistribution() {
@@ -64,6 +48,9 @@ public class PortfolioService {
         Map<String, Long> byTechField = new HashMap<>();
         Map<String, Long> byFilingCountry = new HashMap<>();
         Map<Long, DepartmentAccumulator> byDepartment = new HashMap<>();
+        Map<Long, Report> latestCompletedReportsByPatentId = latestCompletedReportsByPatentId();
+        GradeAccumulator totalGrade = new GradeAccumulator(null, "전체");
+        Map<Long, GradeAccumulator> byDepartmentGrade = new HashMap<>();
 
         for (Patent patent : patents) {
             byTechField.merge(normalizeGroupName(patent.getTechField()), 1L, Long::sum);
@@ -76,10 +63,19 @@ public class PortfolioService {
                     ignored -> new DepartmentAccumulator(departmentId, departmentName)
             );
             accumulator.count++;
+
+            Report report = latestCompletedReportsByPatentId.get(patent.getId());
+            if (report != null && report.getValueGrade() != null) {
+                totalGrade.accumulate(report.getValueGrade());
+                byDepartmentGrade.computeIfAbsent(
+                        departmentId,
+                        ignored -> new GradeAccumulator(departmentId, departmentName)
+                ).accumulate(report.getValueGrade());
+            }
         }
 
         return new PortfolioDistributionResponse(
-                List.of(),
+                gradeDistributions(totalGrade, byDepartmentGrade),
                 nameCounts(byTechField),
                 countryCounts(byFilingCountry),
                 departmentCounts(byDepartment)
@@ -169,24 +165,6 @@ public class PortfolioService {
         );
     }
 
-    private List<String> insights(long total, long expiringWithinYear, long countryCount, long techFieldCount) {
-        List<String> insights = new ArrayList<>();
-        insights.add("전체 보유 특허는 " + total + "건입니다.");
-        if (expiringWithinYear > 0) {
-            insights.add("1년 내 만료 예정 특허 " + expiringWithinYear + "건에 대한 재평가 우선순위 검토가 필요합니다.");
-        }
-        if (countryCount > 1 || techFieldCount > 1) {
-            insights.add("국가 및 기술 분야별 분포를 기준으로 포트폴리오 편중 여부를 확인할 수 있습니다.");
-        }
-        return insights;
-    }
-
-    private Set<String> distinctNormalized(List<String> values) {
-        return values.stream()
-                .map(this::normalizeGroupName)
-                .collect(Collectors.toCollection(HashSet::new));
-    }
-
     private String submittedQuarter(Review review) {
         if (review.getSubmittedAt() == null) {
             return null;
@@ -229,6 +207,27 @@ public class PortfolioService {
                         accumulator.count
                 ))
                 .toList();
+    }
+
+    private Map<Long, Report> latestCompletedReportsByPatentId() {
+        Map<Long, Report> reportsByPatentId = new HashMap<>();
+        reportRepository.findAllByStatus(ReportStatus.COMPLETED).stream()
+                .sorted(Comparator.comparing(Report::getId).reversed())
+                .forEach(report -> reportsByPatentId.putIfAbsent(report.getPatent().getId(), report));
+        return reportsByPatentId;
+    }
+
+    private List<PortfolioDistributionResponse.GradeDistribution> gradeDistributions(
+            GradeAccumulator total,
+            Map<Long, GradeAccumulator> byDepartment
+    ) {
+        List<PortfolioDistributionResponse.GradeDistribution> distributions = new ArrayList<>();
+        distributions.add(total.toResponse());
+        byDepartment.values().stream()
+                .sorted(Comparator.comparing(GradeAccumulator::departmentName))
+                .map(GradeAccumulator::toResponse)
+                .forEach(distributions::add);
+        return distributions;
     }
 
     private List<PortfolioDecisionResponse.QuarterDecision> quarterDecisions(Map<String, DecisionAccumulator> decisions) {
@@ -289,6 +288,49 @@ public class PortfolioService {
 
         private String departmentName() {
             return departmentName;
+        }
+    }
+
+    private static class GradeAccumulator {
+        private final Long departmentId;
+        private final String departmentName;
+        private long s;
+        private long a;
+        private long b;
+        private long c;
+        private long d;
+
+        private GradeAccumulator(Long departmentId, String departmentName) {
+            this.departmentId = departmentId;
+            this.departmentName = departmentName;
+        }
+
+        private void accumulate(String grade) {
+            switch (grade) {
+                case "S" -> s++;
+                case "A" -> a++;
+                case "B" -> b++;
+                case "C" -> c++;
+                case "D" -> d++;
+                default -> {
+                }
+            }
+        }
+
+        private String departmentName() {
+            return departmentName;
+        }
+
+        private PortfolioDistributionResponse.GradeDistribution toResponse() {
+            return new PortfolioDistributionResponse.GradeDistribution(
+                    departmentId,
+                    departmentName,
+                    s,
+                    a,
+                    b,
+                    c,
+                    d
+            );
         }
     }
 

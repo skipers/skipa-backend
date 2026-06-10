@@ -5,14 +5,16 @@ import java.math.BigDecimal;
 public record ReportCallbackResponse(
         Long reportId,
         String status,
-        BigDecimal totalScore
+        BigDecimal totalScore,
+        String valueGrade
 ) {
 
     public static ReportCallbackResponse from(ReportStatusResponse response) {
         return new ReportCallbackResponse(
                 response.id(),
                 response.status(),
-                response.totalScore()
+                response.totalScore(),
+                response.valueGrade()
         );
     }
 }

@@ -10,7 +10,6 @@ import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
@@ -73,8 +72,8 @@ class ReviewServiceTest {
                 .build();
         ReflectionTestUtils.setField(department, "id", 1L);
         reviewCycle = ReviewCycle.builder()
-                .name("2026년 2분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(1))
                 .build();
@@ -94,7 +93,7 @@ class ReviewServiceTest {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(reviewCycle));
-        when(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L)).thenReturn(false);
+        when(reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L)).thenReturn(Optional.empty());
         when(reviewRepository.save(any(Review.class))).thenAnswer(invocation -> {
             Review review = invocation.getArgument(0);
             ReflectionTestUtils.setField(review, "id", 100L);
@@ -108,7 +107,7 @@ class ReviewServiceTest {
         assertThat(response.departmentId()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.reviewCycleId()).isEqualTo(1L);
-        assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate());
+        assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate().minusDays(14));
         assertThat(response.opinion()).isNull();
         assertThat(response.submittedAt()).isNull();
         assertThat(response.checked()).isFalse();
@@ -175,13 +174,36 @@ class ReviewServiceTest {
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(reviewCycle));
-        when(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L)).thenReturn(true);
+        when(reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L)).thenReturn(Optional.of(review()));
 
         assertError(
                 () -> reviewService.create(10L),
                 ReviewException.class,
                 ErrorCode.DUPLICATE_REVIEW_REQUEST
         );
+        verify(reviewRepository, never()).save(any());
+    }
+
+    @Test
+    void createRequestsScheduledReviewTargetInsteadOfCreatingDuplicate() {
+        Review scheduledReview = Review.builder()
+                .patent(patent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.SCHEDULED)
+                .build();
+        ReflectionTestUtils.setField(scheduledReview, "id", 100L);
+        when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L))
+                .thenReturn(Optional.of(scheduledReview));
+
+        ReviewResponse response = reviewService.create(10L);
+
+        assertThat(response.id()).isEqualTo(100L);
+        assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(scheduledReview.getStatus()).isEqualTo(ReviewStatus.PENDING);
         verify(reviewRepository, never()).save(any());
     }
 
@@ -282,27 +304,55 @@ class ReviewServiceTest {
     }
 
     @Test
-    void getAllUsesFiltersAndDescendingIdSort() {
+    void getAllUsesFiltersAndDefaultApplicationNumberSort() {
         PageRequest pageable = PageRequest.of(0, 20);
-        PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "patent.applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
         Review review = review();
-        when(reviewRepository.findAllByFilters(ReviewStatus.PENDING, 1L, 10L, false, sortedPageable))
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.findAllByFilters(1L, ReviewStatus.PENDING, 1L, 10L, false, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, pageable).getContent())
+        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, null, pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
-        verify(reviewRepository).findAllByFilters(ReviewStatus.PENDING, 1L, 10L, false, sortedPageable);
+        verify(reviewRepository).findAllByFilters(1L, ReviewStatus.PENDING, 1L, 10L, false, sortedPageable);
+    }
+
+    @Test
+    void getAllSortsByPatentFieldsWithDirection() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "patent.applicationDate")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        Review review = review();
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.of(reviewCycle));
+        when(reviewRepository.findAllByFilters(1L, null, null, null, null, sortedPageable))
+                .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
+
+        assertThat(reviewService.getAll(null, null, null, null, "applicationDate,asc", pageable).getContent())
+                .extracting(ReviewResponse::id)
+                .containsExactly(100L);
+        verify(reviewRepository).findAllByFilters(1L, null, null, null, null, sortedPageable);
     }
 
     @Test
     void getAllRejectsInvalidStatus() {
         assertError(
-                () -> reviewService.getAll("대기", null, null, null, PageRequest.of(0, 20)),
+                () -> reviewService.getAll("대기", null, null, null, null, PageRequest.of(0, 20)),
                 ReviewException.class,
                 ErrorCode.INVALID_REQUEST
         );
-        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any(), any());
+        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any(), any(), any());
     }
 
     @Test

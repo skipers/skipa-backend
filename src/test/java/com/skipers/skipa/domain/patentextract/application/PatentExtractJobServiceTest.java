@@ -191,7 +191,7 @@ class PatentExtractJobServiceTest {
                 1L,
                 objectMapper.createObjectNode()
                         .put("title", "Patent")
-                        .put("overview", "Overview")
+                        .put("summary", "Summary")
         );
 
         assertThat(response.extractJobId()).isEqualTo(1L);

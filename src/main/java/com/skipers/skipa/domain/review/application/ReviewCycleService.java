@@ -3,7 +3,6 @@ package com.skipers.skipa.domain.review.application;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleCreateRequest;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleUpdateRequest;
 import com.skipers.skipa.domain.review.dto.response.ReviewCycleResponse;
@@ -28,12 +27,12 @@ public class ReviewCycleService {
     @Transactional
     public ReviewCycleResponse create(ReviewCycleCreateRequest request) {
         validatePeriod(request.startDate(), request.endDate());
-        validateDuplicateName(request.name());
+        validateDuplicateYearQuarter(request.year(), request.quarter());
         validateOverlappingPeriod(request.startDate(), request.endDate());
 
         ReviewCycle reviewCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name(request.name())
-                .type(parseType(request.type()))
+                .year(request.year())
+                .quarter(request.quarter())
                 .startDate(request.startDate())
                 .endDate(request.endDate())
                 .build());
@@ -43,6 +42,15 @@ public class ReviewCycleService {
 
     public ReviewCycleResponse get(Long reviewCycleId) {
         return ReviewCycleResponse.from(getReviewCycle(reviewCycleId));
+    }
+
+    public ReviewCycleResponse getCurrent() {
+        LocalDate today = LocalDate.now();
+        ReviewCycle reviewCycle = reviewCycleRepository
+                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today)
+                .orElseThrow(() -> new ReviewCycleException(ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND));
+
+        return ReviewCycleResponse.from(reviewCycle);
     }
 
     public Page<ReviewCycleResponse> getAll(Pageable pageable) {
@@ -55,12 +63,12 @@ public class ReviewCycleService {
         ReviewCycle reviewCycle = getReviewCycle(reviewCycleId);
 
         validatePeriod(request.startDate(), request.endDate());
-        validateDuplicateName(request.name(), reviewCycleId);
+        validateDuplicateYearQuarter(request.year(), request.quarter(), reviewCycleId);
         validateOverlappingPeriod(request.startDate(), request.endDate(), reviewCycleId);
 
         reviewCycle.update(
-                request.name(),
-                parseType(request.type()),
+                request.year(),
+                request.quarter(),
                 request.startDate(),
                 request.endDate()
         );
@@ -84,29 +92,21 @@ public class ReviewCycleService {
                 .orElseThrow(() -> new ReviewCycleException(ErrorCode.REVIEW_CYCLE_NOT_FOUND));
     }
 
-    private ReviewCycleType parseType(String type) {
-        try {
-            return ReviewCycleType.valueOf(type);
-        } catch (IllegalArgumentException exception) {
-            throw new ReviewCycleException(ErrorCode.INVALID_REVIEW_CYCLE_TYPE);
-        }
-    }
-
     private void validatePeriod(LocalDate startDate, LocalDate endDate) {
         if (startDate.isAfter(endDate)) {
             throw new ReviewCycleException(ErrorCode.INVALID_REVIEW_CYCLE_PERIOD);
         }
     }
 
-    private void validateDuplicateName(String name) {
-        if (reviewCycleRepository.existsByNameIgnoreCase(name)) {
-            throw new ReviewCycleException(ErrorCode.DUPLICATE_REVIEW_CYCLE_NAME);
+    private void validateDuplicateYearQuarter(Integer year, Integer quarter) {
+        if (reviewCycleRepository.existsByYearAndQuarter(year, quarter)) {
+            throw new ReviewCycleException(ErrorCode.DUPLICATE_REVIEW_CYCLE);
         }
     }
 
-    private void validateDuplicateName(String name, Long reviewCycleId) {
-        if (reviewCycleRepository.existsByNameIgnoreCaseAndIdNot(name, reviewCycleId)) {
-            throw new ReviewCycleException(ErrorCode.DUPLICATE_REVIEW_CYCLE_NAME);
+    private void validateDuplicateYearQuarter(Integer year, Integer quarter, Long reviewCycleId) {
+        if (reviewCycleRepository.existsByYearAndQuarterAndIdNot(year, quarter, reviewCycleId)) {
+            throw new ReviewCycleException(ErrorCode.DUPLICATE_REVIEW_CYCLE);
         }
     }
 

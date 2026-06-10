@@ -10,6 +10,7 @@ public record ReportResponse(
         Long patentId,
         String status,
         BigDecimal totalScore,
+        String valueGrade,
         Instant evaluatedAt,
         Instant createdAt,
         Instant updatedAt
@@ -21,6 +22,7 @@ public record ReportResponse(
                 report.getPatent().getId(),
                 report.getStatus().name(),
                 report.getTotalScore(),
+                report.getValueGrade(),
                 report.getEvaluatedAt(),
                 report.getCreatedAt(),
                 report.getUpdatedAt()
