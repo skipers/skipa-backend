@@ -1,13 +1,12 @@
 package com.skipers.skipa.domain.dashboard.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.Instant;
-import java.time.LocalDate;
 import java.util.List;
 
 public record BusinessDashboardResponse(
         ReviewCycleSummary reviewCycle,
-        LocalDate dueDate,
-        long dDay,
         Kpi kpi,
         List<PatentReviewItem> pendingPatents,
         List<SubmissionItem> recentSubmissions,
@@ -15,19 +14,19 @@ public record BusinessDashboardResponse(
         List<YearlyTrend> yearlyTrends
 ) {
 
+    @Schema(name = "BusinessDashboardKpi")
     public record Kpi(
             long total,
             long submitted,
-            long pending,
-            long overdue
+            long notSubmitted
     ) {
     }
 
     public record PatentReviewItem(
+            Long reviewId,
             Long patentId,
             String title,
             String applicationNumber,
-            LocalDate dueDate,
             String status
     ) {
     }
@@ -44,7 +43,6 @@ public record BusinessDashboardResponse(
 
     public record PatentStatusSummary(
             long active,
-            long expiringSoon,
             long inactive
     ) {
     }

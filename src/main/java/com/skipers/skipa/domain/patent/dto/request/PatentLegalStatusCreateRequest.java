@@ -10,8 +10,8 @@ import java.time.LocalDate;
 public record PatentLegalStatusCreateRequest(
 
         @NotBlank(message = "권리 상태는 필수입니다.")
-        @Pattern(regexp = "^(PUBLISHED|REGISTERED|REJECTED|ABANDONED|EXPIRED|INVALIDATED|WITHDRAWN)$", message = "권리 상태는 PUBLISHED/REGISTERED/REJECTED/ABANDONED/EXPIRED/INVALIDATED/WITHDRAWN 중 하나여야 합니다.")
-        @Schema(description = "권리 상태", example = "PUBLISHED")
+        @Pattern(regexp = "^(APPLIED|PUBLISHED|REGISTERED|REJECTED|ABANDONED|EXPIRED|INVALIDATED|WITHDRAWN)$", message = "권리 상태는 APPLIED/PUBLISHED/REGISTERED/REJECTED/ABANDONED/EXPIRED/INVALIDATED/WITHDRAWN 중 하나여야 합니다.")
+        @Schema(description = "권리 상태", example = "APPLIED")
         String status,
 
         @NotNull(message = "상태 변경일자는 필수입니다.")

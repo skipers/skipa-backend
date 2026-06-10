@@ -56,11 +56,13 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "announcement_date") // 공고일자
     private LocalDate announcementDate;
 
-    @Column(name = "ipc_code", length = 200) // IPC 코드
-    private String ipcCode;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "ipc_codes") // IPC 코드
+    private List<String> ipcCodes;
 
-    @Column(name = "cpc_code", length = 200) // CPC 코드
-    private String cpcCode;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "cpc_codes") // CPC 코드
+    private List<String> cpcCodes;
 
     @Column(name = "applicant", length = 200) // 출원인명
     private String applicant;
@@ -73,6 +75,9 @@ public class Patent extends BaseTimeEntity {
 
     @Column(name = "citation_count") // 피인용 수
     private Integer citationCount;
+
+    @Column(name = "examination_claim_count") // 심사청구항수
+    private Integer examinationClaimCount;
 
     @Column(name = "original_pdf_key", length = 500) // 원문 파일 키
     private String originalPdfKey;
@@ -110,11 +115,8 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "keywords") // 키워드
     private List<String> keywords;
 
-    @Column(name = "overview", columnDefinition = "text") // 개요
-    private String overview;
-
-    @Column(name = "core_content", columnDefinition = "text") // 핵심 내용
-    private String coreContent;
+    @Column(name = "summary", columnDefinition = "text") // 요약
+    private String summary;
 
     @Builder
     private Patent(
@@ -127,12 +129,13 @@ public class Patent extends BaseTimeEntity {
             LocalDate registrationDate,
             LocalDate publicationDate,
             LocalDate announcementDate,
-            String ipcCode,
-            String cpcCode,
+            List<String> ipcCodes,
+            List<String> cpcCodes,
             String applicant,
             String inventor,
             LocalDate expiryDate,
             Integer citationCount,
+            Integer examinationClaimCount,
             String originalPdfKey,
             String managementNumber,
             String businessField,
@@ -144,8 +147,7 @@ public class Patent extends BaseTimeEntity {
             String initialDepartment,
             Department currentDepartment,
             List<String> keywords,
-            String overview,
-            String coreContent
+            String summary
     ) {
         this.title = title;
         this.applicationNumber = applicationNumber;
@@ -156,12 +158,13 @@ public class Patent extends BaseTimeEntity {
         this.registrationDate = registrationDate;
         this.publicationDate = publicationDate;
         this.announcementDate = announcementDate;
-        this.ipcCode = ipcCode;
-        this.cpcCode = cpcCode;
+        this.ipcCodes = ipcCodes;
+        this.cpcCodes = cpcCodes;
         this.applicant = applicant;
         this.inventor = inventor;
         this.expiryDate = expiryDate;
         this.citationCount = citationCount;
+        this.examinationClaimCount = examinationClaimCount;
         this.originalPdfKey = originalPdfKey;
         this.managementNumber = managementNumber;
         this.businessField = businessField;
@@ -173,8 +176,7 @@ public class Patent extends BaseTimeEntity {
         this.initialDepartment = initialDepartment;
         this.currentDepartment = currentDepartment;
         this.keywords = keywords;
-        this.overview = overview;
-        this.coreContent = coreContent;
+        this.summary = summary;
     }
 
     public void update(
@@ -187,12 +189,13 @@ public class Patent extends BaseTimeEntity {
             LocalDate registrationDate,
             LocalDate publicationDate,
             LocalDate announcementDate,
-            String ipcCode,
-            String cpcCode,
+            List<String> ipcCodes,
+            List<String> cpcCodes,
             String applicant,
             String inventor,
             LocalDate expiryDate,
             Integer citationCount,
+            Integer examinationClaimCount,
             String originalPdfKey,
             String managementNumber,
             String businessField,
@@ -203,8 +206,7 @@ public class Patent extends BaseTimeEntity {
             String jointApplicant,
             String initialDepartment,
             List<String> keywords,
-            String overview,
-            String coreContent
+            String summary
     ) {
         this.title = title;
         this.applicationNumber = applicationNumber;
@@ -215,12 +217,13 @@ public class Patent extends BaseTimeEntity {
         this.registrationDate = registrationDate;
         this.publicationDate = publicationDate;
         this.announcementDate = announcementDate;
-        this.ipcCode = ipcCode;
-        this.cpcCode = cpcCode;
+        this.ipcCodes = ipcCodes;
+        this.cpcCodes = cpcCodes;
         this.applicant = applicant;
         this.inventor = inventor;
         this.expiryDate = expiryDate;
         this.citationCount = citationCount;
+        this.examinationClaimCount = examinationClaimCount;
         this.originalPdfKey = originalPdfKey;
         this.managementNumber = managementNumber;
         this.businessField = businessField;
@@ -231,8 +234,7 @@ public class Patent extends BaseTimeEntity {
         this.jointApplicant = jointApplicant;
         this.initialDepartment = initialDepartment;
         this.keywords = keywords;
-        this.overview = overview;
-        this.coreContent = coreContent;
+        this.summary = summary;
     }
 
     public void changeCurrentDepartment(Department department) {

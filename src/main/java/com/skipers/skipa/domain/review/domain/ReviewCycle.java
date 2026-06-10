@@ -3,8 +3,6 @@ package com.skipers.skipa.domain.review.domain;
 import com.skipers.skipa.global.common.entity.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,7 +21,7 @@ import java.time.LocalDate;
 @Table(
         name = "review_cycles",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_review_cycles_name", columnNames = "name")
+                @UniqueConstraint(name = "uk_review_cycles_year_quarter", columnNames = {"cycle_year", "quarter"})
         }
 )
 public class ReviewCycle extends BaseTimeEntity {
@@ -33,12 +31,11 @@ public class ReviewCycle extends BaseTimeEntity {
     @Column(name = "id") // 검토 주기 ID
     private Long id;
 
-    @Column(name = "name", nullable = false, length = 100) // 검토 주기명
-    private String name;
+    @Column(name = "cycle_year", nullable = false) // 검토 주기 연도
+    private Integer year;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false, length = 20) // 검토 주기 유형
-    private ReviewCycleType type;
+    @Column(name = "quarter", nullable = false) // 검토 주기 분기
+    private Integer quarter;
 
     @Column(name = "start_date", nullable = false) // 시작일
     private LocalDate startDate;
@@ -47,16 +44,16 @@ public class ReviewCycle extends BaseTimeEntity {
     private LocalDate endDate;
 
     @Builder
-    private ReviewCycle(String name, ReviewCycleType type, LocalDate startDate, LocalDate endDate) {
-        this.name = name;
-        this.type = type;
+    private ReviewCycle(Integer year, Integer quarter, LocalDate startDate, LocalDate endDate) {
+        this.year = year;
+        this.quarter = quarter;
         this.startDate = startDate;
         this.endDate = endDate;
     }
 
-    public void update(String name, ReviewCycleType type, LocalDate startDate, LocalDate endDate) {
-        this.name = name;
-        this.type = type;
+    public void update(Integer year, Integer quarter, LocalDate startDate, LocalDate endDate) {
+        this.year = year;
+        this.quarter = quarter;
         this.startDate = startDate;
         this.endDate = endDate;
     }

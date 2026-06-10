@@ -31,12 +31,13 @@ class PatentTest {
                 LocalDate.of(2026, 1, 2),
                 LocalDate.of(2026, 1, 3),
                 LocalDate.of(2026, 1, 4),
-                "IPC",
-                "CPC",
+                List.of("IPC"),
+                List.of("CPC"),
                 "Applicant",
                 "Inventor",
                 LocalDate.of(2046, 1, 1),
                 3,
+                5,
                 "pdf-key",
                 "management",
                 "business",
@@ -47,8 +48,7 @@ class PatentTest {
                 "Joint Applicant",
                 "Initial Department",
                 List.of("Keyword"),
-                "Overview",
-                "Core Content"
+                "Summary"
         );
 
         assertThat(patent.getTitle()).isEqualTo("Updated");
@@ -60,12 +60,13 @@ class PatentTest {
         assertThat(patent.getRegistrationDate()).isEqualTo(LocalDate.of(2026, 1, 2));
         assertThat(patent.getPublicationDate()).isEqualTo(LocalDate.of(2026, 1, 3));
         assertThat(patent.getAnnouncementDate()).isEqualTo(LocalDate.of(2026, 1, 4));
-        assertThat(patent.getIpcCode()).isEqualTo("IPC");
-        assertThat(patent.getCpcCode()).isEqualTo("CPC");
+        assertThat(patent.getIpcCodes()).containsExactly("IPC");
+        assertThat(patent.getCpcCodes()).containsExactly("CPC");
         assertThat(patent.getApplicant()).isEqualTo("Applicant");
         assertThat(patent.getInventor()).isEqualTo("Inventor");
         assertThat(patent.getExpiryDate()).isEqualTo(LocalDate.of(2046, 1, 1));
         assertThat(patent.getCitationCount()).isEqualTo(3);
+        assertThat(patent.getExaminationClaimCount()).isEqualTo(5);
         assertThat(patent.getOriginalPdfKey()).isEqualTo("pdf-key");
         assertThat(patent.getManagementNumber()).isEqualTo("management");
         assertThat(patent.getBusinessField()).isEqualTo("business");
@@ -76,8 +77,7 @@ class PatentTest {
         assertThat(patent.getJointApplicant()).isEqualTo("Joint Applicant");
         assertThat(patent.getInitialDepartment()).isEqualTo("Initial Department");
         assertThat(patent.getKeywords()).containsExactly("Keyword");
-        assertThat(patent.getOverview()).isEqualTo("Overview");
-        assertThat(patent.getCoreContent()).isEqualTo("Core Content");
+        assertThat(patent.getSummary()).isEqualTo("Summary");
     }
 
     @Test
@@ -88,6 +88,7 @@ class PatentTest {
                 .applicationNumber("APP-1")
                 .applicant("Applicant")
                 .inventor("Inventor")
+                .examinationClaimCount(7)
                 .initialDepartment("Legal")
                 .currentDepartment(currentDepartment)
                 .build();
@@ -99,20 +100,31 @@ class PatentTest {
         ReflectionTestUtils.setField(currentDepartment, "id", 10L);
 
         ReflectionTestUtils.setField(patent, "relatedProducts", List.of("Product"));
+        ReflectionTestUtils.setField(patent, "ipcCodes", List.of("IPC"));
+        ReflectionTestUtils.setField(patent, "cpcCodes", List.of("CPC"));
         ReflectionTestUtils.setField(patent, "keywords", List.of("Keyword"));
+        ReflectionTestUtils.setField(patent, "summary", "Summary");
 
         PatentDetailResponse detailResponse = PatentDetailResponse.from(patent);
         PatentListResponse listResponse = PatentListResponse.from(patent);
 
         assertThat(detailResponse.id()).isEqualTo(1L);
         assertThat(detailResponse.relatedProducts()).containsExactly("Product");
+        assertThat(detailResponse.ipcCodes()).containsExactly("IPC");
+        assertThat(detailResponse.cpcCodes()).containsExactly("CPC");
         assertThat(detailResponse.keywords()).containsExactly("Keyword");
+        assertThat(detailResponse.summary()).isEqualTo("Summary");
+        assertThat(detailResponse.examinationClaimCount()).isEqualTo(7);
         assertThat(detailResponse.initialDepartment()).isEqualTo("Legal");
         assertThat(detailResponse.currentDepartmentId()).isEqualTo(10L);
         assertThat(detailResponse.currentDepartmentName()).isEqualTo("Legal");
         assertThat(detailResponse.createdAt()).isEqualTo(createdAt);
         assertThat(listResponse.title()).isEqualTo("Patent");
         assertThat(listResponse.applicationNumber()).isEqualTo("APP-1");
+        assertThat(listResponse.ipcCodes()).containsExactly("IPC");
+        assertThat(listResponse.cpcCodes()).containsExactly("CPC");
+        assertThat(listResponse.summary()).isEqualTo("Summary");
+        assertThat(listResponse.examinationClaimCount()).isEqualTo(7);
         assertThat(listResponse.updatedAt()).isEqualTo(updatedAt);
     }
 

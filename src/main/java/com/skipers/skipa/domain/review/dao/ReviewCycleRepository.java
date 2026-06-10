@@ -15,11 +15,13 @@ public interface ReviewCycleRepository extends JpaRepository<ReviewCycle, Long> 
             LocalDate endDate
     );
 
+    Optional<ReviewCycle> findByYearAndQuarter(Integer year, Integer quarter);
+
     Page<ReviewCycle> findAllByOrderByStartDateDesc(Pageable pageable);
 
-    boolean existsByNameIgnoreCase(String name);
+    boolean existsByYearAndQuarter(Integer year, Integer quarter);
 
-    boolean existsByNameIgnoreCaseAndIdNot(String name, Long reviewCycleId);
+    boolean existsByYearAndQuarterAndIdNot(Integer year, Integer quarter, Long reviewCycleId);
 
     boolean existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(LocalDate endDate, LocalDate startDate);
 

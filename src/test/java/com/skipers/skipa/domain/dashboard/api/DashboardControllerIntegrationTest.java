@@ -14,7 +14,6 @@ import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
@@ -95,8 +94,8 @@ class DashboardControllerIntegrationTest {
                 .name("배터리 사업부")
                 .build());
         reviewCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name("2026년 2분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(10))
                 .build());
@@ -125,6 +124,13 @@ class DashboardControllerIntegrationTest {
                 semiconductorDepartment,
                 LocalDate.now().plusMonths(7)
         );
+        Patent checkedReplyPatent = savePatent(
+                "Checked Reply Patent",
+                "APP-DASH-LEGAL-5",
+                "소재",
+                batteryDepartment,
+                LocalDate.now().plusMonths(8)
+        );
         savePatent(
                 "Unrequested Patent",
                 "APP-DASH-LEGAL-4",
@@ -147,11 +153,20 @@ class DashboardControllerIntegrationTest {
                 .submittedAt(Instant.now())
                 .checked(false)
                 .build());
-        reviewRepository.save(Review.builder()
+        Review overdueReview = reviewRepository.save(Review.builder()
                 .patent(overduePatent)
                 .department(semiconductorDepartment)
                 .reviewCycle(reviewCycle)
                 .dueDate(LocalDate.now().minusDays(1))
+                .build());
+        reviewRepository.save(Review.builder()
+                .patent(checkedReplyPatent)
+                .department(batteryDepartment)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.ABANDON)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now().minusSeconds(60))
+                .checked(true)
                 .build());
         String legalToken = createActiveUserToken("legal-dashboard", "legal-dashboard@example.com", UserRole.LEGAL, null);
 
@@ -159,13 +174,16 @@ class DashboardControllerIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
-                .andExpect(jsonPath("$.data.kpi.requested").value(3))
+                .andExpect(jsonPath("$.data.progressRate").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.requested").value(4))
                 .andExpect(jsonPath("$.data.kpi.reviewing").value(1))
-                .andExpect(jsonPath("$.data.kpi.decided").value(1))
+                .andExpect(jsonPath("$.data.kpi.decided").value(2))
                 .andExpect(jsonPath("$.data.kpi.overdue").value(1))
                 .andExpect(jsonPath("$.data.kpi.unread").value(1))
                 .andExpect(jsonPath("$.data.kpi.unrequested").value(1))
                 .andExpect(jsonPath("$.data.departments.length()").value(2))
+                .andExpect(jsonPath("$.data.departments[0].reviewing").doesNotExist())
+                .andExpect(jsonPath("$.data.departments[0].overdue").doesNotExist())
                 .andExpect(jsonPath("$.data.recentReplies.length()").value(1))
                 .andExpect(jsonPath("$.data.recentReplies[0].checked").value(false));
     }
@@ -186,6 +204,13 @@ class DashboardControllerIntegrationTest {
                 semiconductorDepartment,
                 LocalDate.now().plusMonths(6)
         );
+        Patent overduePatent = savePatent(
+                "Overdue Biz Patent",
+                "APP-DASH-BIZ-4",
+                "반도체",
+                semiconductorDepartment,
+                LocalDate.now().plusMonths(9)
+        );
         Patent otherDepartmentPatent = savePatent(
                 "Other Department Patent",
                 "APP-DASH-BIZ-3",
@@ -198,7 +223,7 @@ class DashboardControllerIntegrationTest {
                 .status(PatentLegalStatusType.REGISTERED)
                 .changedAt(LocalDate.now())
                 .build());
-        reviewRepository.save(Review.builder()
+        Review pendingReview = reviewRepository.save(Review.builder()
                 .patent(pendingPatent)
                 .department(semiconductorDepartment)
                 .reviewCycle(reviewCycle)
@@ -211,6 +236,13 @@ class DashboardControllerIntegrationTest {
                 .opinion(BusinessOpinion.ABANDON)
                 .status(ReviewStatus.SUBMITTED)
                 .submittedAt(Instant.now())
+                .build());
+        Review overdueReview = reviewRepository.save(Review.builder()
+                .patent(overduePatent)
+                .department(semiconductorDepartment)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.OVERDUE)
+                .dueDate(LocalDate.now().minusDays(1))
                 .build());
         reviewRepository.save(Review.builder()
                 .patent(otherDepartmentPatent)
@@ -229,11 +261,25 @@ class DashboardControllerIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
-                .andExpect(jsonPath("$.data.kpi.total").value(2))
+                .andExpect(jsonPath("$.data.kpi.total").value(3))
                 .andExpect(jsonPath("$.data.kpi.submitted").value(1))
-                .andExpect(jsonPath("$.data.kpi.pending").value(1))
-                .andExpect(jsonPath("$.data.pendingPatents.length()").value(1))
-                .andExpect(jsonPath("$.data.pendingPatents[0].patentId").value(pendingPatent.getId()))
+                .andExpect(jsonPath("$.data.kpi.notSubmitted").value(2))
+                .andExpect(jsonPath("$.data.dueDate").doesNotExist())
+                .andExpect(jsonPath("$.data.dDay").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.requested").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.reviewing").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.decided").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.overdue").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.pending").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.unread").doesNotExist())
+                .andExpect(jsonPath("$.data.kpi.unrequested").doesNotExist())
+                .andExpect(jsonPath("$.data.patentStatus.expiringSoon").doesNotExist())
+                .andExpect(jsonPath("$.data.pendingPatents.length()").value(2))
+                .andExpect(jsonPath("$.data.pendingPatents[0].reviewId").value(overdueReview.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents[0].patentId").value(overduePatent.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents[0].dueDate").doesNotExist())
+                .andExpect(jsonPath("$.data.pendingPatents[1].reviewId").value(pendingReview.getId()))
+                .andExpect(jsonPath("$.data.pendingPatents[1].patentId").value(pendingPatent.getId()))
                 .andExpect(jsonPath("$.data.recentSubmissions.length()").value(1))
                 .andExpect(jsonPath("$.data.recentSubmissions[0].patentId").value(submittedPatent.getId()));
     }

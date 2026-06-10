@@ -9,9 +9,13 @@ import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.report.dto.response.ReportCreateResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportDetailResponse;
+import com.skipers.skipa.domain.report.dto.response.ReportHistoryResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportResponse;
 import com.skipers.skipa.domain.report.dto.response.ReportStatusResponse;
 import com.skipers.skipa.domain.report.exception.ReportException;
+import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.domain.Review;
+import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +43,7 @@ public class ReportService {
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final ReportGenerationPublisher reportGenerationPublisher;
     private final ReportStorageService reportStorageService;
+    private final ReviewRepository reviewRepository;
 
     @Transactional
     public ReportCreateResponse create(Long patentId) {
@@ -77,7 +86,8 @@ public class ReportService {
             throw new ReportException(ErrorCode.REPORT_NOT_COMPLETED);
         }
 
-        return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()));
+        Review review = latestSubmittedReview(patentId, report.getId());
+        return ReportDetailResponse.of(report, reportStorageService.generatePresignedUrl(report.getReportKey()), review);
     }
 
     public ReportDetailResponse getLatest(User user, Long patentId) {
@@ -91,7 +101,41 @@ public class ReportService {
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
         String url = report.isCompleted() ? reportStorageService.generatePresignedUrl(report.getReportKey()) : null;
-        return ReportDetailResponse.of(report, url);
+        Review review = latestSubmittedReview(patentId, report.getId());
+        return ReportDetailResponse.of(report, url, review);
+    }
+
+    public ReportHistoryResponse getHistory(User user, Long patentId) {
+        businessPatentAccessValidator.validate(user, patentId);
+
+        if (!patentRepository.existsById(patentId)) {
+            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+        }
+
+        List<Report> historyReports = reportRepository
+                .findByPatentIdAndStatusOrderByIdDesc(patentId, ReportStatus.COMPLETED)
+                .stream()
+                .skip(1)
+                .toList();
+        if (historyReports.isEmpty()) {
+            return new ReportHistoryResponse(List.of());
+        }
+
+        Map<Long, Review> latestSubmittedReviewByReportId = latestSubmittedReviewByReportId(patentId, historyReports);
+        return new ReportHistoryResponse(historyReports.stream()
+                .map(report -> {
+                    Review review = latestSubmittedReviewByReportId.get(report.getId());
+                    return new ReportHistoryResponse.Item(
+                            report.getId(),
+                            report.getPatent().getId(),
+                            report.getTotalScore(),
+                            report.getValueGrade(),
+                            report.getEvaluatedAt(),
+                            review == null || review.getOpinion() == null ? null : review.getOpinion().name(),
+                            review == null ? null : review.getComment()
+                    );
+                })
+                .toList());
     }
 
     public ReportStatusResponse getStatus(User user, Long patentId, Long reportId) {
@@ -104,11 +148,11 @@ public class ReportService {
     }
 
     @Transactional
-    public ReportStatusResponse complete(Long reportId, String reportKey, BigDecimal totalScore) {
+    public ReportStatusResponse complete(Long reportId, String reportKey, BigDecimal totalScore, String valueGrade) {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        report.complete(reportKey, totalScore, Instant.now());
+        report.complete(reportKey, totalScore, valueGrade, Instant.now());
 
         return ReportStatusResponse.from(report);
     }
@@ -129,5 +173,28 @@ public class ReportService {
         } catch (RuntimeException e) {
             throw new ReportException(ErrorCode.EXTERNAL_SERVICE_ERROR, e);
         }
+    }
+
+    private Map<Long, Review> latestSubmittedReviewByReportId(Long patentId, List<Report> reports) {
+        List<Long> reportIds = reports.stream()
+                .map(Report::getId)
+                .toList();
+        return reviewRepository.findByPatentIdAndReportIdInAndStatus(patentId, reportIds, ReviewStatus.SUBMITTED)
+                .stream()
+                .sorted(Comparator.comparing(Review::getId).reversed())
+                .collect(Collectors.toMap(
+                        review -> review.getReport().getId(),
+                        review -> review,
+                        (existing, ignored) -> existing
+                ));
+    }
+
+    private Review latestSubmittedReview(Long patentId, Long reportId) {
+        return reviewRepository.findFirstByPatentIdAndReportIdAndStatusOrderByIdDesc(
+                        patentId,
+                        reportId,
+                        ReviewStatus.SUBMITTED
+                )
+                .orElse(null);
     }
 }

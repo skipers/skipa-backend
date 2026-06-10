@@ -56,18 +56,21 @@ class InternalReportControllerIntegrationTest {
                         .content("""
                                 {
                                   "reportKey": "reports/%d/report.html",
-                                  "totalScore": 82.5
+                                  "totalScore": 82.5,
+                                  "valueGrade": "A"
                                 }
                                 """.formatted(report.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reportId").value(report.getId()))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.totalScore").value(82.5));
+                .andExpect(jsonPath("$.data.totalScore").value(82.5))
+                .andExpect(jsonPath("$.data.valueGrade").value("A"));
 
         Report completedReport = reportRepository.findById(report.getId()).orElseThrow();
         assertThat(completedReport.getStatus()).isEqualTo(ReportStatus.COMPLETED);
         assertThat(completedReport.getReportKey()).isEqualTo("reports/%d/report.html".formatted(report.getId()));
         assertThat(completedReport.getTotalScore()).isEqualByComparingTo("82.50");
+        assertThat(completedReport.getValueGrade()).isEqualTo("A");
         assertThat(completedReport.getEvaluatedAt()).isNotNull();
     }
 
@@ -81,7 +84,8 @@ class InternalReportControllerIntegrationTest {
                         .content("""
                                 {
                                   "reportKey": " ",
-                                  "totalScore": 82.5
+                                  "totalScore": 82.5,
+                                  "valueGrade": "A"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())

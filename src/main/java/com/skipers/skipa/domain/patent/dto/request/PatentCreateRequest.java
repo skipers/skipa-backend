@@ -43,13 +43,11 @@ public record PatentCreateRequest(
         @Schema(description = "공고일자", example = "2026-05-26")
         LocalDate announcementDate,
 
-        @Size(max = 200, message = "IPC 코드는 200자 이하여야 합니다.")
-        @Schema(description = "IPC 코드", example = "H01L 21/00")
-        String ipcCode,
+        @Schema(description = "IPC 코드", example = "[\"H01L 21/00\",\"H01L 23/00\"]")
+        List<String> ipcCodes,
 
-        @Size(max = 200, message = "CPC 코드는 200자 이하여야 합니다.")
-        @Schema(description = "CPC 코드", example = "H01L 21/00")
-        String cpcCode,
+        @Schema(description = "CPC 코드", example = "[\"H01L 21/00\",\"H01L 23/00\"]")
+        List<String> cpcCodes,
 
         @Size(max = 200, message = "출원인은 200자 이하여야 합니다.")
         @Schema(description = "출원인", example = "SK")
@@ -64,6 +62,9 @@ public record PatentCreateRequest(
 
         @Schema(description = "피인용 수", example = "10")
         Integer citationCount,
+
+        @Schema(description = "심사청구항수", example = "12")
+        Integer examinationClaimCount,
 
         @Size(max = 500, message = "원문 파일 키는 500자 이하여야 합니다.")
         @Schema(description = "원문 파일 키", example = "patents/original/xxx.pdf")
@@ -105,9 +106,6 @@ public record PatentCreateRequest(
         @Schema(description = "키워드", example = "[\"패키지\",\"반도체\"]")
         List<String> keywords,
 
-        @Schema(description = "개요", example = "특허 개요")
-        String overview,
-
-        @Schema(description = "핵심 내용", example = "특허 핵심 내용")
-        String coreContent
+        @Schema(description = "요약", example = "특허 요약")
+        String summary
 ) {}

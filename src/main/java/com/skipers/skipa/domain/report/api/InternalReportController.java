@@ -35,7 +35,8 @@ public class InternalReportController {
         return ApiResponse.ok(ReportCallbackResponse.from(reportService.complete(
                 reportId,
                 request.reportKey(),
-                request.totalScore()
+                request.totalScore(),
+                request.valueGrade()
         )));
     }
 

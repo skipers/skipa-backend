@@ -12,7 +12,6 @@ import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,6 +84,7 @@ class LegalApiRepositoryIntegrationTest {
                 .build());
 
         Page<Review> result = reviewRepository.findAllByFilters(
+                reviewCycle.getId(),
                 ReviewStatus.SUBMITTED,
                 department.getId(),
                 patent.getId(),
@@ -113,8 +113,8 @@ class LegalApiRepositoryIntegrationTest {
                 .build());
         ReviewCycle activeCycle = reviewCycleRepository.save(activeReviewCycle());
         ReviewCycle oldCycle = reviewCycleRepository.save(ReviewCycle.builder()
-                .name("지난 주기")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2025)
+                .quarter(4)
                 .startDate(LocalDate.now().minusMonths(6))
                 .endDate(LocalDate.now().minusMonths(5))
                 .build());
@@ -169,8 +169,8 @@ class LegalApiRepositoryIntegrationTest {
 
     private ReviewCycle activeReviewCycle() {
         return ReviewCycle.builder()
-                .name("현재 주기")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(1))
                 .build();

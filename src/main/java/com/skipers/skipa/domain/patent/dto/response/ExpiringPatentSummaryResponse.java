@@ -3,13 +3,12 @@ package com.skipers.skipa.domain.patent.dto.response;
 import java.util.List;
 
 public record ExpiringPatentSummaryResponse(
-        List<PeriodCount> byPeriod,
-        List<TechFieldCount> byTechField
+        List<PeriodTechFieldCount> periods
 ) {
 
-    public record PeriodCount(
-            int months,
-            long count
+    public record PeriodTechFieldCount(
+            Integer months,
+            List<TechFieldCount> byTechField
     ) {
     }
 

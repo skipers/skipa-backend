@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -66,7 +65,6 @@ public class DashboardService {
 
         return new LegalDashboardResponse(
                 ReviewCycleSummary.from(reviewCycle),
-                progressRate(decided, reviews.size()),
                 new LegalDashboardResponse.Kpi(reviews.size(), reviewing, decided, overdue, unread, unrequested),
                 departmentProgress(reviews, today),
                 nameCounts(patents.stream()
@@ -86,6 +84,7 @@ public class DashboardService {
         Long departmentId = user.getDepartment().getId();
         List<Review> reviews = reviewRepository.findAllByReviewCycleId(reviewCycle.getId()).stream()
                 .filter(review -> review.getDepartment().getId().equals(departmentId))
+                .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
                 .toList();
         List<Patent> departmentPatents = patentRepository.findByCurrentDepartmentId(
                 departmentId,
@@ -94,16 +93,13 @@ public class DashboardService {
         Map<Long, PatentLegalStatusType> latestLegalStatuses = latestLegalStatuses();
 
         long submitted = countSubmitted(reviews);
-        long overdue = countOverdue(reviews, today);
-        long pending = reviews.stream()
-                .filter(review -> review.getStatus() == ReviewStatus.PENDING)
+        long notSubmitted = reviews.stream()
+                .filter(review -> review.getStatus() != ReviewStatus.SUBMITTED)
                 .count();
 
         return new BusinessDashboardResponse(
                 ReviewCycleSummary.from(reviewCycle),
-                reviewCycle.getEndDate(),
-                ChronoUnit.DAYS.between(today, reviewCycle.getEndDate()),
-                new BusinessDashboardResponse.Kpi(reviews.size(), submitted, pending, overdue),
+                new BusinessDashboardResponse.Kpi(reviews.size(), submitted, notSubmitted),
                 pendingPatents(reviews),
                 recentSubmissions(reviews),
                 patentStatusSummary(departmentPatents, latestLegalStatuses, today),
@@ -132,10 +128,6 @@ public class DashboardService {
             accumulator.assigned++;
             if (review.getStatus() == ReviewStatus.SUBMITTED) {
                 accumulator.decided++;
-            } else if (review.getDueDate().isBefore(today)) {
-                accumulator.overdue++;
-            } else {
-                accumulator.reviewing++;
             }
         }
 
@@ -145,9 +137,7 @@ public class DashboardService {
                         accumulator.departmentId(),
                         accumulator.departmentName(),
                         accumulator.assigned,
-                        accumulator.reviewing,
-                        accumulator.decided,
-                        accumulator.overdue
+                        accumulator.decided
                 ))
                 .toList();
     }
@@ -155,6 +145,7 @@ public class DashboardService {
     private List<LegalDashboardResponse.RecentReply> recentReplies(List<Review> reviews) {
         return reviews.stream()
                 .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
+                .filter(review -> !review.isChecked())
                 .filter(review -> review.getSubmittedAt() != null)
                 .sorted(Comparator.comparing(Review::getSubmittedAt).reversed())
                 .limit(RECENT_LIMIT)
@@ -175,14 +166,14 @@ public class DashboardService {
 
     private List<BusinessDashboardResponse.PatentReviewItem> pendingPatents(List<Review> reviews) {
         return reviews.stream()
-                .filter(review -> review.getStatus() == ReviewStatus.PENDING)
+                .filter(review -> review.getStatus() != ReviewStatus.SUBMITTED)
                 .sorted(Comparator.comparing(Review::getDueDate).thenComparing(Review::getId))
                 .limit(RECENT_LIMIT)
                 .map(review -> new BusinessDashboardResponse.PatentReviewItem(
+                        review.getId(),
                         review.getPatent().getId(),
                         review.getPatent().getTitle(),
                         review.getPatent().getApplicationNumber(),
-                        review.getDueDate(),
                         review.getStatus().name()
                 ))
                 .toList();
@@ -211,20 +202,17 @@ public class DashboardService {
             LocalDate today
     ) {
         long active = 0;
-        long expiringSoon = 0;
         long inactive = 0;
 
         for (Patent patent : patents) {
             if (isInactive(patent, latestLegalStatuses.get(patent.getId()), today)) {
                 inactive++;
-            } else if (isExpiringSoon(patent, today)) {
-                expiringSoon++;
             } else {
                 active++;
             }
         }
 
-        return new BusinessDashboardResponse.PatentStatusSummary(active, expiringSoon, inactive);
+        return new BusinessDashboardResponse.PatentStatusSummary(active, inactive);
     }
 
     private List<BusinessDashboardResponse.YearlyTrend> yearlyTrends(
@@ -351,25 +339,13 @@ public class DashboardService {
 
     private long countOverdue(List<Review> reviews, LocalDate today) {
         return reviews.stream()
-                .filter(review -> review.getStatus() == ReviewStatus.PENDING)
-                .filter(review -> review.getDueDate().isBefore(today))
+                .filter(review -> review.getStatus() == ReviewStatus.OVERDUE
+                        || review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today))
                 .count();
-    }
-
-    private double progressRate(long done, long total) {
-        if (total == 0) {
-            return 0.0;
-        }
-        return Math.round(done * 1000.0 / total) / 10.0;
     }
 
     private String normalizeGroupName(String value) {
         return value == null || value.isBlank() ? "미분류" : value;
-    }
-
-    private boolean isExpiringSoon(Patent patent, LocalDate today) {
-        LocalDate expiryDate = patent.getExpiryDate();
-        return expiryDate != null && !expiryDate.isBefore(today) && !expiryDate.isAfter(today.plusYears(1));
     }
 
     private boolean isInactive(Patent patent, PatentLegalStatusType status, LocalDate today) {
@@ -391,9 +367,7 @@ public class DashboardService {
         private final Long departmentId;
         private final String departmentName;
         private long assigned;
-        private long reviewing;
         private long decided;
-        private long overdue;
 
         private DepartmentAccumulator(Long departmentId, String departmentName) {
             this.departmentId = departmentId;

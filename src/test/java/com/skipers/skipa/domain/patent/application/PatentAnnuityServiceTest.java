@@ -51,19 +51,35 @@ class PatentAnnuityServiceTest {
     @Test
     void createSavesAnnuityHistory() {
         Patent patent = patent();
+        PatentAnnuity unpaidAnnuity = PatentAnnuity.builder()
+                .patent(patent)
+                .startYear(3)
+                .dueDate(LocalDate.of(2026, 12, 31))
+                .status(PatentAnnuityStatus.UNPAID)
+                .build();
         when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(patentAnnuityRepository.findFirstByPatentIdAndStatusOrderByStartYearDescIdDesc(
+                1L,
+                PatentAnnuityStatus.UNPAID
+        )).thenReturn(Optional.of(unpaidAnnuity));
         when(patentAnnuityRepository.save(any(PatentAnnuity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        PatentAnnuityResponse response = patentAnnuityService.create(1L, request("PAID"));
+        PatentAnnuityResponse response = patentAnnuityService.create(1L, request());
 
         assertThat(response.patentId()).isEqualTo(1L);
-        assertThat(response.annuityYear()).isEqualTo(3);
+        assertThat(response.startYear()).isEqualTo(3);
+        assertThat(response.endYear()).isEqualTo(4);
         assertThat(response.status()).isEqualTo("PAID");
+        assertThat(response.amount()).isEqualTo(100_000);
+        assertThat(response.paidDate()).isEqualTo(LocalDate.now());
+        verify(patentAnnuityRepository).existsByPatentIdAndStartYear(1L, 5);
         verify(patentAnnuityRepository).save(org.mockito.ArgumentMatchers.argThat(annuity ->
                 annuity.getPatent() == patent
-                        && annuity.getStatus() == PatentAnnuityStatus.PAID
-                        && annuity.getAmount().equals(100_000)
+                        && annuity.getStartYear().equals(5)
+                        && annuity.getEndYear() == null
+                        && annuity.getDueDate().equals(LocalDate.of(2028, 12, 31))
+                        && annuity.getStatus() == PatentAnnuityStatus.UNPAID
         ));
     }
 
@@ -71,18 +87,22 @@ class PatentAnnuityServiceTest {
     void createRejectsMissingPatent() {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertPatentError(() -> patentAnnuityService.create(1L, request("PAID")), ErrorCode.PATENT_NOT_FOUND);
+        assertPatentError(() -> patentAnnuityService.create(1L, request()), ErrorCode.PATENT_NOT_FOUND);
 
         verify(patentAnnuityRepository, never()).save(any());
     }
 
     @Test
-    void createRejectsInvalidStatus() {
+    void createRejectsMissingUnpaidAnnuity() {
         when(patentRepository.findById(1L)).thenReturn(Optional.of(patent()));
+        when(patentAnnuityRepository.findFirstByPatentIdAndStatusOrderByStartYearDescIdDesc(
+                1L,
+                PatentAnnuityStatus.UNPAID
+        )).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> patentAnnuityService.create(1L, request("보류")))
+        assertThatThrownBy(() -> patentAnnuityService.create(1L, request()))
                 .isInstanceOfSatisfying(BusinessException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.INVALID_REQUEST));
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PATENT_ANNUITY_NOT_FOUND));
 
         verify(patentAnnuityRepository, never()).save(any());
     }
@@ -92,7 +112,7 @@ class PatentAnnuityServiceTest {
         User user = legalUser();
         PatentAnnuity annuity = PatentAnnuity.builder()
                 .patent(patent())
-                .annuityYear(3)
+                .startYear(3)
                 .status(PatentAnnuityStatus.UNPAID)
                 .build();
         ReflectionTestUtils.setField(annuity, "id", 10L);
@@ -129,12 +149,9 @@ class PatentAnnuityServiceTest {
         return patent;
     }
 
-    private PatentAnnuityCreateRequest request(String status) {
+    private PatentAnnuityCreateRequest request() {
         return new PatentAnnuityCreateRequest(
-                3,
-                LocalDate.of(2026, 12, 31),
-                LocalDate.of(2026, 12, 30),
-                status,
+                2,
                 100_000
         );
     }

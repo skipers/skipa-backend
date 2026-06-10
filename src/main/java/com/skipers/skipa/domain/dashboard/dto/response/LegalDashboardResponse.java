@@ -1,12 +1,13 @@
 package com.skipers.skipa.domain.dashboard.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
 public record LegalDashboardResponse(
         ReviewCycleSummary reviewCycle,
-        double progressRate,
         Kpi kpi,
         List<DepartmentProgress> departments,
         List<NameCount> byTechField,
@@ -14,6 +15,7 @@ public record LegalDashboardResponse(
         List<RecentReply> recentReplies
 ) {
 
+    @Schema(name = "LegalDashboardKpi")
     public record Kpi(
             long requested,
             long reviewing,
@@ -28,9 +30,7 @@ public record LegalDashboardResponse(
             Long departmentId,
             String departmentName,
             long assigned,
-            long reviewing,
-            long decided,
-            long overdue
+            long decided
     ) {
     }
 

@@ -33,13 +33,13 @@ class DataIntegrityViolationErrorResolverTest {
     }
 
     @Test
-    void reviewCycleConstraintReturnsDuplicateReviewCycleName() {
+    void reviewCycleConstraintReturnsDuplicateReviewCycle() {
         ConstraintViolationException cause = mock(ConstraintViolationException.class);
-        when(cause.getConstraintName()).thenReturn("uk_review_cycles_name");
+        when(cause.getConstraintName()).thenReturn("uk_review_cycles_year_quarter");
 
         ErrorCode result = resolver.resolve(new DataIntegrityViolationException("constraint violation", cause));
 
-        assertThat(result).isEqualTo(ErrorCode.DUPLICATE_REVIEW_CYCLE_NAME);
+        assertThat(result).isEqualTo(ErrorCode.DUPLICATE_REVIEW_CYCLE);
     }
 
     @Test

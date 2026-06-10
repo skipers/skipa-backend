@@ -13,6 +13,8 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     Page<Report> findByPatentId(Long patentId, Pageable pageable);
 
+    List<Report> findByPatentIdAndStatusOrderByIdDesc(Long patentId, ReportStatus status);
+
     Optional<Report> findFirstByPatentIdOrderByIdDesc(Long patentId);
 
     Optional<Report> findFirstByPatentIdAndStatusOrderByIdDesc(Long patentId, ReportStatus status);

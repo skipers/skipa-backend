@@ -3,7 +3,6 @@ package com.skipers.skipa.domain.review.application;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewCycleType;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleCreateRequest;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleUpdateRequest;
 import com.skipers.skipa.domain.review.dto.response.ReviewCycleResponse;
@@ -47,8 +46,8 @@ class ReviewCycleServiceTest {
     @BeforeEach
     void setUp() {
         reviewCycle = ReviewCycle.builder()
-                .name("2026년 2분기 정기 재평가")
-                .type(ReviewCycleType.QUARTERLY)
+                .year(2026)
+                .quarter(2)
                 .startDate(LocalDate.of(2026, 4, 1))
                 .endDate(LocalDate.of(2026, 6, 30))
                 .build();
@@ -62,18 +61,18 @@ class ReviewCycleServiceTest {
 
         ReviewCycleResponse response = reviewCycleService.create(request);
 
-        assertThat(response.name()).isEqualTo("2026년 3분기 정기 재평가");
-        assertThat(response.type()).isEqualTo("QUARTERLY");
+        assertThat(response.year()).isEqualTo(2026);
+        assertThat(response.quarter()).isEqualTo(3);
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 7, 1));
         assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 9, 30));
     }
 
     @Test
-    void createRejectsInvalidPeriodDuplicateNameOverlapAndInvalidType() {
+    void createRejectsInvalidPeriodDuplicateYearQuarterAndOverlap() {
         assertReviewCycleError(
                 () -> reviewCycleService.create(new ReviewCycleCreateRequest(
-                        "잘못된 주기",
-                        "QUARTERLY",
+                        2026,
+                        3,
                         LocalDate.of(2026, 9, 30),
                         LocalDate.of(2026, 7, 1)
                 )),
@@ -81,13 +80,13 @@ class ReviewCycleServiceTest {
         );
 
         ReviewCycleCreateRequest request = createRequest();
-        when(reviewCycleRepository.existsByNameIgnoreCase(request.name())).thenReturn(true);
+        when(reviewCycleRepository.existsByYearAndQuarter(request.year(), request.quarter())).thenReturn(true);
         assertReviewCycleError(
                 () -> reviewCycleService.create(request),
-                ErrorCode.DUPLICATE_REVIEW_CYCLE_NAME
+                ErrorCode.DUPLICATE_REVIEW_CYCLE
         );
 
-        when(reviewCycleRepository.existsByNameIgnoreCase(request.name())).thenReturn(false);
+        when(reviewCycleRepository.existsByYearAndQuarter(request.year(), request.quarter())).thenReturn(false);
         when(reviewCycleRepository.existsByStartDateLessThanEqualAndEndDateGreaterThanEqual(
                 request.endDate(),
                 request.startDate()
@@ -95,17 +94,6 @@ class ReviewCycleServiceTest {
         assertReviewCycleError(
                 () -> reviewCycleService.create(request),
                 ErrorCode.REVIEW_CYCLE_PERIOD_OVERLAP
-        );
-
-        ReviewCycleCreateRequest invalidTypeRequest = new ReviewCycleCreateRequest(
-                "2026년 4분기 정기 재평가",
-                "INVALID",
-                LocalDate.of(2026, 10, 1),
-                LocalDate.of(2026, 12, 31)
-        );
-        assertReviewCycleError(
-                () -> reviewCycleService.create(invalidTypeRequest),
-                ErrorCode.INVALID_REVIEW_CYCLE_TYPE
         );
     }
 
@@ -116,17 +104,46 @@ class ReviewCycleServiceTest {
         when(reviewCycleRepository.findAllByOrderByStartDateDesc(pageable))
                 .thenReturn(new PageImpl<>(List.of(reviewCycle), pageable, 1));
 
-        assertThat(reviewCycleService.get(1L).name()).isEqualTo("2026년 2분기 정기 재평가");
+        assertThat(reviewCycleService.get(1L).year()).isEqualTo(2026);
         assertThat(reviewCycleService.getAll(pageable).getContent())
                 .extracting(ReviewCycleResponse::id)
                 .containsExactly(1L);
     }
 
     @Test
+    void getCurrentReturnsActiveReviewCycleNameAndRange() {
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(Optional.of(reviewCycle));
+
+        ReviewCycleResponse response = reviewCycleService.getCurrent();
+
+        assertThat(response.id()).isEqualTo(1L);
+        assertThat(response.year()).isEqualTo(2026);
+        assertThat(response.quarter()).isEqualTo(2);
+        assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 4, 1));
+        assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 6, 30));
+    }
+
+    @Test
+    void getCurrentRejectsMissingActiveReviewCycle() {
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
+                any(LocalDate.class),
+                any(LocalDate.class)
+        )).thenReturn(Optional.empty());
+
+        assertReviewCycleError(
+                () -> reviewCycleService.getCurrent(),
+                ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND
+        );
+    }
+
+    @Test
     void updateChangesReviewCycle() {
         ReviewCycleUpdateRequest request = new ReviewCycleUpdateRequest(
-                "2026년 상반기 수시 재평가",
-                "AD_HOC",
+                2026,
+                3,
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 6, 30)
         );
@@ -134,8 +151,8 @@ class ReviewCycleServiceTest {
 
         ReviewCycleResponse response = reviewCycleService.update(1L, request);
 
-        assertThat(response.name()).isEqualTo("2026년 상반기 수시 재평가");
-        assertThat(response.type()).isEqualTo("AD_HOC");
+        assertThat(response.year()).isEqualTo(2026);
+        assertThat(response.quarter()).isEqualTo(3);
         assertThat(reviewCycle.getStartDate()).isEqualTo(LocalDate.of(2026, 5, 1));
     }
 
@@ -167,8 +184,8 @@ class ReviewCycleServiceTest {
 
     private ReviewCycleCreateRequest createRequest() {
         return new ReviewCycleCreateRequest(
-                "2026년 3분기 정기 재평가",
-                "QUARTERLY",
+                2026,
+                3,
                 LocalDate.of(2026, 7, 1),
                 LocalDate.of(2026, 9, 30)
         );

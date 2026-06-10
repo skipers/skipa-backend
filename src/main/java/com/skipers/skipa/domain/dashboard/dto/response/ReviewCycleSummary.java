@@ -6,8 +6,8 @@ import java.time.LocalDate;
 
 public record ReviewCycleSummary(
         Long id,
-        String name,
-        String type,
+        Integer year,
+        Integer quarter,
         LocalDate startDate,
         LocalDate endDate
 ) {
@@ -15,8 +15,8 @@ public record ReviewCycleSummary(
     public static ReviewCycleSummary from(ReviewCycle reviewCycle) {
         return new ReviewCycleSummary(
                 reviewCycle.getId(),
-                reviewCycle.getName(),
-                reviewCycle.getType().name(),
+                reviewCycle.getYear(),
+                reviewCycle.getQuarter(),
                 reviewCycle.getStartDate(),
                 reviewCycle.getEndDate()
         );

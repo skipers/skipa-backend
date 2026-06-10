@@ -44,6 +44,9 @@ public class Report extends BaseTimeEntity {
     @Column(name = "total_score", precision = 5, scale = 2) // AI 평가 총점
     private BigDecimal totalScore;
 
+    @Column(name = "value_grade", length = 10) // AI 평가 등급(S/A/B/C/D)
+    private String valueGrade;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20) // 생성 상태(GENERATING/COMPLETED/FAILED)
     private ReportStatus status;
@@ -52,15 +55,23 @@ public class Report extends BaseTimeEntity {
     private Instant evaluatedAt;
 
     @Builder
-    private Report(Patent patent, String reportKey, BigDecimal totalScore, ReportStatus status, Instant evaluatedAt) {
+    private Report(
+            Patent patent,
+            String reportKey,
+            BigDecimal totalScore,
+            String valueGrade,
+            ReportStatus status,
+            Instant evaluatedAt
+    ) {
         this.patent = patent;
         this.reportKey = reportKey;
         this.totalScore = totalScore;
+        this.valueGrade = valueGrade;
         this.status = status != null ? status : ReportStatus.GENERATING;
         this.evaluatedAt = evaluatedAt;
     }
 
-    public void complete(String reportKey, BigDecimal totalScore, Instant evaluatedAt) {
+    public void complete(String reportKey, BigDecimal totalScore, String valueGrade, Instant evaluatedAt) {
         validateGenerating();
 
         if (reportKey == null || reportKey.isBlank()) {
@@ -69,9 +80,13 @@ public class Report extends BaseTimeEntity {
         if (totalScore == null) {
             throw new ReportException(ErrorCode.INVALID_REQUEST);
         }
+        if (valueGrade == null || valueGrade.isBlank()) {
+            throw new ReportException(ErrorCode.INVALID_REQUEST);
+        }
 
         this.reportKey = reportKey;
         this.totalScore = totalScore;
+        this.valueGrade = valueGrade;
         this.status = ReportStatus.COMPLETED;
         this.evaluatedAt = evaluatedAt != null ? evaluatedAt : Instant.now();
     }

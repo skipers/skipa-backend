@@ -123,8 +123,7 @@ class PatentExtractAsyncFlowIntegrationTest {
                                     "title": "AI Extracted Patent",
                                     "applicationNumber": "10-2026-0000000",
                                     "keywords": ["semiconductor", "package"],
-                                    "overview": "AI generated overview",
-                                    "coreContent": "AI generated core content"
+                                    "summary": "AI generated summary"
                                   }
                                 }
                                 """))
@@ -153,8 +152,7 @@ class PatentExtractAsyncFlowIntegrationTest {
                                   "applicationNumber": "10-2026-0000000",
                                   "extractJobId": %d,
                                   "keywords": ["semiconductor", "package"],
-                                  "overview": "AI generated overview",
-                                  "coreContent": "AI generated core content"
+                                  "summary": "AI generated summary"
                                 }
                                 """.formatted(extractJobId)))
                 .andExpect(status().isCreated())
