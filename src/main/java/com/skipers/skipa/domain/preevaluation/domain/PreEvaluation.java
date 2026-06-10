@@ -19,8 +19,11 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Getter
@@ -43,8 +46,9 @@ public class PreEvaluation extends BaseTimeEntity {
     @Column(name = "technical_description", columnDefinition = "text", nullable = false)
     private String technicalDescription;
 
-    @Column(name = "claims", columnDefinition = "text", nullable = false)
-    private String claims;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "claims", nullable = false)
+    private List<String> claims;
 
     @Column(name = "related_business", length = 500)
     private String relatedBusiness;
@@ -67,7 +71,7 @@ public class PreEvaluation extends BaseTimeEntity {
             User user,
             String title,
             String technicalDescription,
-            String claims,
+            List<String> claims,
             String relatedBusiness,
             String targetCountries,
             PreEvaluationStatus status,

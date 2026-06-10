@@ -3,13 +3,14 @@ package com.skipers.skipa.domain.preevaluation.dto.response;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 
 import java.time.Instant;
+import java.util.List;
 
 public record PreEvaluationDetailResponse(
         Long id,
         Long userId,
         String title,
         String technicalDescription,
-        String claims,
+        List<String> claims,
         String relatedBusiness,
         String targetCountries,
         String status,

@@ -2,13 +2,15 @@ package com.skipers.skipa.domain.preevaluation.infra;
 
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 
+import java.util.List;
+
 public record PreEvaluationGenerationMessage(
         String type,
         Long preEvaluationId,
         Long userId,
         String title,
         String technicalDescription,
-        String claims,
+        List<String> claims,
         String relatedBusiness,
         String targetCountries
 ) {

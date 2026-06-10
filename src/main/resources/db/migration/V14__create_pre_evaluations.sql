@@ -3,7 +3,7 @@ create table pre_evaluations (
     user_id bigint not null,
     title varchar(200) not null,
     technical_description text not null,
-    claims text not null,
+    claims jsonb not null,
     related_business varchar(500),
     target_countries varchar(500),
     status varchar(20) not null,
