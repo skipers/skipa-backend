@@ -40,6 +40,9 @@ jwt:
 app:
   internal:
     api-key: ${INTERNAL_API_KEY:}
+  ai-server:
+    base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
+    pre-evaluation-chat-path: ${AI_PRE_EVALUATION_CHAT_PATH:/pre-evaluations/chat}
   rabbitmq:
     report:
       exchange: ${REPORT_EXCHANGE:skipa.report.exchange}
