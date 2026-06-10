@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface PatentLegalStatusRepository extends JpaRepository<PatentLegalStatus, Long> {
@@ -12,6 +14,8 @@ public interface PatentLegalStatusRepository extends JpaRepository<PatentLegalSt
     Page<PatentLegalStatus> findByPatentId(Long patentId, Pageable pageable);
 
     Optional<PatentLegalStatus> findFirstByPatentIdOrderByChangedAtDescIdDesc(Long patentId);
+
+    List<PatentLegalStatus> findByPatentIdIn(Collection<Long> patentIds);
 
     void deleteAllByPatentId(Long patentId);
 }
