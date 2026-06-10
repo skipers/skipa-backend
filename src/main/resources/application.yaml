@@ -49,6 +49,10 @@ app:
       exchange: ${PATENT_EXTRACT_EXCHANGE:skipa.patent-extract.exchange}
       queue: ${PATENT_EXTRACT_QUEUE:skipa.patent-extract}
       routing-key: ${PATENT_EXTRACT_ROUTING_KEY:patent.extract}
+    pre-evaluation:
+      exchange: ${PRE_EVALUATION_EXCHANGE:skipa.pre-evaluation.exchange}
+      queue: ${PRE_EVALUATION_GENERATE_QUEUE:skipa.pre-evaluation.generate}
+      routing-key: ${PRE_EVALUATION_GENERATE_ROUTING_KEY:pre-evaluation.generate}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
