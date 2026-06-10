@@ -551,12 +551,13 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {
-                                  "title": "Business Patent",
-                                  "applicationNumber": "BUSINESS-1"
-                                }
-                                """))
-                .andExpect(status().isForbidden());
+                {
+                  "title": "Business Patent",
+                  "applicationNumber": "BUSINESS-1"
+                }
+                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.approvalStatus").value("PENDING_APPROVAL"));
 
         mockMvc.perform(put("/patents/{patentId}", 1L)
                         .header("Authorization", "Bearer " + businessToken)

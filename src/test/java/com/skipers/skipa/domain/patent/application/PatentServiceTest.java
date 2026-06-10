@@ -9,6 +9,7 @@ import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentApprovalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
@@ -110,7 +111,7 @@ class PatentServiceTest {
     void createPreservesTitleAndApplicationNumber() {
         when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PatentDetailResponse response = patentService.create(createRequest("  Patent Title  ", " 10-1234 "));
+        PatentDetailResponse response = patentService.create(legalUser(), createRequest("  Patent Title  ", " 10-1234 "));
 
         verify(patentRepository).existsByApplicationNumber(" 10-1234 ");
         verify(patentRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
@@ -131,7 +132,7 @@ class PatentServiceTest {
         when(patentRepository.existsByApplicationNumber("APP-1")).thenReturn(true);
 
         assertPatentError(
-                () -> patentService.create(createRequest("Patent", "APP-1")),
+                () -> patentService.create(legalUser(), createRequest("Patent", "APP-1")),
                 ErrorCode.DUPLICATE_APPLICATION_NUMBER
         );
 
@@ -142,11 +143,27 @@ class PatentServiceTest {
     void createWithoutExtractJobPreservesOriginalPdfKey() {
         when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PatentDetailResponse response = patentService.create(createRequest("Patent", "APP-1"));
+        PatentDetailResponse response = patentService.create(legalUser(), createRequest("Patent", "APP-1"));
 
         assertThat(response.originalPdfKey()).isEqualTo("pdf-key");
+        assertThat(response.approvalStatus()).isEqualTo("APPROVED");
         verify(patentExtractJobRepository, never()).findById(any());
         verify(patentOriginalPdfStorageService, never()).copy(any(), any());
+    }
+
+    @Test
+    void createByBusinessUserCreatesPendingApprovalPatent() {
+        Department department = department("Business", 1L);
+        when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        PatentDetailResponse response = patentService.create(businessUser(department), createRequest("Patent", "APP-1"));
+
+        assertThat(response.approvalStatus()).isEqualTo("PENDING_APPROVAL");
+        assertThat(response.currentDepartmentId()).isEqualTo(1L);
+        verify(patentRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
+                saved.getApprovalStatus().name().equals("PENDING_APPROVAL")
+                        && saved.getCurrentDepartment().getId().equals(1L)
+        ));
     }
 
     @Test
@@ -159,7 +176,7 @@ class PatentServiceTest {
             return patent;
         });
 
-        PatentDetailResponse response = patentService.create(createRequestWithExtractJob("Patent", "10-2026-0000000", 7L));
+        PatentDetailResponse response = patentService.create(legalUser(), createRequestWithExtractJob("Patent", "10-2026-0000000", 7L));
 
         assertThat(response.originalPdfKey()).isEqualTo("patents/1/original.pdf");
         assertThat(response.parsedJsonKey()).isEqualTo("patents/1/parsed.json");
@@ -178,7 +195,7 @@ class PatentServiceTest {
         when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.empty());
 
         assertPatentExtractError(
-                () -> patentService.create(createRequestWithExtractJob("Patent", "APP-1", 7L)),
+                () -> patentService.create(legalUser(), createRequestWithExtractJob("Patent", "APP-1", 7L)),
                 ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND
         );
 
@@ -196,7 +213,7 @@ class PatentServiceTest {
         when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
 
         assertPatentExtractError(
-                () -> patentService.create(createRequestWithExtractJob("Patent", "APP-1", 7L)),
+                () -> patentService.create(legalUser(), createRequestWithExtractJob("Patent", "APP-1", 7L)),
                 ErrorCode.PATENT_EXTRACT_NOT_COMPLETED
         );
 
@@ -402,6 +419,7 @@ class PatentServiceTest {
                 List.of("REGISTERED"),
                 "KR",
                 "반도체",
+                null,
                 "expiryDate",
                 PageRequest.of(0, 20)
         );
@@ -459,6 +477,7 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
+                null,
                 "title,desc",
                 PageRequest.of(0, 20)
         );
@@ -466,6 +485,98 @@ class PatentServiceTest {
         assertThat(result.getContent())
                 .extracting("id")
                 .containsExactly(3L, 2L, 1L);
+    }
+
+    @Test
+    void getAllExcludesPendingApprovalPatentsByDefault() {
+        Patent approvedPatent = patent(
+                1L,
+                "Approved Patent",
+                "APP-APPROVED",
+                null,
+                null,
+                null,
+                null
+        );
+        Patent pendingPatent = patent(
+                2L,
+                "Pending Patent",
+                "APP-PENDING",
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL
+        );
+        when(patentRepository.findAll()).thenReturn(List.of(approvedPatent, pendingPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        Page<?> result = patentService.getAll(
+                legalUser(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id")
+                .containsExactly(1L);
+    }
+
+    @Test
+    void getAllAllowsLegalUserToFilterPendingApprovalPatents() {
+        Patent approvedPatent = patent(
+                1L,
+                "Approved Patent",
+                "APP-APPROVED",
+                null,
+                null,
+                null,
+                null
+        );
+        Patent pendingPatent = patent(
+                2L,
+                "Pending Patent",
+                "APP-PENDING",
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL
+        );
+        when(patentRepository.findAll()).thenReturn(List.of(approvedPatent, pendingPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        Page<?> result = patentService.getAll(
+                legalUser(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "PENDING_APPROVAL",
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "approvalStatus")
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(2L, "PENDING_APPROVAL"));
     }
 
     @Test
@@ -498,6 +609,7 @@ class PatentServiceTest {
                 null,
                 -1L,
                 "unassigned",
+                null,
                 null,
                 null,
                 null,
@@ -552,6 +664,7 @@ class PatentServiceTest {
                 null,
                 null,
                 "unrequested",
+                null,
                 null,
                 null,
                 null,
@@ -625,6 +738,42 @@ class PatentServiceTest {
     }
 
     @Test
+    void approveChangesPendingApprovalPatentToApproved() {
+        Patent patent = patent(
+                1L,
+                "Pending Patent",
+                "APP-PENDING",
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        PatentDetailResponse response = patentService.approve(1L);
+
+        assertThat(response.approvalStatus()).isEqualTo("APPROVED");
+        assertThat(patent.getApprovalStatus()).isEqualTo(PatentApprovalStatus.APPROVED);
+    }
+
+    @Test
+    void approveRejectsAlreadyApprovedPatent() {
+        Patent patent = patent(
+                1L,
+                "Approved Patent",
+                "APP-APPROVED",
+                null,
+                null,
+                null,
+                null
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        assertPatentError(() -> patentService.approve(1L), ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+    }
+
+    @Test
     void updateRejectsMissingPatent() {
         when(patentRepository.findById(1L)).thenReturn(Optional.empty());
 
@@ -688,6 +837,19 @@ class PatentServiceTest {
             LocalDate expiryDate,
             Department department
     ) {
+        return patent(id, title, applicationNumber, techField, filingCountry, expiryDate, department, PatentApprovalStatus.APPROVED);
+    }
+
+    private Patent patent(
+            Long id,
+            String title,
+            String applicationNumber,
+            String techField,
+            String filingCountry,
+            LocalDate expiryDate,
+            Department department,
+            PatentApprovalStatus approvalStatus
+    ) {
         Patent patent = Patent.builder()
                 .title(title)
                 .applicationNumber(applicationNumber)
@@ -695,6 +857,7 @@ class PatentServiceTest {
                 .filingCountry(filingCountry)
                 .expiryDate(expiryDate)
                 .currentDepartment(department)
+                .approvalStatus(approvalStatus)
                 .build();
         ReflectionTestUtils.setField(patent, "id", id);
         return patent;

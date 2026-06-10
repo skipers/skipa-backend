@@ -45,11 +45,14 @@ public class PatentController {
      * @param request 생성 요청
      * @return 생성된 특허
      */
-    @Operation(summary = "[Legal] 특허 생성", description = "새로운 특허 정보를 생성합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @Operation(summary = "[Common] 특허 생성/등록 요청", description = "LEGAL 사용자는 특허를 즉시 등록하고, BUSINESS 사용자는 승인 대기 상태로 등록 요청합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @PostMapping
-    public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(request)));
+    public ResponseEntity<ApiResponse<PatentDetailResponse>> create(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody PatentCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(userDetails.getUser(), request)));
     }
 
     /**
@@ -99,6 +102,7 @@ public class PatentController {
      * @param status 권리 상태(선택, 복수 가능)
      * @param filingCountry 출원국(선택)
      * @param techField 기술 분야(선택)
+     * @param approvalStatus 승인 상태(선택)
      * @param sort 정렬 기준(선택)
      * @param pageable page/size 정보
      * @return 특허 목록 페이지
@@ -110,7 +114,7 @@ public class PatentController {
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
                     + "opinion(MAINTAIN, ABANDON), checked(true/false), "
                     + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
-                    + "filingCountry, techField. "
+                    + "approvalStatus(PENDING_APPROVAL, APPROVED, REJECTED), filingCountry, techField. "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
                     + "applicationDate,asc|desc, expiryDate,asc|desc. "
                     + "기존 sort=id, expiryDate, applicationDate, citationCount도 지원합니다. "
@@ -129,6 +133,7 @@ public class PatentController {
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) String filingCountry,
             @RequestParam(required = false) String techField,
+            @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String sort,
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
@@ -142,6 +147,7 @@ public class PatentController {
                 status,
                 filingCountry,
                 techField,
+                approvalStatus,
                 sort,
                 pageable
         )));
@@ -179,6 +185,13 @@ public class PatentController {
             @Valid @RequestBody PatentDepartmentChangeRequest request
     ) {
         return ApiResponse.ok(patentService.changeDepartment(patentId, request));
+    }
+
+    @Operation(summary = "[Legal] 특허 승인", description = "승인 대기 상태의 특허를 승인합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PatchMapping("/{patentId}/approve")
+    public ApiResponse<PatentDetailResponse> approve(@PathVariable Long patentId) {
+        return ApiResponse.ok(patentService.approve(patentId));
     }
 
     /**
