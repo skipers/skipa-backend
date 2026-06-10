@@ -399,6 +399,32 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void meReturnsBusinessDepartmentOutsideTestTransaction() throws Exception {
+        Department savedDepartment = departmentRepository.save(Department.builder()
+                .name("Auth Me Department")
+                .build());
+        User businessUser = userRepository.save(User.createActive(
+                "business-me-detached",
+                "Business Me",
+                "business-me-detached@example.com",
+                passwordEncoder.encode("password"),
+                UserRole.BUSINESS,
+                savedDepartment
+        ));
+        String businessToken = jwtProvider.createAccessToken(businessUser.getId(), UserRole.BUSINESS);
+
+        mockMvc.perform(get("/auth/me")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.id").value(businessUser.getId()))
+                .andExpect(jsonPath("$.data.user.role").value("BUSINESS"))
+                .andExpect(jsonPath("$.data.user.departmentId").value(savedDepartment.getId()))
+                .andExpect(jsonPath("$.data.user.departmentName").value("Auth Me Department"));
+    }
+
+    @Test
     void departmentWriteApisAllowOnlyAdmin() throws Exception {
         String legalToken = createActiveUserToken("legal-active", "legal-active@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-active", "business-active@example.com", UserRole.BUSINESS);

@@ -59,7 +59,13 @@ public class AuthService {
     }
 
     public MeResponse me(User user) {
-        return MeResponse.from(user);
+        User currentUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new AuthException(ErrorCode.INVALID_TOKEN));
+        if (currentUser.getStatus() != UserStatus.ACTIVE) {
+            throw new AuthException(ErrorCode.PENDING_USER);
+        }
+
+        return MeResponse.from(currentUser);
     }
 
     public TokenRefreshResponse refresh(TokenRefreshRequest request) {
