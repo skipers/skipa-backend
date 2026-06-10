@@ -21,7 +21,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        User user = userRepository.findById(Long.valueOf(userId))
+        User user = userRepository.findByIdWithDepartment(Long.valueOf(userId))
                 .orElseThrow(() -> new AuthException(ErrorCode.INVALID_TOKEN));
 
         if (user.getStatus() != UserStatus.ACTIVE) {

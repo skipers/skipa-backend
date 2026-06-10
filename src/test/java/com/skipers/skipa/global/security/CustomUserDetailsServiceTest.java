@@ -36,7 +36,7 @@ class CustomUserDetailsServiceTest {
                 UserRole.LEGAL,
                 null
         );
-        when(userRepository.findById(1L)).thenReturn(Optional.of(activeUser));
+        when(userRepository.findByIdWithDepartment(1L)).thenReturn(Optional.of(activeUser));
 
         CustomUserDetails result = (CustomUserDetails) customUserDetailsService.loadUserByUsername("1");
 
@@ -53,14 +53,14 @@ class CustomUserDetailsServiceTest {
                 .password("encoded-password")
                 .role(UserRole.BUSINESS)
                 .build();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(pendingUser));
+        when(userRepository.findByIdWithDepartment(1L)).thenReturn(Optional.of(pendingUser));
 
         assertErrorCode(() -> customUserDetailsService.loadUserByUsername("1"), ErrorCode.PENDING_USER);
     }
 
     @Test
     void loadUserRejectsMissingUserAsInvalidToken() {
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
+        when(userRepository.findByIdWithDepartment(1L)).thenReturn(Optional.empty());
 
         assertErrorCode(() -> customUserDetailsService.loadUserByUsername("1"), ErrorCode.INVALID_TOKEN);
     }
