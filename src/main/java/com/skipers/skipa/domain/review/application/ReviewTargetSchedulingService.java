@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.review.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
@@ -28,6 +29,7 @@ public class ReviewTargetSchedulingService {
     private final ReviewCycleRepository reviewCycleRepository;
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
+    private final ApprovedPatentValidator approvedPatentValidator;
 
     @Transactional
     public int scheduleNextQuarterReviewTargets() {
@@ -49,6 +51,9 @@ public class ReviewTargetSchedulingService {
                 nextQuarter.endDate()
         )) {
             Patent patent = annuity.getPatent();
+            if (!isApprovedPatent(patent)) {
+                continue;
+            }
             Department department = patent.getCurrentDepartment();
             if (department == null || department.isInactive()) {
                 continue;
@@ -77,6 +82,15 @@ public class ReviewTargetSchedulingService {
 
     private Report findLatestReport(Long patentId) {
         return reportRepository.findFirstByPatentIdOrderByIdDesc(patentId).orElse(null);
+    }
+
+    private boolean isApprovedPatent(Patent patent) {
+        try {
+            approvedPatentValidator.validateApproved(patent);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     private QuarterRange nextQuarter(LocalDate today) {

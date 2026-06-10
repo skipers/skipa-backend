@@ -1,9 +1,11 @@
 package com.skipers.skipa.domain.report.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
@@ -18,6 +20,7 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.global.exception.ErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,6 +41,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
@@ -52,6 +56,9 @@ class ReportServiceTest {
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
     @Mock
+    private ApprovedPatentValidator approvedPatentValidator;
+
+    @Mock
     private ReportGenerationPublisher reportGenerationPublisher;
 
     @Mock
@@ -62,6 +69,20 @@ class ReportServiceTest {
 
     @InjectMocks
     private ReportService reportService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(approvedPatentValidator.getApprovedPatent(any()))
+                .thenAnswer(invocation -> {
+                    Optional<Patent> patent = patentRepository.findById(invocation.getArgument(0));
+                    if (patent != null && patent.isPresent()) {
+                        return patent.get();
+                    }
+                    Patent defaultPatent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
+                    ReflectionTestUtils.setField(defaultPatent, "id", invocation.getArgument(0));
+                    return defaultPatent;
+                });
+    }
 
     @Test
     void createSavesGeneratingReportAndPublishesMessage() {
@@ -87,7 +108,8 @@ class ReportServiceTest {
 
     @Test
     void createRejectsMissingPatentWithoutPublishingMessage() {
-        when(patentRepository.findById(10L)).thenReturn(Optional.empty());
+        when(approvedPatentValidator.getApprovedPatent(10L))
+                .thenThrow(new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         assertThatThrownBy(() -> reportService.create(10L))
                 .isInstanceOf(com.skipers.skipa.domain.patent.exception.PatentException.class);
@@ -207,7 +229,6 @@ class ReportServiceTest {
     @Test
     void getLatestReturnsGeneratingReportWithoutUrl() {
         Report report = report(1L, 10L);
-        when(patentRepository.existsById(10L)).thenReturn(true);
         when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
 
         ReportDetailResponse response = reportService.getLatest(null, 10L);
@@ -225,7 +246,6 @@ class ReportServiceTest {
         Report report = report(1L, 10L);
         report.complete("reports/1/report.json", new BigDecimal("82.50"), "A", null);
         Review review = submittedReview(20L, report, BusinessOpinion.ABANDON, "포기 의견");
-        when(patentRepository.existsById(10L)).thenReturn(true);
         when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.json"))
                 .thenReturn("https://minio.example.com/reports/1/report.json?signature=abc");
@@ -245,7 +265,6 @@ class ReportServiceTest {
 
     @Test
     void getLatestRejectsMissingReport() {
-        when(patentRepository.existsById(10L)).thenReturn(true);
         when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.empty());
 
         assertReportError(() -> reportService.getLatest(null, 10L), ErrorCode.REPORT_NOT_FOUND);
@@ -258,7 +277,6 @@ class ReportServiceTest {
         Report oldestReport = completedReport(1L, 10L, "B", "75.00", "2026-01-01T00:00:00Z");
         Review oldReview = submittedReview(20L, oldReport, BusinessOpinion.MAINTAIN, "유지 의견");
         Review oldestReview = submittedReview(10L, oldestReport, BusinessOpinion.ABANDON, "포기 의견");
-        when(patentRepository.existsById(10L)).thenReturn(true);
         when(reportRepository.findByPatentIdAndStatusOrderByIdDesc(10L, ReportStatus.COMPLETED))
                 .thenReturn(List.of(latestReport, oldReport, oldestReport));
         when(reviewRepository.findByPatentIdAndReportIdInAndStatus(

@@ -19,6 +19,7 @@ import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class BusinessReviewService {
     private final ReportRepository reportRepository;
     private final PatentService patentService;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final ApprovedPatentValidator approvedPatentValidator;
 
     public BusinessReviewSummaryResponse getSummary(User user) {
         Long departmentId = getDepartmentId(user);
@@ -85,15 +87,19 @@ public class BusinessReviewService {
                         nextDayStart(submittedTo),
                         sortedPageable
                 );
-        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(reviews.getContent());
-        return reviews.map(review -> {
+        List<Review> approvedReviews = reviews.getContent().stream()
+                .filter(this::isApprovedPatent)
+                .toList();
+        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(approvedReviews);
+        List<BusinessReviewResponse> responses = approvedReviews.stream().map(review -> {
             Report report = reportsByPatentId.get(review.getPatent().getId());
             return BusinessReviewResponse.from(
                     review,
                     report == null ? null : report.getTotalScore(),
                     report == null ? null : report.getValueGrade()
             );
-        });
+        }).toList();
+        return new PageImpl<>(responses, sortedPageable, responses.size());
     }
 
     public Page<BusinessReviewHistoryResponse> getHistory(
@@ -115,15 +121,19 @@ public class BusinessReviewService {
                 parsedOpinion,
                 pageable
         );
-        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(reviews.getContent());
-        return reviews.map(review -> {
+        List<Review> approvedReviews = reviews.getContent().stream()
+                .filter(this::isApprovedPatent)
+                .toList();
+        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(approvedReviews);
+        List<BusinessReviewHistoryResponse> responses = approvedReviews.stream().map(review -> {
             Report report = reportsByPatentId.get(review.getPatent().getId());
             return BusinessReviewHistoryResponse.from(
                     review,
                     report == null ? null : report.getTotalScore(),
                     report == null ? null : report.getValueGrade()
             );
-        });
+        }).toList();
+        return new PageImpl<>(responses, pageable, responses.size());
     }
 
     public BusinessReviewDetailResponse get(User user, Long patentId) {
@@ -162,6 +172,7 @@ public class BusinessReviewService {
         Long departmentId = getDepartmentId(user);
         ReviewCycle reviewCycle = getActiveReviewCycle();
         businessPatentAccessValidator.validate(user, patentId);
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         return reviewRepository.findFirstByReviewCycleIdAndPatentIdAndDepartmentIdAndStatusInOrderByIdDesc(
                         reviewCycle.getId(),
@@ -183,7 +194,17 @@ public class BusinessReviewService {
         return reviewRepository.findAllByReviewCycleId(reviewCycleId).stream()
                 .filter(review -> review.getDepartment().getId().equals(departmentId))
                 .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
+                .filter(this::isApprovedPatent)
                 .toList();
+    }
+
+    private boolean isApprovedPatent(Review review) {
+        try {
+            approvedPatentValidator.validateApproved(review.getPatent());
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     private Map<Long, Report> latestCompletedReportsByPatentId(List<Review> reviews) {

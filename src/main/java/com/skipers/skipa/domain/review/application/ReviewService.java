@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.review.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.PatentSortOption;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -43,6 +44,7 @@ public class ReviewService {
     private final ReviewCycleRepository reviewCycleRepository;
     private final PatentRepository patentRepository;
     private final ReportRepository reportRepository;
+    private final ApprovedPatentValidator approvedPatentValidator;
 
     @Transactional
     public ReviewResponse create(Long patentId) {
@@ -53,6 +55,7 @@ public class ReviewService {
     public ReviewResponse create(Long patentId, ReviewCreateRequest request) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+        approvedPatentValidator.validateApproved(patent);
         Department department = validateDepartment(patent);
         ReviewCycle reviewCycle = getActiveReviewCycle();
         LocalDate dueDate = request != null ? request.dueDate() : null;
@@ -105,6 +108,12 @@ public class ReviewService {
             Patent patent = patentsById.get(patentId);
             if (patent == null) {
                 items.add(BulkReviewCreateResponse.Item.skipped(patentId, ErrorCode.PATENT_NOT_FOUND.getCode()));
+                continue;
+            }
+            try {
+                approvedPatentValidator.validateApproved(patent);
+            } catch (PatentException e) {
+                items.add(BulkReviewCreateResponse.Item.skipped(patentId, e.getErrorCode().getCode()));
                 continue;
             }
 

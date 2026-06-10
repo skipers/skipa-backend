@@ -1,7 +1,6 @@
 package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
-import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -27,13 +26,12 @@ import java.time.LocalDate;
 public class PatentAnnuityService {
 
     private final PatentAnnuityRepository patentAnnuityRepository;
-    private final PatentRepository patentRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final ApprovedPatentValidator approvedPatentValidator;
 
     @Transactional
     public PatentAnnuityResponse create(Long patentId, PatentAnnuityCreateRequest request) {
-        Patent patent = patentRepository.findById(patentId)
-                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         PatentAnnuity patentAnnuity = patentAnnuityRepository
                 .findFirstByPatentIdAndStatusOrderByStartYearDescIdDesc(patentId, PatentAnnuityStatus.UNPAID)
@@ -46,10 +44,7 @@ public class PatentAnnuityService {
 
     public Page<PatentAnnuityResponse> getAll(User user, Long patentId, Pageable pageable) {
         businessPatentAccessValidator.validate(user, patentId);
-
-        if (!patentRepository.existsById(patentId)) {
-            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
-        }
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),

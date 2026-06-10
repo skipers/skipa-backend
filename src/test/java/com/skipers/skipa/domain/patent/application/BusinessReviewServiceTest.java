@@ -38,10 +38,12 @@ import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class BusinessReviewServiceTest {
@@ -60,6 +62,9 @@ class BusinessReviewServiceTest {
 
     @Mock
     private BusinessPatentAccessValidator businessPatentAccessValidator;
+
+    @Mock
+    private ApprovedPatentValidator approvedPatentValidator;
 
     @InjectMocks
     private BusinessReviewService businessReviewService;
@@ -93,6 +98,8 @@ class BusinessReviewServiceTest {
                 .reviewCycle(reviewCycle())
                 .build();
         ReflectionTestUtils.setField(review, "id", 100L);
+        lenient().doNothing().when(approvedPatentValidator).validateApproved(any(Patent.class));
+        lenient().when(approvedPatentValidator.getApprovedPatent(10L)).thenReturn(patent);
     }
 
     @Test

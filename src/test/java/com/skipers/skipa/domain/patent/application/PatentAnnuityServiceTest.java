@@ -12,6 +12,7 @@ import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class PatentAnnuityServiceTest {
@@ -45,8 +47,20 @@ class PatentAnnuityServiceTest {
     @Mock
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
+    @Mock
+    private ApprovedPatentValidator approvedPatentValidator;
+
     @InjectMocks
     private PatentAnnuityService patentAnnuityService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(approvedPatentValidator.getApprovedPatent(any()))
+                .thenAnswer(invocation -> {
+                    Optional<Patent> patent = patentRepository.findById(invocation.getArgument(0));
+                    return patent != null && patent.isPresent() ? patent.get() : patent();
+                });
+    }
 
     @Test
     void createSavesAnnuityHistory() {
@@ -85,7 +99,8 @@ class PatentAnnuityServiceTest {
 
     @Test
     void createRejectsMissingPatent() {
-        when(patentRepository.findById(1L)).thenReturn(Optional.empty());
+        when(approvedPatentValidator.getApprovedPatent(1L))
+                .thenThrow(new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         assertPatentError(() -> patentAnnuityService.create(1L, request()), ErrorCode.PATENT_NOT_FOUND);
 
@@ -118,7 +133,6 @@ class PatentAnnuityServiceTest {
         ReflectionTestUtils.setField(annuity, "id", 10L);
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(patentRepository.existsById(1L)).thenReturn(true);
         when(patentAnnuityRepository.findByPatentId(1L, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(annuity), sortedPageable, 1));
 
@@ -132,7 +146,8 @@ class PatentAnnuityServiceTest {
     @Test
     void getAllRejectsMissingPatent() {
         User user = legalUser();
-        when(patentRepository.existsById(1L)).thenReturn(false);
+        when(approvedPatentValidator.getApprovedPatent(1L))
+                .thenThrow(new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         assertPatentError(
                 () -> patentAnnuityService.getAll(user, 1L, PageRequest.of(0, 20)),

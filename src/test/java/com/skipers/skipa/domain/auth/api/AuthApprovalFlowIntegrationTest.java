@@ -726,6 +726,67 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void patentSubresourcesRejectPendingApprovalPatents() throws Exception {
+        Patent pendingPatent = patentRepository.save(Patent.builder()
+                .title("Pending Subresource Patent")
+                .applicationNumber("APP-PENDING-SUB")
+                .approvalStatus(PatentApprovalStatus.PENDING_APPROVAL)
+                .currentDepartment(department)
+                .build());
+        String legalToken = createActiveUserToken("legal-pending-subresource", "legal-pending-subresource@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(post("/patents/{patentId}/reports", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(get("/patents/{patentId}/reports", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/legal-status", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "REGISTERED",
+                                  "changedAt": "2026-06-10"
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(get("/patents/{patentId}/legal-status", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/annuities", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "paymentYears": 1,
+                                  "amount": 100000
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(get("/patents/{patentId}/annuities", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+    }
+
+    @Test
     void businessUserCanReadOnlyCurrentlyAssignedPatents() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")

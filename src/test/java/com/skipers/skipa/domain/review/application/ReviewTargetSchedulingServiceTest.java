@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.review.application;
 
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
@@ -28,6 +29,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +46,9 @@ class ReviewTargetSchedulingServiceTest {
 
     @Mock
     private ReportRepository reportRepository;
+
+    @Mock
+    private ApprovedPatentValidator approvedPatentValidator;
 
     @InjectMocks
     private ReviewTargetSchedulingService reviewTargetSchedulingService;
@@ -72,6 +77,7 @@ class ReviewTargetSchedulingServiceTest {
                 .status(PatentAnnuityStatus.UNPAID)
                 .build();
         ReflectionTestUtils.setField(annuity, "id", 1000L);
+        lenient().doNothing().when(approvedPatentValidator).validateApproved(any(Patent.class));
 
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
                 any(),
