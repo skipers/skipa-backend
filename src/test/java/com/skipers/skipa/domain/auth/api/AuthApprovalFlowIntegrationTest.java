@@ -36,6 +36,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
@@ -368,6 +370,32 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/departments")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void meReturnsBusinessDepartmentOutsideTestTransaction() throws Exception {
+        Department savedDepartment = departmentRepository.save(Department.builder()
+                .name("Auth Me Department")
+                .build());
+        User businessUser = userRepository.save(User.createActive(
+                "business-me-detached",
+                "Business Me",
+                "business-me-detached@example.com",
+                passwordEncoder.encode("password"),
+                UserRole.BUSINESS,
+                savedDepartment
+        ));
+        String businessToken = jwtProvider.createAccessToken(businessUser.getId(), UserRole.BUSINESS);
+
+        mockMvc.perform(get("/auth/me")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.user.id").value(businessUser.getId()))
+                .andExpect(jsonPath("$.data.user.role").value("BUSINESS"))
+                .andExpect(jsonPath("$.data.user.departmentId").value(savedDepartment.getId()))
+                .andExpect(jsonPath("$.data.user.departmentName").value("Auth Me Department"));
     }
 
     @Test

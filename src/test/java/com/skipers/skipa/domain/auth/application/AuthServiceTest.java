@@ -89,6 +89,8 @@ class AuthServiceTest {
 
     @Test
     void meReturnsCurrentUserInformation() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
         MeResponse response = authService.me(user);
 
         assertThat(response.user().id()).isEqualTo(1L);
