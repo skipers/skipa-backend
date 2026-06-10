@@ -67,7 +67,7 @@ public record PatentCreateRequest(
         Integer examinationClaimCount,
 
         @Size(max = 500, message = "원문 파일 키는 500자 이하여야 합니다.")
-        @Schema(description = "원문 파일 키", example = "patents/original/xxx.pdf")
+        @Schema(description = "원문 파일 키", example = "patents/1/original.pdf")
         String originalPdfKey,
 
         @Schema(description = "특허 추출 작업 ID. 값이 있으면 추출 작업의 임시 PDF를 최종 경로로 복사합니다.", example = "1")

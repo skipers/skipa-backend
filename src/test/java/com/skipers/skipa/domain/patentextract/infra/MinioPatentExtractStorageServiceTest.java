@@ -19,9 +19,9 @@ class MinioPatentExtractStorageServiceTest {
         ReflectionTestUtils.setField(storageService, "region", "us-east-1");
         ReflectionTestUtils.setField(storageService, "presignedUrlExpirySeconds", 600);
 
-        String url = storageService.generateUploadPresignedUrl("patents/extract-jobs/1/patent.pdf");
+        String url = storageService.generateUploadPresignedUrl("tmp/patent-extract-jobs/1/original.pdf");
 
-        assertThat(url).startsWith("http://localhost:9000/skipa/patents/extract-jobs/1/patent.pdf?");
+        assertThat(url).startsWith("http://localhost:9000/skipa/tmp/patent-extract-jobs/1/original.pdf?");
         assertThat(url).contains("X-Amz-Algorithm=AWS4-HMAC-SHA256");
         assertThat(url).contains("X-Amz-Expires=600");
     }

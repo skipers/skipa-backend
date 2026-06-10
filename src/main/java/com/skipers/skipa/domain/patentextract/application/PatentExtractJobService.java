@@ -111,7 +111,7 @@ public class PatentExtractJobService {
     }
 
     private String buildTemporaryPdfObjectKey(Long extractJobId) {
-        return "patents/extract-jobs/%d/patent.pdf".formatted(extractJobId);
+        return "tmp/patent-extract-jobs/%d/original.pdf".formatted(extractJobId);
     }
 
     private String generateUploadPresignedUrl(String objectKey) {
