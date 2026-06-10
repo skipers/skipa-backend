@@ -16,6 +16,8 @@ public interface PatentAnnuityRepository extends JpaRepository<PatentAnnuity, Lo
 
     List<PatentAnnuity> findByStatusAndDueDateBetween(PatentAnnuityStatus status, LocalDate startDate, LocalDate endDate);
 
+    List<PatentAnnuity> findByStatusAndDueDateBefore(PatentAnnuityStatus status, LocalDate date);
+
     Optional<PatentAnnuity> findFirstByPatentIdAndStatusOrderByStartYearDescIdDesc(
             Long patentId,
             PatentAnnuityStatus status

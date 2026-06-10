@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 public interface PatentRepository extends JpaRepository<Patent, Long> {
@@ -26,6 +28,8 @@ public interface PatentRepository extends JpaRepository<Patent, Long> {
     Page<Patent> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     Page<Patent> findByCurrentDepartmentId(Long departmentId, Pageable pageable);
+
+    List<Patent> findByExpiryDateBefore(LocalDate date);
 
     @Query("""
             select patent

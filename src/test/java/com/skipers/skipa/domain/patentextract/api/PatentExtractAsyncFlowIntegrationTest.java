@@ -85,7 +85,7 @@ class PatentExtractAsyncFlowIntegrationTest {
     void legalUserCompletesPatentExtractFlowAndCreatesPatentWithFinalPdfKey() throws Exception {
         String legalToken = createActiveUserToken("legal-patent-extract-flow", "legal-patent-extract-flow@example.com");
         when(patentExtractStorageService.generateUploadPresignedUrl(org.mockito.ArgumentMatchers.anyString()))
-                .thenReturn("https://minio.example.com/skipa/patents/extract-jobs/1/patent.pdf?signature=abc");
+                .thenReturn("https://minio.example.com/skipa/tmp/patent-extract-jobs/1/original.pdf?signature=abc");
 
         MvcResult uploadUrlResult = mockMvc.perform(post("/patent-extract-jobs/upload-url")
                         .header("Authorization", "Bearer " + legalToken))
@@ -99,7 +99,7 @@ class PatentExtractAsyncFlowIntegrationTest {
                 .path("data")
                 .path("extractJobId")
                 .longValue();
-        String objectKey = "patents/extract-jobs/%d/patent.pdf".formatted(extractJobId);
+        String objectKey = "tmp/patent-extract-jobs/%d/original.pdf".formatted(extractJobId);
         when(patentExtractStorageService.exists(objectKey)).thenReturn(true);
 
         mockMvc.perform(post("/patent-extract-jobs/{extractJobId}/upload-complete", extractJobId)
@@ -157,11 +157,17 @@ class PatentExtractAsyncFlowIntegrationTest {
                                 """.formatted(extractJobId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.applicationNumber").value("10-2026-0000000"))
-                .andExpect(jsonPath("$.data.originalPdfKey").value("patents/10-2026-0000000/patent.pdf"));
+                .andExpect(jsonPath("$.data.originalPdfKey").value("patents/1/original.pdf"))
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("patents/1/parsed.json"));
 
-        verify(patentOriginalPdfStorageService).copy(objectKey, "patents/10-2026-0000000/patent.pdf");
+        verify(patentOriginalPdfStorageService).copy(objectKey, "patents/1/original.pdf");
+        verify(patentOriginalPdfStorageService).saveJson(
+                org.mockito.ArgumentMatchers.eq("patents/1/parsed.json"),
+                org.mockito.ArgumentMatchers.any(com.fasterxml.jackson.databind.JsonNode.class)
+        );
         Patent patent = patentRepository.findByApplicationNumber("10-2026-0000000").orElseThrow();
-        assertThat(patent.getOriginalPdfKey()).isEqualTo("patents/10-2026-0000000/patent.pdf");
+        assertThat(patent.getOriginalPdfKey()).isEqualTo("patents/1/original.pdf");
+        assertThat(patent.getParsedJsonKey()).isEqualTo("patents/1/parsed.json");
     }
 
     @Test
@@ -228,7 +234,7 @@ class PatentExtractAsyncFlowIntegrationTest {
 
     private PatentExtractJob saveUploadPendingJob(long seed) {
         PatentExtractJob job = patentExtractJobRepository.save(PatentExtractJob.createUploadPending());
-        job.assignObjectKey("patents/extract-jobs/%d/patent.pdf".formatted(seed));
+        job.assignObjectKey("tmp/patent-extract-jobs/%d/original.pdf".formatted(seed));
         return job;
     }
 

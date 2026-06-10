@@ -23,7 +23,7 @@ class RabbitPatentExtractPublisherTest {
         ReflectionTestUtils.setField(publisher, "exchange", "skipa.patent-extract.exchange");
         ReflectionTestUtils.setField(publisher, "routingKey", "patent.extract");
 
-        publisher.publish(1L, "patents/extract-jobs/1/patent.pdf");
+        publisher.publish(1L, "tmp/patent-extract-jobs/1/original.pdf");
 
         ArgumentCaptor<PatentExtractMessage> messageCaptor = ArgumentCaptor.forClass(PatentExtractMessage.class);
         verify(rabbitTemplate).convertAndSend(
@@ -33,6 +33,6 @@ class RabbitPatentExtractPublisherTest {
         );
         assertThat(messageCaptor.getValue().type()).isEqualTo("PATENT_EXTRACT");
         assertThat(messageCaptor.getValue().extractJobId()).isEqualTo(1L);
-        assertThat(messageCaptor.getValue().objectKey()).isEqualTo("patents/extract-jobs/1/patent.pdf");
+        assertThat(messageCaptor.getValue().objectKey()).isEqualTo("tmp/patent-extract-jobs/1/original.pdf");
     }
 }

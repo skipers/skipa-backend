@@ -7,6 +7,7 @@ import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentApprovalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
@@ -67,14 +68,15 @@ public class PatentService {
     private final PatentOriginalPdfStorageService patentOriginalPdfStorageService;
 
     @Transactional
-    public PatentDetailResponse create(PatentCreateRequest request) {
+    public PatentDetailResponse create(User user, PatentCreateRequest request) {
         String applicationNumber = request.applicationNumber();
 
         if (patentRepository.existsByApplicationNumber(applicationNumber)) {
             throw new PatentException(ErrorCode.DUPLICATE_APPLICATION_NUMBER);
         }
 
-        String originalPdfKey = resolveOriginalPdfKey(request);
+        PatentExtractJob extractJob = getCompletedExtractJob(request.extractJobId());
+        String originalPdfKey = extractJob == null ? request.originalPdfKey() : null;
 
         Patent patent = patentRepository.save(Patent.builder()
                 .title(request.title())
@@ -94,6 +96,8 @@ public class PatentService {
                 .citationCount(request.citationCount())
                 .examinationClaimCount(request.examinationClaimCount())
                 .originalPdfKey(originalPdfKey)
+                .approvalStatus(initialApprovalStatus(user))
+                .currentDepartment(initialDepartment(user))
                 .managementNumber(request.managementNumber())
                 .businessField(request.businessField())
                 .techField(request.techField())
@@ -105,6 +109,24 @@ public class PatentService {
                 .keywords(request.keywords())
                 .summary(request.summary())
                 .build());
+
+        if (extractJob != null) {
+            assignExtractedStorageKeys(patent, extractJob);
+        }
+
+        return toDetailResponse(patent);
+    }
+
+    @Transactional
+    public PatentDetailResponse approve(Long patentId) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+
+        if (patent.getApprovalStatus() != PatentApprovalStatus.PENDING_APPROVAL) {
+            throw new PatentException(ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+        }
+
+        patent.approve();
 
         return toDetailResponse(patent);
     }
@@ -127,7 +149,11 @@ public class PatentService {
     public PatentDetailResponse get(User user, Long patentId) {
         businessPatentAccessValidator.validate(user, patentId);
 
-        return get(patentId);
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+        validateReadablePatent(user, patent);
+
+        return toDetailResponse(patent);
     }
 
     public PatentDetailResponse get(Long patentId) {
@@ -149,7 +175,11 @@ public class PatentService {
                 ? findBusinessPatents(user, normalizedKeyword, sortedPageable)
                 : findPatents(normalizedKeyword, sortedPageable);
 
-        return patents.map(PatentListResponse::from);
+        List<PatentListResponse> responses = patents.getContent().stream()
+                .filter(patent -> matchesApprovalStatus(patent, PatentApprovalStatus.APPROVED))
+                .map(PatentListResponse::from)
+                .toList();
+        return new PageImpl<>(responses, sortedPageable, responses.size());
     }
 
     public Page<PatentListResponse> getAll(
@@ -162,6 +192,36 @@ public class PatentService {
             List<String> statuses,
             String filingCountry,
             String techField,
+            String sort,
+            Pageable pageable
+    ) {
+        return getAllByApprovalStatus(
+                user,
+                keyword,
+                departmentId,
+                reviewStatus,
+                opinion,
+                checked,
+                statuses,
+                filingCountry,
+                techField,
+                PatentApprovalStatus.APPROVED,
+                sort,
+                pageable
+        );
+    }
+
+    private Page<PatentListResponse> getAllByApprovalStatus(
+            User user,
+            String keyword,
+            Long departmentId,
+            String reviewStatus,
+            String opinion,
+            Boolean checked,
+            List<String> statuses,
+            String filingCountry,
+            String techField,
+            PatentApprovalStatus approvalStatus,
             String sort,
             Pageable pageable
     ) {
@@ -180,6 +240,7 @@ public class PatentService {
         LocalDate today = LocalDate.now();
 
         List<PatentListResponse> responses = patents.stream()
+                .filter(patent -> matchesApprovalStatus(patent, approvalStatus))
                 .filter(patent -> matchesDepartment(patent, departmentId))
                 .filter(patent -> matchesReviewStatus(patent, reviewsByPatentId.get(patent.getId()), reviewStatus, today))
                 .filter(patent -> matchesOpinion(reviewsByPatentId.get(patent.getId()), parsedOpinion))
@@ -200,10 +261,35 @@ public class PatentService {
         return page(responses, pageable);
     }
 
+    public Page<PatentListResponse> getPendingApprovals(
+            User user,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        return getAllByApprovalStatus(
+                user,
+                keyword,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL,
+                sort,
+                pageable
+        );
+    }
+
     public PatentSummaryResponse getSummary(User user) {
         List<Patent> patents = user.getRole() == UserRole.BUSINESS
                 ? findBusinessPatents(user, null)
                 : patentRepository.findAll();
+        patents = patents.stream()
+                .filter(patent -> matchesApprovalStatus(patent, PatentApprovalStatus.APPROVED))
+                .toList();
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
 
         long active = patents.stream()
@@ -380,6 +466,20 @@ public class PatentService {
         }
     }
 
+    private boolean matchesApprovalStatus(Patent patent, PatentApprovalStatus approvalStatus) {
+        return patent.getApprovalStatus() == approvalStatus;
+    }
+
+    private void validateReadablePatent(User user, Patent patent) {
+        if (patent.getApprovalStatus() == PatentApprovalStatus.APPROVED) {
+            return;
+        }
+        if (user.getRole() == UserRole.ADMIN || user.getRole() == UserRole.LEGAL) {
+            return;
+        }
+        throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+    }
+
     private boolean matchesDepartment(Patent patent, Long departmentId) {
         if (departmentId == null) {
             return true;
@@ -515,25 +615,46 @@ public class PatentService {
         return comparator.compare(left, right);
     }
 
-    private String resolveOriginalPdfKey(PatentCreateRequest request) {
-        if (request.extractJobId() == null) {
-            return request.originalPdfKey();
+    private PatentExtractJob getCompletedExtractJob(Long extractJobId) {
+        if (extractJobId == null) {
+            return null;
         }
 
-        PatentExtractJob extractJob = patentExtractJobRepository.findById(request.extractJobId())
+        PatentExtractJob extractJob = patentExtractJobRepository.findById(extractJobId)
                 .orElseThrow(() -> new PatentExtractException(ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND));
 
         if (!extractJob.isCompleted()) {
             throw new PatentExtractException(ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
         }
 
-        String finalObjectKey = buildFinalPdfObjectKey(request.applicationNumber());
-        patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), finalObjectKey);
-        return finalObjectKey;
+        return extractJob;
     }
 
-    private String buildFinalPdfObjectKey(String applicationNumber) {
-        return "patents/%s/patent.pdf".formatted(applicationNumber);
+    private PatentApprovalStatus initialApprovalStatus(User user) {
+        return user.getRole() == UserRole.BUSINESS
+                ? PatentApprovalStatus.PENDING_APPROVAL
+                : PatentApprovalStatus.APPROVED;
+    }
+
+    private Department initialDepartment(User user) {
+        return user.getRole() == UserRole.BUSINESS ? user.getDepartment() : null;
+    }
+
+    private void assignExtractedStorageKeys(Patent patent, PatentExtractJob extractJob) {
+        String originalPdfKey = buildFinalPdfObjectKey(patent.getId());
+        String parsedJsonKey = buildParsedJsonObjectKey(patent.getId());
+
+        patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), originalPdfKey);
+        patentOriginalPdfStorageService.saveJson(parsedJsonKey, extractJob.getResultJson());
+        patent.assignStorageKeys(originalPdfKey, parsedJsonKey);
+    }
+
+    private String buildFinalPdfObjectKey(Long patentId) {
+        return "patents/%d/original.pdf".formatted(patentId);
+    }
+
+    private String buildParsedJsonObjectKey(Long patentId) {
+        return "patents/%d/parsed.json".formatted(patentId);
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {

@@ -82,6 +82,13 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "original_pdf_key", length = 500) // 원문 파일 키
     private String originalPdfKey;
 
+    @Column(name = "parsed_json_key", length = 500) // 파싱 JSON 파일 키
+    private String parsedJsonKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "approval_status", nullable = false, length = 30) // 승인 상태
+    private PatentApprovalStatus approvalStatus;
+
     @Column(name = "management_number", length = 50) // 관리번호
     private String managementNumber;
 
@@ -137,6 +144,8 @@ public class Patent extends BaseTimeEntity {
             Integer citationCount,
             Integer examinationClaimCount,
             String originalPdfKey,
+            String parsedJsonKey,
+            PatentApprovalStatus approvalStatus,
             String managementNumber,
             String businessField,
             String techField,
@@ -166,6 +175,8 @@ public class Patent extends BaseTimeEntity {
         this.citationCount = citationCount;
         this.examinationClaimCount = examinationClaimCount;
         this.originalPdfKey = originalPdfKey;
+        this.parsedJsonKey = parsedJsonKey;
+        this.approvalStatus = approvalStatus != null ? approvalStatus : PatentApprovalStatus.APPROVED;
         this.managementNumber = managementNumber;
         this.businessField = businessField;
         this.techField = techField;
@@ -177,6 +188,19 @@ public class Patent extends BaseTimeEntity {
         this.currentDepartment = currentDepartment;
         this.keywords = keywords;
         this.summary = summary;
+    }
+
+    public void assignStorageKeys(String originalPdfKey, String parsedJsonKey) {
+        this.originalPdfKey = originalPdfKey;
+        this.parsedJsonKey = parsedJsonKey;
+    }
+
+    public void approve() {
+        this.approvalStatus = PatentApprovalStatus.APPROVED;
+    }
+
+    public void reject() {
+        this.approvalStatus = PatentApprovalStatus.REJECTED;
     }
 
     public void update(

@@ -45,11 +45,14 @@ public class PatentController {
      * @param request 생성 요청
      * @return 생성된 특허
      */
-    @Operation(summary = "[Legal] 특허 생성", description = "새로운 특허 정보를 생성합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @Operation(summary = "[Common] 특허 생성/등록 요청", description = "LEGAL 사용자는 특허를 즉시 등록하고, BUSINESS 사용자는 승인 대기 상태로 등록 요청합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @PostMapping
-    public ResponseEntity<ApiResponse<PatentDetailResponse>> create(@Valid @RequestBody PatentCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(request)));
+    public ResponseEntity<ApiResponse<PatentDetailResponse>> create(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody PatentCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(patentService.create(userDetails.getUser(), request)));
     }
 
     /**
@@ -88,6 +91,30 @@ public class PatentController {
         return ApiResponse.ok(patentService.get(userDetails.getUser(), patentId));
     }
 
+    @Operation(
+            summary = "[Legal] 승인 대기 특허 목록 조회",
+            description = "관리자와 Legal 팀이 사업부에서 등록 요청한 승인 대기 특허 목록을 조회합니다. "
+                    + "필터: keyword(특허명, 출원번호, 발명자, 출원인). "
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
+                    + "applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @GetMapping("/pending-approval")
+    public ApiResponse<PageResponse<PatentListResponse>> getPendingApprovalPatents(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sort,
+            @PageableDefault(page = 0, size = 50) Pageable pageable
+    ) {
+        return ApiResponse.ok(PageResponse.from(patentService.getPendingApprovals(
+                userDetails.getUser(),
+                keyword,
+                sort,
+                pageable
+        )));
+    }
+
     /**
      * 특허 목록을 조회한다(page/size 기반).
      *
@@ -106,6 +133,7 @@ public class PatentController {
     @Operation(
             summary = "[Common] 특허 목록 조회",
             description = "특허 목록을 페이지 단위로 조회합니다. "
+                    + "승인 완료된 특허만 조회합니다. "
                     + "필터: keyword(특허명, 출원번호, 발명자, 출원인), departmentId(부서 ID, -1은 미배정), "
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
                     + "opinion(MAINTAIN, ABANDON), checked(true/false), "
@@ -179,6 +207,13 @@ public class PatentController {
             @Valid @RequestBody PatentDepartmentChangeRequest request
     ) {
         return ApiResponse.ok(patentService.changeDepartment(patentId, request));
+    }
+
+    @Operation(summary = "[Legal] 특허 승인", description = "승인 대기 상태의 특허를 승인합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PatchMapping("/{patentId}/approve")
+    public ApiResponse<PatentDetailResponse> approve(@PathVariable Long patentId) {
+        return ApiResponse.ok(patentService.approve(patentId));
     }
 
     /**

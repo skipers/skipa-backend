@@ -12,6 +12,7 @@ import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class PatentLegalStatusServiceTest {
@@ -45,8 +47,20 @@ class PatentLegalStatusServiceTest {
     @Mock
     private BusinessPatentAccessValidator businessPatentAccessValidator;
 
+    @Mock
+    private ApprovedPatentValidator approvedPatentValidator;
+
     @InjectMocks
     private PatentLegalStatusService patentLegalStatusService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(approvedPatentValidator.getApprovedPatent(any()))
+                .thenAnswer(invocation -> {
+                    Optional<Patent> patent = patentRepository.findById(invocation.getArgument(0));
+                    return patent != null && patent.isPresent() ? patent.get() : patent();
+                });
+    }
 
     @Test
     void createSavesLegalStatusHistory() {
@@ -82,7 +96,8 @@ class PatentLegalStatusServiceTest {
 
     @Test
     void createRejectsMissingPatent() {
-        when(patentRepository.findById(1L)).thenReturn(Optional.empty());
+        when(approvedPatentValidator.getApprovedPatent(1L))
+                .thenThrow(new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         assertPatentError(() -> patentLegalStatusService.create(1L, request("REGISTERED")), ErrorCode.PATENT_NOT_FOUND);
 
@@ -111,7 +126,6 @@ class PatentLegalStatusServiceTest {
         ReflectionTestUtils.setField(legalStatus, "id", 10L);
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(patentRepository.existsById(1L)).thenReturn(true);
         when(patentLegalStatusRepository.findByPatentId(1L, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(legalStatus), sortedPageable, 1));
 
@@ -125,7 +139,8 @@ class PatentLegalStatusServiceTest {
     @Test
     void getAllRejectsMissingPatent() {
         User user = legalUser();
-        when(patentRepository.existsById(1L)).thenReturn(false);
+        when(approvedPatentValidator.getApprovedPatent(1L))
+                .thenThrow(new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         assertPatentError(
                 () -> patentLegalStatusService.getAll(user, 1L, PageRequest.of(0, 20)),

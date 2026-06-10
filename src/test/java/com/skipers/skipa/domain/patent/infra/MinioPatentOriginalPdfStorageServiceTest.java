@@ -25,8 +25,8 @@ class MinioPatentOriginalPdfStorageServiceTest {
         ReflectionTestUtils.setField(storageService, "region", "us-east-1");
 
         storageService.copy(
-                "patents/extract-jobs/7/patent.pdf",
-                "patents/10-2026-0000000/patent.pdf"
+                "tmp/patent-extract-jobs/7/original.pdf",
+                "patents/1/original.pdf"
         );
 
         ArgumentCaptor<CopyObjectArgs> argsCaptor = ArgumentCaptor.forClass(CopyObjectArgs.class);
@@ -35,9 +35,9 @@ class MinioPatentOriginalPdfStorageServiceTest {
         CopyObjectArgs args = argsCaptor.getValue();
         assertThat(args.bucket()).isEqualTo("skipa");
         assertThat(args.region()).isEqualTo("us-east-1");
-        assertThat(args.object()).isEqualTo("patents/10-2026-0000000/patent.pdf");
+        assertThat(args.object()).isEqualTo("patents/1/original.pdf");
         assertThat(args.source().bucket()).isEqualTo("skipa");
         assertThat(args.source().region()).isEqualTo("us-east-1");
-        assertThat(args.source().object()).isEqualTo("patents/extract-jobs/7/patent.pdf");
+        assertThat(args.source().object()).isEqualTo("tmp/patent-extract-jobs/7/original.pdf");
     }
 }
