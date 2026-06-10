@@ -19,11 +19,10 @@ public class RestPreEvaluationChatClient implements PreEvaluationChatClient {
     private final String chatPath;
 
     public RestPreEvaluationChatClient(
-            RestClient.Builder restClientBuilder,
             @Value("${app.ai-server.base-url}") String baseUrl,
             @Value("${app.ai-server.pre-evaluation-chat-path}") String chatPath
     ) {
-        this.restClient = restClientBuilder.baseUrl(baseUrl).build();
+        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
         this.chatPath = chatPath;
     }
 
