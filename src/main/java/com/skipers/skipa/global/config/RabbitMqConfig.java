@@ -54,6 +54,25 @@ public class RabbitMqConfig {
     }
 
     @Bean
+    public TopicExchange preEvaluationExchange(@Value("${app.rabbitmq.pre-evaluation.exchange}") String exchangeName) {
+        return new TopicExchange(exchangeName, true, false);
+    }
+
+    @Bean
+    public Queue preEvaluationGenerateQueue(@Value("${app.rabbitmq.pre-evaluation.queue}") String queueName) {
+        return new Queue(queueName, true);
+    }
+
+    @Bean
+    public Binding preEvaluationGenerateBinding(
+            Queue preEvaluationGenerateQueue,
+            TopicExchange preEvaluationExchange,
+            @Value("${app.rabbitmq.pre-evaluation.routing-key}") String routingKey
+    ) {
+        return BindingBuilder.bind(preEvaluationGenerateQueue).to(preEvaluationExchange).with(routingKey);
+    }
+
+    @Bean
     public MessageConverter jsonMessageConverter() {
         return new JacksonJsonMessageConverter();
     }
