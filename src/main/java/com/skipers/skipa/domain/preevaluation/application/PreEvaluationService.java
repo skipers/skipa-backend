@@ -70,8 +70,29 @@ public class PreEvaluationService {
         preEvaluationRepository.delete(preEvaluation);
     }
 
+    @Transactional
+    public PreEvaluationStatusResponse complete(Long preEvaluationId, String reportUrl) {
+        PreEvaluation preEvaluation = getPreEvaluation(preEvaluationId);
+        preEvaluation.complete(reportUrl, null);
+
+        return PreEvaluationStatusResponse.from(preEvaluation);
+    }
+
+    @Transactional
+    public PreEvaluationStatusResponse fail(Long preEvaluationId) {
+        PreEvaluation preEvaluation = getPreEvaluation(preEvaluationId);
+        preEvaluation.fail();
+
+        return PreEvaluationStatusResponse.from(preEvaluation);
+    }
+
     private PreEvaluation getOwnedPreEvaluation(User user, Long preEvaluationId) {
         return preEvaluationRepository.findByIdAndUserId(preEvaluationId, user.getId())
+                .orElseThrow(() -> new PreEvaluationException(ErrorCode.PRE_EVALUATION_NOT_FOUND));
+    }
+
+    private PreEvaluation getPreEvaluation(Long preEvaluationId) {
+        return preEvaluationRepository.findById(preEvaluationId)
                 .orElseThrow(() -> new PreEvaluationException(ErrorCode.PRE_EVALUATION_NOT_FOUND));
     }
 
