@@ -192,7 +192,36 @@ public class PatentService {
             List<String> statuses,
             String filingCountry,
             String techField,
-            String approvalStatus,
+            String sort,
+            Pageable pageable
+    ) {
+        return getAllByApprovalStatus(
+                user,
+                keyword,
+                departmentId,
+                reviewStatus,
+                opinion,
+                checked,
+                statuses,
+                filingCountry,
+                techField,
+                PatentApprovalStatus.APPROVED,
+                sort,
+                pageable
+        );
+    }
+
+    private Page<PatentListResponse> getAllByApprovalStatus(
+            User user,
+            String keyword,
+            Long departmentId,
+            String reviewStatus,
+            String opinion,
+            Boolean checked,
+            List<String> statuses,
+            String filingCountry,
+            String techField,
+            PatentApprovalStatus approvalStatus,
             String sort,
             Pageable pageable
     ) {
@@ -207,12 +236,11 @@ public class PatentService {
                 .orElseGet(Map::of);
         Map<Long, BigDecimal> latestReportScores = latestReportScoresByPatentId();
         Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
-        PatentApprovalStatus parsedApprovalStatus = parseApprovalStatus(user, approvalStatus);
         BusinessOpinion parsedOpinion = parseOpinion(opinion);
         LocalDate today = LocalDate.now();
 
         List<PatentListResponse> responses = patents.stream()
-                .filter(patent -> matchesApprovalStatus(patent, parsedApprovalStatus))
+                .filter(patent -> matchesApprovalStatus(patent, approvalStatus))
                 .filter(patent -> matchesDepartment(patent, departmentId))
                 .filter(patent -> matchesReviewStatus(patent, reviewsByPatentId.get(patent.getId()), reviewStatus, today))
                 .filter(patent -> matchesOpinion(reviewsByPatentId.get(patent.getId()), parsedOpinion))
@@ -231,6 +259,28 @@ public class PatentService {
                 .toList();
 
         return page(responses, pageable);
+    }
+
+    public Page<PatentListResponse> getPendingApprovals(
+            User user,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        return getAllByApprovalStatus(
+                user,
+                keyword,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL,
+                sort,
+                pageable
+        );
     }
 
     public PatentSummaryResponse getSummary(User user) {
@@ -411,17 +461,6 @@ public class PatentService {
         }
         try {
             return BusinessOpinion.valueOf(opinion);
-        } catch (IllegalArgumentException e) {
-            throw new PatentException(ErrorCode.INVALID_REQUEST);
-        }
-    }
-
-    private PatentApprovalStatus parseApprovalStatus(User user, String approvalStatus) {
-        if (user.getRole() == UserRole.BUSINESS || approvalStatus == null || approvalStatus.isBlank()) {
-            return PatentApprovalStatus.APPROVED;
-        }
-        try {
-            return PatentApprovalStatus.valueOf(approvalStatus);
         } catch (IllegalArgumentException e) {
             throw new PatentException(ErrorCode.INVALID_REQUEST);
         }

@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentApprovalStatus;
 import com.skipers.skipa.domain.patent.dto.response.ExpiringPatentCalendarResponse;
 import com.skipers.skipa.domain.patent.dto.response.ExpiringPatentItemResponse;
 import com.skipers.skipa.domain.patent.dto.response.ExpiringPatentSummaryResponse;
@@ -90,14 +91,19 @@ public class ExpiringPatentService {
     }
 
     private List<Patent> scopedPatents(User user) {
+        List<Patent> patents;
         if (user.getRole() == UserRole.BUSINESS) {
             if (user.getDepartment() == null) {
                 throw new ReviewException(ErrorCode.FORBIDDEN);
             }
-            return patentRepository.findByCurrentDepartmentId(user.getDepartment().getId(), Pageable.unpaged()).getContent();
+            patents = patentRepository.findByCurrentDepartmentId(user.getDepartment().getId(), Pageable.unpaged()).getContent();
+        } else {
+            patents = patentRepository.findAll();
         }
 
-        return patentRepository.findAll();
+        return patents.stream()
+                .filter(patent -> patent.getApprovalStatus() == PatentApprovalStatus.APPROVED)
+                .toList();
     }
 
     private List<Patent> expiringPatents(List<Patent> patents, LocalDate today, LocalDate endDate) {

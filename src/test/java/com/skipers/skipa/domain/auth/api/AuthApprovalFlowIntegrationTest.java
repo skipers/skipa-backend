@@ -13,6 +13,7 @@ import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.patent.domain.PatentApprovalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
@@ -675,6 +676,114 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         assertThat(patentRepository.existsById(patentId)).isFalse();
+    }
+
+    @Test
+    void legalUserCanReadPendingApprovalPatents() throws Exception {
+        Patent pendingPatent = patentRepository.save(Patent.builder()
+                .title("Pending Approval Patent")
+                .applicationNumber("APP-PENDING-APPROVAL")
+                .approvalStatus(PatentApprovalStatus.PENDING_APPROVAL)
+                .currentDepartment(department)
+                .build());
+        Patent approvedPatent = patentRepository.save(Patent.builder()
+                .title("Approved Patent")
+                .applicationNumber("APP-APPROVED")
+                .approvalStatus(PatentApprovalStatus.APPROVED)
+                .build());
+        patentRepository.save(Patent.builder()
+                .title("Rejected Patent")
+                .applicationNumber("APP-REJECTED")
+                .approvalStatus(PatentApprovalStatus.REJECTED)
+                .build());
+        String legalToken = createActiveUserToken("legal-pending-patent", "legal-pending-patent@example.com", UserRole.LEGAL);
+        String businessToken = createActiveUserToken("business-pending-patent", "business-pending-patent@example.com", UserRole.BUSINESS);
+
+        mockMvc.perform(get("/patents/pending-approval"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/patents/pending-approval")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/patents/pending-approval")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("keyword", "pending")
+                        .param("sort", "applicationNumber,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(pendingPatent.getId()))
+                .andExpect(jsonPath("$.data.items[0].approvalStatus").value("PENDING_APPROVAL"))
+                .andExpect(jsonPath("$.data.totalItems").value(1));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("approvalStatus", "PENDING_APPROVAL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(approvedPatent.getId()))
+                .andExpect(jsonPath("$.data.items[0].approvalStatus").value("APPROVED"));
+    }
+
+    @Test
+    void patentSubresourcesRejectPendingApprovalPatents() throws Exception {
+        Patent pendingPatent = patentRepository.save(Patent.builder()
+                .title("Pending Subresource Patent")
+                .applicationNumber("APP-PENDING-SUB")
+                .approvalStatus(PatentApprovalStatus.PENDING_APPROVAL)
+                .currentDepartment(department)
+                .build());
+        String legalToken = createActiveUserToken("legal-pending-subresource", "legal-pending-subresource@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(post("/patents/{patentId}/reports", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(get("/patents/{patentId}/reports", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/legal-status", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "REGISTERED",
+                                  "changedAt": "2026-06-10"
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(get("/patents/{patentId}/legal-status", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/annuities", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "paymentYears": 1,
+                                  "amount": 100000
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(get("/patents/{patentId}/annuities", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", pendingPatent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
     }
 
     @Test

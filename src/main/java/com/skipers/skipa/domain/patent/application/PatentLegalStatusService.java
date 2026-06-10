@@ -1,7 +1,6 @@
 package com.skipers.skipa.domain.patent.application;
 
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
-import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
@@ -25,13 +24,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class PatentLegalStatusService {
 
     private final PatentLegalStatusRepository patentLegalStatusRepository;
-    private final PatentRepository patentRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final ApprovedPatentValidator approvedPatentValidator;
 
     @Transactional
     public PatentLegalStatusResponse create(Long patentId, PatentLegalStatusCreateRequest request) {
-        Patent patent = patentRepository.findById(patentId)
-                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+        Patent patent = approvedPatentValidator.getApprovedPatent(patentId);
 
         PatentLegalStatusType status;
         try {
@@ -51,10 +49,7 @@ public class PatentLegalStatusService {
 
     public Page<PatentLegalStatusResponse> getAll(User user, Long patentId, Pageable pageable) {
         businessPatentAccessValidator.validate(user, patentId);
-
-        if (!patentRepository.existsById(patentId)) {
-            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
-        }
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),

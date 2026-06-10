@@ -1,6 +1,6 @@
 package com.skipers.skipa.domain.report.application;
 
-import com.skipers.skipa.domain.patent.dao.PatentRepository;
+import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
@@ -39,16 +39,15 @@ import java.util.stream.Collectors;
 public class ReportService {
 
     private final ReportRepository reportRepository;
-    private final PatentRepository patentRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
+    private final ApprovedPatentValidator approvedPatentValidator;
     private final ReportGenerationPublisher reportGenerationPublisher;
     private final ReportStorageService reportStorageService;
     private final ReviewRepository reviewRepository;
 
     @Transactional
     public ReportCreateResponse create(Long patentId) {
-        Patent patent = patentRepository.findById(patentId)
-                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+        Patent patent = approvedPatentValidator.getApprovedPatent(patentId);
 
         Report report = reportRepository.save(Report.builder()
                 .patent(patent)
@@ -62,10 +61,7 @@ public class ReportService {
 
     public Page<ReportResponse> getAll(User user, Long patentId, Pageable pageable) {
         businessPatentAccessValidator.validate(user, patentId);
-
-        if (!patentRepository.existsById(patentId)) {
-            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
-        }
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -78,6 +74,7 @@ public class ReportService {
 
     public ReportDetailResponse get(User user, Long patentId, Long reportId) {
         businessPatentAccessValidator.validate(user, patentId);
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
@@ -92,10 +89,7 @@ public class ReportService {
 
     public ReportDetailResponse getLatest(User user, Long patentId) {
         businessPatentAccessValidator.validate(user, patentId);
-
-        if (!patentRepository.existsById(patentId)) {
-            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
-        }
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         Report report = reportRepository.findFirstByPatentIdOrderByIdDesc(patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
@@ -107,10 +101,7 @@ public class ReportService {
 
     public ReportHistoryResponse getHistory(User user, Long patentId) {
         businessPatentAccessValidator.validate(user, patentId);
-
-        if (!patentRepository.existsById(patentId)) {
-            throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
-        }
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         List<Report> historyReports = reportRepository
                 .findByPatentIdAndStatusOrderByIdDesc(patentId, ReportStatus.COMPLETED)
@@ -140,6 +131,7 @@ public class ReportService {
 
     public ReportStatusResponse getStatus(User user, Long patentId, Long reportId) {
         businessPatentAccessValidator.validate(user, patentId);
+        approvedPatentValidator.getApprovedPatent(patentId);
 
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));

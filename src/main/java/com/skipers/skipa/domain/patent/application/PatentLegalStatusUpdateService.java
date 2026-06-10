@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
+import com.skipers.skipa.domain.patent.domain.PatentApprovalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +62,7 @@ public class PatentLegalStatusUpdateService {
 
         List<PatentLegalStatus> legalStatuses = new ArrayList<>();
         for (Patent patent : patents) {
-            if (canTransition(latestStatuses.get(patent.getId()))) {
+            if (isApprovedPatent(patent) && canTransition(latestStatuses.get(patent.getId()))) {
                 legalStatuses.add(legalStatus(patent, PatentLegalStatusType.EXPIRED, today));
             }
         }
@@ -81,7 +82,8 @@ public class PatentLegalStatusUpdateService {
             annuity.abandon();
 
             Patent patent = annuity.getPatent();
-            if (!excludedPatentIds.contains(patent.getId())
+            if (isApprovedPatent(patent)
+                    && !excludedPatentIds.contains(patent.getId())
                     && abandonedPatentIds.add(patent.getId())
                     && canTransition(latestStatuses.get(patent.getId()))) {
                 legalStatuses.add(legalStatus(patent, PatentLegalStatusType.ABANDONED, today));
@@ -108,6 +110,10 @@ public class PatentLegalStatusUpdateService {
 
     private boolean canTransition(PatentLegalStatus latestStatus) {
         return latestStatus == null || ACTIVE_STATUSES.contains(latestStatus.getStatus());
+    }
+
+    private boolean isApprovedPatent(Patent patent) {
+        return patent.getApprovalStatus() == PatentApprovalStatus.APPROVED;
     }
 
     private PatentLegalStatus legalStatus(Patent patent, PatentLegalStatusType status, LocalDate changedAt) {
