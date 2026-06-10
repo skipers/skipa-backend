@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.review.api;
 
 import com.skipers.skipa.domain.review.application.ReviewService;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
+import com.skipers.skipa.domain.review.dto.request.ReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
@@ -38,8 +39,11 @@ public class ReviewController {
     @Operation(summary = "[Legal] 검토 요청", description = "Legal 팀이 특정 특허를 담당 부서에 검토 요청합니다. 이미 이번 분기 검토 대상으로 예약된 특허라면 요청 상태로 전환합니다.")
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping("/patents/{patentId}/reviews")
-    public ResponseEntity<ApiResponse<ReviewResponse>> create(@PathVariable Long patentId) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reviewService.create(patentId)));
+    public ResponseEntity<ApiResponse<ReviewResponse>> create(
+            @PathVariable Long patentId,
+            @Valid @RequestBody(required = false) ReviewCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reviewService.create(patentId, request)));
     }
 
     /**
