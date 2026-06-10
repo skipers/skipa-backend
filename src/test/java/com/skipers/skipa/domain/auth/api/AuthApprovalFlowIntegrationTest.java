@@ -686,7 +686,7 @@ class AuthApprovalFlowIntegrationTest {
                 .approvalStatus(PatentApprovalStatus.PENDING_APPROVAL)
                 .currentDepartment(department)
                 .build());
-        patentRepository.save(Patent.builder()
+        Patent approvedPatent = patentRepository.save(Patent.builder()
                 .title("Approved Patent")
                 .applicationNumber("APP-APPROVED")
                 .approvalStatus(PatentApprovalStatus.APPROVED)
@@ -715,6 +715,14 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(pendingPatent.getId()))
                 .andExpect(jsonPath("$.data.items[0].approvalStatus").value("PENDING_APPROVAL"))
                 .andExpect(jsonPath("$.data.totalItems").value(1));
+
+        mockMvc.perform(get("/patents")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("approvalStatus", "PENDING_APPROVAL"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(approvedPatent.getId()))
+                .andExpect(jsonPath("$.data.items[0].approvalStatus").value("APPROVED"));
     }
 
     @Test

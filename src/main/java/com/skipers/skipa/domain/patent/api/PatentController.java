@@ -126,7 +126,6 @@ public class PatentController {
      * @param status 권리 상태(선택, 복수 가능)
      * @param filingCountry 출원국(선택)
      * @param techField 기술 분야(선택)
-     * @param approvalStatus 승인 상태(선택)
      * @param sort 정렬 기준(선택)
      * @param pageable page/size 정보
      * @return 특허 목록 페이지
@@ -134,11 +133,12 @@ public class PatentController {
     @Operation(
             summary = "[Common] 특허 목록 조회",
             description = "특허 목록을 페이지 단위로 조회합니다. "
+                    + "승인 완료된 특허만 조회합니다. "
                     + "필터: keyword(특허명, 출원번호, 발명자, 출원인), departmentId(부서 ID, -1은 미배정), "
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
                     + "opinion(MAINTAIN, ABANDON), checked(true/false), "
                     + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
-                    + "approvalStatus(PENDING_APPROVAL, APPROVED, REJECTED), filingCountry, techField. "
+                    + "filingCountry, techField. "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
                     + "applicationDate,asc|desc, expiryDate,asc|desc. "
                     + "기존 sort=id, expiryDate, applicationDate, citationCount도 지원합니다. "
@@ -157,7 +157,6 @@ public class PatentController {
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) String filingCountry,
             @RequestParam(required = false) String techField,
-            @RequestParam(required = false) String approvalStatus,
             @RequestParam(required = false) String sort,
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
@@ -171,7 +170,6 @@ public class PatentController {
                 status,
                 filingCountry,
                 techField,
-                approvalStatus,
                 sort,
                 pageable
         )));

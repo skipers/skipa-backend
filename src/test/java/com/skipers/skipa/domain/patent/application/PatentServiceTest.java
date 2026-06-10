@@ -419,7 +419,6 @@ class PatentServiceTest {
                 List.of("REGISTERED"),
                 "KR",
                 "반도체",
-                null,
                 "expiryDate",
                 PageRequest.of(0, 20)
         );
@@ -477,7 +476,6 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
                 "title,desc",
                 PageRequest.of(0, 20)
         );
@@ -524,7 +522,6 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
                 PageRequest.of(0, 20)
         );
 
@@ -534,7 +531,7 @@ class PatentServiceTest {
     }
 
     @Test
-    void getAllAllowsLegalUserToFilterPendingApprovalPatents() {
+    void getPendingApprovalsReturnsPendingApprovalPatents() {
         Patent approvedPatent = patent(
                 1L,
                 "Approved Patent",
@@ -559,17 +556,9 @@ class PatentServiceTest {
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.empty());
 
-        Page<?> result = patentService.getAll(
+        Page<?> result = patentService.getPendingApprovals(
                 legalUser(),
                 null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                "PENDING_APPROVAL",
                 null,
                 PageRequest.of(0, 20)
         );
@@ -609,7 +598,6 @@ class PatentServiceTest {
                 null,
                 -1L,
                 "unassigned",
-                null,
                 null,
                 null,
                 null,
@@ -664,7 +652,6 @@ class PatentServiceTest {
                 null,
                 null,
                 "unrequested",
-                null,
                 null,
                 null,
                 null,
