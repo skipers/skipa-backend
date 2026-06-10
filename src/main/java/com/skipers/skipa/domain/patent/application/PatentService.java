@@ -233,6 +233,28 @@ public class PatentService {
         return page(responses, pageable);
     }
 
+    public Page<PatentListResponse> getPendingApprovals(
+            User user,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        return getAll(
+                user,
+                keyword,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL.name(),
+                sort,
+                pageable
+        );
+    }
+
     public PatentSummaryResponse getSummary(User user) {
         List<Patent> patents = user.getRole() == UserRole.BUSINESS
                 ? findBusinessPatents(user, null)
