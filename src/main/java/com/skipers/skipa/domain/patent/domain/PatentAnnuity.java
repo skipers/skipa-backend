@@ -78,4 +78,8 @@ public class PatentAnnuity extends BaseTimeEntity {
         this.paidDate = paidDate;
         this.status = PatentAnnuityStatus.PAID;
     }
+
+    public void abandon() {
+        this.status = PatentAnnuityStatus.ABANDONED;
+    }
 }

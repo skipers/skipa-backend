@@ -111,8 +111,11 @@ public class Review extends BaseTimeEntity {
         this.checked = checked != null && checked;
     }
 
-    public void request(Report report) {
+    public void request(Report report, LocalDate dueDate) {
         this.report = report;
+        if (dueDate != null) {
+            this.dueDate = dueDate;
+        }
         this.status = ReviewStatus.PENDING;
     }
 

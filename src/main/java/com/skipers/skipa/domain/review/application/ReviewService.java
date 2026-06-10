@@ -14,6 +14,7 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
+import com.skipers.skipa.domain.review.dto.request.ReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
@@ -45,10 +46,16 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse create(Long patentId) {
+        return create(patentId, null);
+    }
+
+    @Transactional
+    public ReviewResponse create(Long patentId, ReviewCreateRequest request) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
         Department department = validateDepartment(patent);
         ReviewCycle reviewCycle = getActiveReviewCycle();
+        LocalDate dueDate = request != null ? request.dueDate() : null;
 
         Review existingReview = reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(
                 reviewCycle.getId(),
@@ -56,7 +63,7 @@ public class ReviewService {
                 department.getId()
         ).orElse(null);
         if (existingReview != null && existingReview.getStatus() == ReviewStatus.SCHEDULED) {
-            existingReview.request(findLatestReport(patent.getId()));
+            existingReview.request(findLatestReport(patent.getId()), dueDate);
             return ReviewResponse.from(existingReview);
         }
         if (existingReview != null) {
@@ -67,7 +74,8 @@ public class ReviewService {
                 patent,
                 department,
                 reviewCycle,
-                findLatestReport(patent.getId())
+                findLatestReport(patent.getId()),
+                dueDate
         ));
 
         return ReviewResponse.from(review);
@@ -77,6 +85,7 @@ public class ReviewService {
     public BulkReviewCreateResponse createBulk(BulkReviewCreateRequest request) {
         ReviewCycle reviewCycle = getActiveReviewCycle();
         List<Long> patentIds = new ArrayList<>(new LinkedHashSet<>(request.patentIds()));
+        LocalDate dueDate = request.dueDate();
         Map<Long, Patent> patentsById = new HashMap<>();
         patentRepository.findAllById(patentIds).forEach(patent -> patentsById.put(patent.getId(), patent));
 
@@ -113,7 +122,7 @@ public class ReviewService {
             }
             Review existingReview = existingReviewsByKey.get(reviewKey(patentId, department.getId()));
             if (existingReview != null && existingReview.getStatus() == ReviewStatus.SCHEDULED) {
-                existingReview.request(findLatestReport(patentId));
+                existingReview.request(findLatestReport(patentId), dueDate);
                 items.add(BulkReviewCreateResponse.Item.created(patentId));
                 requestedCount++;
                 continue;
@@ -127,7 +136,8 @@ public class ReviewService {
                     patent,
                     department,
                     reviewCycle,
-                    findLatestReport(patentId)
+                    findLatestReport(patentId),
+                    dueDate
             );
             reviews.add(review);
             items.add(BulkReviewCreateResponse.Item.created(patentId));
@@ -221,12 +231,19 @@ public class ReviewService {
                 .orElseThrow(() -> new ReviewException(ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND));
     }
 
-    private Review createReview(Patent patent, Department department, ReviewCycle reviewCycle, Report report) {
+    private Review createReview(
+            Patent patent,
+            Department department,
+            ReviewCycle reviewCycle,
+            Report report,
+            LocalDate dueDate
+    ) {
         return Review.builder()
                 .patent(patent)
                 .department(department)
                 .reviewCycle(reviewCycle)
                 .report(report)
+                .dueDate(dueDate)
                 .build();
     }
 

@@ -1141,6 +1141,36 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void legalUserCanCreateReviewRequestWithDueDate() throws Exception {
+        LocalDate dueDate = LocalDate.of(2026, 6, 20);
+        Patent patent = patentRepository.save(Patent.builder()
+                .title("Review Request Due Date Patent")
+                .applicationNumber("APP-REVIEW-DUE-DATE")
+                .currentDepartment(department)
+                .build());
+        String legalToken = createActiveUserToken("legal-review-due-date", "legal-review-due-date@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "dueDate": "%s"
+                                }
+                                """.formatted(dueDate)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.dueDate").value(dueDate.toString()));
+
+        Review review = reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(
+                reviewCycle.getId(),
+                patent.getId(),
+                department.getId()
+        ).orElseThrow();
+        assertThat(review.getDueDate()).isEqualTo(dueDate);
+    }
+
+
+    @Test
     void reviewRequestCreationRejectsInvalidAndDuplicateRequests() throws Exception {
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Review Error Patent")
@@ -1200,19 +1230,22 @@ class AuthApprovalFlowIntegrationTest {
                 .reviewCycle(reviewCycle)
                 .build());
         String legalToken = createActiveUserToken("legal-review-bulk", "legal-review-bulk@example.com", UserRole.LEGAL);
+        LocalDate dueDate = LocalDate.of(2026, 6, 20);
 
         mockMvc.perform(post("/reviews/bulk")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "patentIds": [%d, %d, %d, 999999, %d]
+                                  "patentIds": [%d, %d, %d, 999999, %d],
+                                  "dueDate": "%s"
                                 }
                                 """.formatted(
                                 eligiblePatent.getId(),
                                 duplicatePatent.getId(),
                                 unassignedPatent.getId(),
-                                eligiblePatent.getId()
+                                eligiblePatent.getId(),
+                                dueDate
                         )))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))
@@ -1230,6 +1263,12 @@ class AuthApprovalFlowIntegrationTest {
                 eligiblePatent.getId(),
                 department.getId()
         )).isTrue();
+        Review review = reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(
+                reviewCycle.getId(),
+                eligiblePatent.getId(),
+                department.getId()
+        ).orElseThrow();
+        assertThat(review.getDueDate()).isEqualTo(dueDate);
     }
 
     @Test
