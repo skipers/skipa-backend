@@ -178,7 +178,7 @@ class ReviewCycleServiceTest {
 
         assertReviewCycleError(
                 () -> reviewCycleService.updateDeadline(1L, new ReviewCycleDeadlineUpdateRequest(LocalDate.of(2026, 7, 1))),
-                ErrorCode.INVALID_REVIEW_CYCLE_PERIOD
+                ErrorCode.INVALID_REVIEW_CYCLE_DEADLINE
         );
     }
 

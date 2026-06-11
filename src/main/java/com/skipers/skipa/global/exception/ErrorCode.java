@@ -63,6 +63,7 @@ public enum ErrorCode {
     REVIEW_CYCLE_PERIOD_OVERLAP(HttpStatus.CONFLICT, "REVIEW_CYCLE_PERIOD_OVERLAP", "기존 검토 주기와 기간이 겹칩니다."),
     REVIEW_CYCLE_IN_USE(HttpStatus.CONFLICT, "REVIEW_CYCLE_IN_USE", "검토 요청에서 사용 중인 검토 주기는 삭제할 수 없습니다."),
     INVALID_REVIEW_CYCLE_PERIOD(HttpStatus.BAD_REQUEST, "INVALID_REVIEW_CYCLE_PERIOD", "검토 주기 종료일은 시작일보다 빠를 수 없습니다."),
+    INVALID_REVIEW_CYCLE_DEADLINE(HttpStatus.BAD_REQUEST, "INVALID_REVIEW_CYCLE_DEADLINE", "검토 주기 마감일자는 시작일과 종료일 사이여야 합니다."),
     REVIEW_CYCLE_DEADLINE_NOT_SET(HttpStatus.CONFLICT, "REVIEW_CYCLE_DEADLINE_NOT_SET", "검토 주기 마감일자가 설정되지 않았습니다."),
     DUPLICATE_REVIEW_REQUEST(HttpStatus.CONFLICT, "DUPLICATE_REVIEW_REQUEST", "이미 요청된 사업부 검토입니다."),
     OPINION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "OPINION_ALREADY_SUBMITTED", "이미 의견이 제출된 요청입니다."),

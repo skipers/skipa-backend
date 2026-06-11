@@ -115,7 +115,7 @@ public class ReviewCycleService {
             return;
         }
         if (deadline.isBefore(startDate) || deadline.isAfter(endDate)) {
-            throw new ReviewCycleException(ErrorCode.INVALID_REVIEW_CYCLE_PERIOD);
+            throw new ReviewCycleException(ErrorCode.INVALID_REVIEW_CYCLE_DEADLINE);
         }
     }
 
