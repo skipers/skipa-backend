@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.portfolio.api;
 
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightService;
 import com.skipers.skipa.domain.portfolio.application.PortfolioService;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PortfolioController {
 
     private final PortfolioService portfolioService;
+    private final PortfolioInsightService portfolioInsightService;
 
     /**
      * 포트폴리오 인사이트를 조회한다.
@@ -29,7 +31,7 @@ public class PortfolioController {
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/insights")
     public ApiResponse<PortfolioInsightsResponse> getInsights() {
-        return ApiResponse.ok(portfolioService.getInsights());
+        return ApiResponse.ok(portfolioInsightService.getInsights());
     }
 
     /**
