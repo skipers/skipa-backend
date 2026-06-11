@@ -44,6 +44,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LocalDataInitializer implements ApplicationRunner {
 
+    private static final LocalDate SAMPLE_BASE_DATE = LocalDate.of(2026, 6, 11);
+
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
@@ -233,7 +235,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .applicationDate(LocalDate.of(2022 + index % 4, index % 12 + 1, index % 24 + 1))
                 .registrationDate(index % 2 == 0 ? LocalDate.of(2025, index % 12 + 1, index % 24 + 1) : null)
                 .publicationDate(LocalDate.of(2024, index % 12 + 1, index % 24 + 1))
-                .expiryDate(LocalDate.of(2042 + index % 4, index % 12 + 1, index % 24 + 1))
+                .expiryDate(sampleExpiryDate(index))
                 .ipcCodes(List.of(index % 2 == 0 ? "G06N 3/08" : "H04B 7/06", "G05B 23/02"))
                 .cpcCodes(List.of(index % 2 == 0 ? "G06N3/084" : "H04B7/0617", "G05B23/0243"))
                 .applicant(index % 3 == 0 ? "SK텔레콤" : index % 3 == 1 ? "SK하이닉스" : "SK온")
@@ -326,10 +328,23 @@ public class LocalDataInitializer implements ApplicationRunner {
         if (index % 4 == 0) {
             return ReviewStatus.OVERDUE;
         }
-        if (index % 3 == 0) {
+        int submissionBucket = index % 6;
+        if (submissionBucket >= 1 && submissionBucket <= 3) {
             return ReviewStatus.SUBMITTED;
         }
         return ReviewStatus.PENDING;
+    }
+
+    private LocalDate sampleExpiryDate(int index) {
+        int offsetDays = index % 20;
+        return switch ((index - 1) % 6) {
+            case 0 -> SAMPLE_BASE_DATE.plusMonths(1).plusDays(offsetDays);
+            case 1 -> SAMPLE_BASE_DATE.plusMonths(4).plusDays(offsetDays);
+            case 2 -> SAMPLE_BASE_DATE.plusMonths(9).plusDays(offsetDays);
+            case 3 -> SAMPLE_BASE_DATE.plusMonths(24).plusDays(offsetDays);
+            case 4 -> SAMPLE_BASE_DATE.plusMonths(48).plusDays(offsetDays);
+            default -> SAMPLE_BASE_DATE.plusMonths(72).plusDays(offsetDays);
+        };
     }
 
     private BusinessOpinion submittedOpinion(int index) {

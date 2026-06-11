@@ -26,6 +26,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             where review.department.id = :departmentId
               and review.reviewCycle.id = :reviewCycleId
               and review.patent.currentDepartment.id = :departmentId
+              and review.patent.approvalStatus = com.skipers.skipa.domain.patent.domain.PatentApprovalStatus.APPROVED
               and review.status <> com.skipers.skipa.domain.review.domain.ReviewStatus.SCHEDULED
               and (:status is null or review.status = :status)
               and (:opinion is null or review.opinion = :opinion)

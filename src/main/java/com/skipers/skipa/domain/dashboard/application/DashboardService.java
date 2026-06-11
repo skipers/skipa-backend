@@ -84,6 +84,8 @@ public class DashboardService {
         Long departmentId = user.getDepartment().getId();
         List<Review> reviews = reviewRepository.findAllByReviewCycleId(reviewCycle.getId()).stream()
                 .filter(review -> review.getDepartment().getId().equals(departmentId))
+                .filter(review -> review.getPatent().getCurrentDepartment() != null)
+                .filter(review -> review.getPatent().getCurrentDepartment().getId().equals(departmentId))
                 .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
                 .toList();
         List<Patent> departmentPatents = patentRepository.findByCurrentDepartmentId(

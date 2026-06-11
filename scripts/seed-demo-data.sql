@@ -141,7 +141,14 @@ inserted as (
         make_date(2022 + source.idx % 4, source.idx % 12 + 1, source.idx % 24 + 1),
         case when source.idx % 2 = 0 then make_date(2025, source.idx % 12 + 1, source.idx % 24 + 1) else null end,
         make_date(2024, source.idx % 12 + 1, source.idx % 24 + 1),
-        make_date(2042 + source.idx % 4, source.idx % 12 + 1, source.idx % 24 + 1),
+        case (source.idx - 1) % 6
+            when 0 then ('2026-06-11'::date + interval '1 month' + (source.idx % 20) * interval '1 day')::date
+            when 1 then ('2026-06-11'::date + interval '4 months' + (source.idx % 20) * interval '1 day')::date
+            when 2 then ('2026-06-11'::date + interval '9 months' + (source.idx % 20) * interval '1 day')::date
+            when 3 then ('2026-06-11'::date + interval '24 months' + (source.idx % 20) * interval '1 day')::date
+            when 4 then ('2026-06-11'::date + interval '48 months' + (source.idx % 20) * interval '1 day')::date
+            else ('2026-06-11'::date + interval '72 months' + (source.idx % 20) * interval '1 day')::date
+        end,
         jsonb_build_array(case when source.idx % 2 = 0 then 'G06N 3/08' else 'H04B 7/06' end, 'G05B 23/02'),
         jsonb_build_array(case when source.idx % 2 = 0 then 'G06N3/084' else 'H04B7/0617' end, 'G05B23/0243'),
         case source.idx % 3 when 0 then 'SK텔레콤' when 1 then 'SK하이닉스' else 'SK온' end,
@@ -255,7 +262,7 @@ current_reviews as (
         case
             when seed.idx % 5 = 0 then 'SCHEDULED'
             when seed.idx % 4 = 0 then 'OVERDUE'
-            when seed.idx % 3 = 0 then 'SUBMITTED'
+            when seed.idx % 6 between 1 and 3 then 'SUBMITTED'
             else 'PENDING'
         end as review_status
     from skipa_seed_patents seed
