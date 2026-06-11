@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.preevaluation.application;
 
-import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationChatMessageRepository;
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationCreateRequest;
@@ -26,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PreEvaluationService {
 
     private final PreEvaluationRepository preEvaluationRepository;
-    private final PreEvaluationChatMessageRepository chatMessageRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final PreEvaluationGenerationPublisher generationPublisher;
     private final ReportStorageService reportStorageService;
 
@@ -69,7 +70,7 @@ public class PreEvaluationService {
     @Transactional
     public void delete(User user, Long preEvaluationId) {
         PreEvaluation preEvaluation = getOwnedPreEvaluation(user, preEvaluationId);
-        chatMessageRepository.deleteAllByPreEvaluationId(preEvaluation.getId());
+        chatMessageRepository.deleteAllByTargetTypeAndTargetId(ChatTargetType.PRE_EVALUATION, preEvaluation.getId());
         preEvaluationRepository.delete(preEvaluation);
     }
 

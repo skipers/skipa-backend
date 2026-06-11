@@ -1,6 +1,6 @@
 package com.skipers.skipa.domain.preevaluation.dto.response;
 
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatMessage;
+import com.skipers.skipa.domain.chat.domain.ChatMessage;
 
 import java.time.Instant;
 
@@ -12,10 +12,10 @@ public record PreEvaluationChatMessageResponse(
         Instant createdAt
 ) {
 
-    public static PreEvaluationChatMessageResponse from(PreEvaluationChatMessage message) {
+    public static PreEvaluationChatMessageResponse from(ChatMessage message) {
         return new PreEvaluationChatMessageResponse(
                 message.getId(),
-                message.getPreEvaluation().getId(),
+                message.getTargetId(),
                 message.getRole().name(),
                 message.getContent(),
                 message.getCreatedAt()

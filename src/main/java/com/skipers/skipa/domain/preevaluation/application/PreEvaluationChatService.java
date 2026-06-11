@@ -1,10 +1,11 @@
 package com.skipers.skipa.domain.preevaluation.application;
 
-import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationChatMessageRepository;
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatMessage;
+import com.skipers.skipa.domain.chat.domain.ChatRole;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatMessage;
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatRole;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatMessageRequest;
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationChatMessageResponse;
@@ -25,13 +26,16 @@ import java.util.List;
 public class PreEvaluationChatService {
 
     private final PreEvaluationRepository preEvaluationRepository;
-    private final PreEvaluationChatMessageRepository chatMessageRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final PreEvaluationChatClient chatClient;
 
     public List<PreEvaluationChatMessageResponse> getMessages(User user, Long preEvaluationId) {
         PreEvaluation preEvaluation = getOwnedPreEvaluation(user, preEvaluationId);
 
-        return chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(preEvaluation.getId())
+        return chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                        ChatTargetType.PRE_EVALUATION,
+                        preEvaluation.getId()
+                )
                 .stream()
                 .map(PreEvaluationChatMessageResponse::from)
                 .toList();
@@ -44,12 +48,16 @@ public class PreEvaluationChatService {
             PreEvaluationChatMessageRequest request
     ) {
         PreEvaluation preEvaluation = getOwnedPreEvaluation(user, preEvaluationId);
-        List<PreEvaluationChatMessage> previousMessages =
-                chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(preEvaluation.getId());
+        List<ChatMessage> previousMessages = chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                ChatTargetType.PRE_EVALUATION,
+                preEvaluation.getId()
+        );
 
-        PreEvaluationChatMessage userMessage = chatMessageRepository.save(PreEvaluationChatMessage.builder()
-                .preEvaluation(preEvaluation)
-                .role(PreEvaluationChatRole.USER)
+        ChatMessage userMessage = chatMessageRepository.save(ChatMessage.builder()
+                .targetType(ChatTargetType.PRE_EVALUATION)
+                .targetId(preEvaluation.getId())
+                .user(user)
+                .role(ChatRole.USER)
                 .content(request.message())
                 .build());
 
@@ -59,9 +67,11 @@ public class PreEvaluationChatService {
         history.add(PreEvaluationChatClientRequest.Message.from(userMessage));
 
         String assistantContent = sendToAiServer(preEvaluation, request.message(), history);
-        PreEvaluationChatMessage assistantMessage = chatMessageRepository.save(PreEvaluationChatMessage.builder()
-                .preEvaluation(preEvaluation)
-                .role(PreEvaluationChatRole.ASSISTANT)
+        ChatMessage assistantMessage = chatMessageRepository.save(ChatMessage.builder()
+                .targetType(ChatTargetType.PRE_EVALUATION)
+                .targetId(preEvaluation.getId())
+                .user(user)
+                .role(ChatRole.ASSISTANT)
                 .content(assistantContent)
                 .build());
 
@@ -71,7 +81,7 @@ public class PreEvaluationChatService {
     @Transactional
     public void clearMessages(User user, Long preEvaluationId) {
         PreEvaluation preEvaluation = getOwnedPreEvaluation(user, preEvaluationId);
-        chatMessageRepository.deleteAllByPreEvaluationId(preEvaluation.getId());
+        chatMessageRepository.deleteAllByTargetTypeAndTargetId(ChatTargetType.PRE_EVALUATION, preEvaluation.getId());
     }
 
     private String sendToAiServer(

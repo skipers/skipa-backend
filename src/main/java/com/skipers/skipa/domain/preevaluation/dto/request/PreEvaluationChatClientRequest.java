@@ -1,7 +1,7 @@
 package com.skipers.skipa.domain.preevaluation.dto.request;
 
+import com.skipers.skipa.domain.chat.domain.ChatMessage;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatMessage;
 
 import java.util.List;
 
@@ -40,7 +40,7 @@ public record PreEvaluationChatClientRequest(
             String content
     ) {
 
-        public static Message from(PreEvaluationChatMessage message) {
+        public static Message from(ChatMessage message) {
             return new Message(message.getRole().name(), message.getContent());
         }
     }
