@@ -29,8 +29,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
               and review.status <> com.skipers.skipa.domain.review.domain.ReviewStatus.SCHEDULED
               and (:status is null or review.status = :status)
               and (:opinion is null or review.opinion = :opinion)
-              and (:submittedFrom is null or review.submittedAt >= :submittedFrom)
-              and (:submittedTo is null or review.submittedAt < :submittedTo)
+              and (:submittedFromProvided = false or review.submittedAt >= :submittedFrom)
+              and (:submittedToProvided = false or review.submittedAt < :submittedTo)
               and review.id = (
                   select max(latestReview.id)
                   from Review latestReview
@@ -45,7 +45,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             @Param("departmentId") Long departmentId,
             @Param("status") ReviewStatus status,
             @Param("opinion") BusinessOpinion opinion,
+            @Param("submittedFromProvided") boolean submittedFromProvided,
             @Param("submittedFrom") Instant submittedFrom,
+            @Param("submittedToProvided") boolean submittedToProvided,
             @Param("submittedTo") Instant submittedTo,
             Pageable pageable
     );
