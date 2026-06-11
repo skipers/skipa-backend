@@ -143,6 +143,10 @@ public class LocalDataInitializer implements ApplicationRunner {
                     index % 2 == 0 ? PatentLegalStatusType.REGISTERED : PatentLegalStatusType.PUBLISHED,
                     LocalDate.of(2025, 1, 1).plusDays(index * 5L)
             ));
+            PatentLegalStatusType inactiveStatus = inactiveLegalStatus(index);
+            if (inactiveStatus != null) {
+                legalStatuses.add(legalStatus(patent, inactiveStatus, inactiveChangedAt(index)));
+            }
             annuities.add(annuity(
                     patent,
                     1,
@@ -345,6 +349,20 @@ public class LocalDataInitializer implements ApplicationRunner {
             case 4 -> SAMPLE_BASE_DATE.plusMonths(48).plusDays(offsetDays);
             default -> SAMPLE_BASE_DATE.plusMonths(72).plusDays(offsetDays);
         };
+    }
+
+    private PatentLegalStatusType inactiveLegalStatus(int index) {
+        return switch (index % 8) {
+            case 1 -> PatentLegalStatusType.ABANDONED;
+            case 2 -> PatentLegalStatusType.EXPIRED;
+            case 3 -> PatentLegalStatusType.WITHDRAWN;
+            case 4 -> PatentLegalStatusType.EXPIRED;
+            default -> null;
+        };
+    }
+
+    private LocalDate inactiveChangedAt(int index) {
+        return LocalDate.of(2022 + (index - 1) % 4, index % 12 + 1, index % 24 + 1);
     }
 
     private BusinessOpinion submittedOpinion(int index) {

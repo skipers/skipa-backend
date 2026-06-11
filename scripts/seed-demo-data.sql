@@ -221,9 +221,20 @@ from skipa_seed_patents seed
 cross join lateral (
     values
         ('APPLIED', '2023-01-01'::date + seed.idx * 9),
-        (case when seed.idx % 2 = 0 then 'REGISTERED' else 'PUBLISHED' end, '2025-01-01'::date + seed.idx * 5)
+        (case when seed.idx % 2 = 0 then 'REGISTERED' else 'PUBLISHED' end, '2025-01-01'::date + seed.idx * 5),
+        (
+            case seed.idx % 8
+                when 1 then 'ABANDONED'
+                when 2 then 'EXPIRED'
+                when 3 then 'WITHDRAWN'
+                when 4 then 'EXPIRED'
+                else null
+            end,
+            make_date(2022 + (seed.idx - 1) % 4, seed.idx % 12 + 1, seed.idx % 24 + 1)
+        )
 ) as legal(status_value, changed_at)
-where not exists (
+where legal.status_value is not null
+  and not exists (
     select 1
     from patent_legal_status existing
     where existing.patent_id = seed.patent_id
