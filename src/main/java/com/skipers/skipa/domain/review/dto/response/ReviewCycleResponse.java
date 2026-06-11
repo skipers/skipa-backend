@@ -11,6 +11,7 @@ public record ReviewCycleResponse(
         Integer quarter,
         LocalDate startDate,
         LocalDate endDate,
+        LocalDate deadline,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -22,6 +23,7 @@ public record ReviewCycleResponse(
                 reviewCycle.getQuarter(),
                 reviewCycle.getStartDate(),
                 reviewCycle.getEndDate(),
+                reviewCycle.getDeadline(),
                 reviewCycle.getCreatedAt(),
                 reviewCycle.getUpdatedAt()
         );

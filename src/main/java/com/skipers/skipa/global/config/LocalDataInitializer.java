@@ -157,7 +157,9 @@ public class LocalDataInitializer implements ApplicationRunner {
                     160000 + index * 12000
             ));
 
-            reviews.add(currentReview(index, patent, department, currentCycle));
+            if (hasCurrentReview(index)) {
+                reviews.add(currentReview(index, patent, department, currentCycle));
+            }
         }
         for (int cycleIndex = 0; cycleIndex < pastCycles.size(); cycleIndex++) {
             ReviewCycle pastCycle = pastCycles.get(cycleIndex);
@@ -188,11 +190,17 @@ public class LocalDataInitializer implements ApplicationRunner {
 
     private ReviewCycle ensureReviewCycle(int year, int quarter) {
         return reviewCycleRepository.findByYearAndQuarter(year, quarter)
+                .map(reviewCycle -> {
+                    reviewCycle.update(year, quarter, quarterStart(year, quarter), quarterStart(year, quarter).plusMonths(3).minusDays(1));
+                    reviewCycle.updateDeadline(defaultReviewCycleDeadline(year, quarter));
+                    return reviewCycle;
+                })
                 .orElseGet(() -> reviewCycleRepository.save(ReviewCycle.builder()
                         .year(year)
                         .quarter(quarter)
                         .startDate(quarterStart(year, quarter))
                         .endDate(quarterStart(year, quarter).plusMonths(3).minusDays(1))
+                        .deadline(defaultReviewCycleDeadline(year, quarter))
                         .build()));
     }
 
@@ -205,6 +213,13 @@ public class LocalDataInitializer implements ApplicationRunner {
 
     private LocalDate quarterStart(int year, int quarter) {
         return LocalDate.of(year, (quarter - 1) * 3 + 1, 1);
+    }
+
+    private LocalDate defaultReviewCycleDeadline(int year, int quarter) {
+        if (year == 2027 && quarter == 4) {
+            return null;
+        }
+        return quarterStart(year, quarter).plusMonths(2).plusDays(14);
     }
 
     private Patent samplePatent(int index, Department department) {
@@ -305,7 +320,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                         .atStartOfDay(java.time.ZoneId.systemDefault())
                         .toInstant()
                         : null)
-                .dueDate(currentDueDate(index, status))
+                .dueDate(currentCycle.getDeadline())
                 .checked(status == ReviewStatus.SUBMITTED && index % 2 == 0)
                 .build();
     }
@@ -320,7 +335,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .opinion(index % 2 == 0 ? BusinessOpinion.MAINTAIN : BusinessOpinion.ABANDON)
                 .comment("%d년 %d분기 이력 확인용 제출 의견입니다.".formatted(previousCycle.getYear(), previousCycle.getQuarter()))
                 .submittedAt(submittedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
-                .dueDate(previousCycle.getEndDate().minusDays(10))
+                .dueDate(previousCycle.getDeadline())
                 .checked(true)
                 .build();
     }
@@ -337,6 +352,10 @@ public class LocalDataInitializer implements ApplicationRunner {
             return ReviewStatus.SUBMITTED;
         }
         return ReviewStatus.PENDING;
+    }
+
+    private boolean hasCurrentReview(int index) {
+        return index % 7 != 0;
     }
 
     private LocalDate sampleExpiryDate(int index) {
@@ -373,14 +392,6 @@ public class LocalDataInitializer implements ApplicationRunner {
         return submittedOpinion(index) == BusinessOpinion.MAINTAIN
                 ? "사업 연계성이 높아 유지가 필요합니다."
                 : "대체 기술과 중복되어 포기 검토가 가능합니다.";
-    }
-
-    private LocalDate currentDueDate(int index, ReviewStatus status) {
-        return switch (status) {
-            case OVERDUE -> LocalDate.of(2026, 6, 1).plusDays(index % 5);
-            case SCHEDULED -> LocalDate.of(2026, 6, 26);
-            default -> LocalDate.of(2026, 6, 15).plusDays(index % 12);
-        };
     }
 
     private PatentLegalStatus legalStatus(Patent patent, PatentLegalStatusType status, LocalDate changedAt) {

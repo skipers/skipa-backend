@@ -58,7 +58,7 @@ public class ReviewService {
         approvedPatentValidator.validateApproved(patent);
         Department department = validateDepartment(patent);
         ReviewCycle reviewCycle = getActiveReviewCycle();
-        LocalDate dueDate = request != null ? request.dueDate() : null;
+        LocalDate dueDate = requireDeadline(reviewCycle);
 
         Review existingReview = reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(
                 reviewCycle.getId(),
@@ -88,7 +88,7 @@ public class ReviewService {
     public BulkReviewCreateResponse createBulk(BulkReviewCreateRequest request) {
         ReviewCycle reviewCycle = getActiveReviewCycle();
         List<Long> patentIds = new ArrayList<>(new LinkedHashSet<>(request.patentIds()));
-        LocalDate dueDate = request.dueDate();
+        LocalDate dueDate = requireDeadline(reviewCycle);
         Map<Long, Patent> patentsById = new HashMap<>();
         patentRepository.findAllById(patentIds).forEach(patent -> patentsById.put(patent.getId(), patent));
 
@@ -238,6 +238,13 @@ public class ReviewService {
         return reviewCycleRepository
                 .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today)
                 .orElseThrow(() -> new ReviewException(ErrorCode.ACTIVE_REVIEW_CYCLE_NOT_FOUND));
+    }
+
+    private LocalDate requireDeadline(ReviewCycle reviewCycle) {
+        if (reviewCycle.getDeadline() == null) {
+            throw new ReviewException(ErrorCode.REVIEW_CYCLE_DEADLINE_NOT_SET);
+        }
+        return reviewCycle.getDeadline();
     }
 
     private Review createReview(

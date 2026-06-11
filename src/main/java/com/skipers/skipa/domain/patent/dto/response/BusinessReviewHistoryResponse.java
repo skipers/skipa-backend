@@ -46,7 +46,8 @@ public record BusinessReviewHistoryResponse(
             Integer year,
             Integer quarter,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            LocalDate deadline
     ) {
 
         public static ReviewCycleInfo from(ReviewCycle reviewCycle) {
@@ -55,7 +56,8 @@ public record BusinessReviewHistoryResponse(
                     reviewCycle.getYear(),
                     reviewCycle.getQuarter(),
                     reviewCycle.getStartDate(),
-                    reviewCycle.getEndDate()
+                    reviewCycle.getEndDate(),
+                    reviewCycle.getDeadline()
             );
         }
     }

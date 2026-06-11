@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.review.api;
 
 import com.skipers.skipa.domain.review.application.ReviewCycleService;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleCreateRequest;
+import com.skipers.skipa.domain.review.dto.request.ReviewCycleDeadlineUpdateRequest;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleUpdateRequest;
 import com.skipers.skipa.domain.review.dto.response.ReviewCycleResponse;
 import com.skipers.skipa.global.response.ApiResponse;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -105,6 +107,23 @@ public class ReviewCycleController {
             @Valid @RequestBody ReviewCycleUpdateRequest request
     ) {
         return ApiResponse.ok(reviewCycleService.update(reviewCycleId, request));
+    }
+
+    /**
+     * 검토 주기의 마감일자를 설정한다.
+     *
+     * @param reviewCycleId 검토 주기 ID
+     * @param request 마감일자 설정 요청
+     * @return 수정된 검토 주기
+     */
+    @Operation(summary = "[Legal] 검토 주기 마감일자 설정", description = "Legal 팀이 검토 요청 발송에 사용할 검토 주기 마감일자를 설정합니다.")
+    @PreAuthorize("hasRole('LEGAL')")
+    @PatchMapping("/{reviewCycleId}/deadline")
+    public ApiResponse<ReviewCycleResponse> updateDeadline(
+            @PathVariable Long reviewCycleId,
+            @Valid @RequestBody ReviewCycleDeadlineUpdateRequest request
+    ) {
+        return ApiResponse.ok(reviewCycleService.updateDeadline(reviewCycleId, request));
     }
 
     /**

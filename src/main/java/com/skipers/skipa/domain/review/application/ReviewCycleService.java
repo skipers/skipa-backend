@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleCreateRequest;
+import com.skipers.skipa.domain.review.dto.request.ReviewCycleDeadlineUpdateRequest;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleUpdateRequest;
 import com.skipers.skipa.domain.review.dto.response.ReviewCycleResponse;
 import com.skipers.skipa.domain.review.exception.ReviewCycleException;
@@ -63,6 +64,7 @@ public class ReviewCycleService {
         ReviewCycle reviewCycle = getReviewCycle(reviewCycleId);
 
         validatePeriod(request.startDate(), request.endDate());
+        validateDeadlineInPeriod(reviewCycle.getDeadline(), request.startDate(), request.endDate());
         validateDuplicateYearQuarter(request.year(), request.quarter(), reviewCycleId);
         validateOverlappingPeriod(request.startDate(), request.endDate(), reviewCycleId);
 
@@ -72,6 +74,16 @@ public class ReviewCycleService {
                 request.startDate(),
                 request.endDate()
         );
+
+        return ReviewCycleResponse.from(reviewCycle);
+    }
+
+    @Transactional
+    public ReviewCycleResponse updateDeadline(Long reviewCycleId, ReviewCycleDeadlineUpdateRequest request) {
+        ReviewCycle reviewCycle = getReviewCycle(reviewCycleId);
+        validateDeadlineInPeriod(request.deadline(), reviewCycle.getStartDate(), reviewCycle.getEndDate());
+
+        reviewCycle.updateDeadline(request.deadline());
 
         return ReviewCycleResponse.from(reviewCycle);
     }
@@ -94,6 +106,15 @@ public class ReviewCycleService {
 
     private void validatePeriod(LocalDate startDate, LocalDate endDate) {
         if (startDate.isAfter(endDate)) {
+            throw new ReviewCycleException(ErrorCode.INVALID_REVIEW_CYCLE_PERIOD);
+        }
+    }
+
+    private void validateDeadlineInPeriod(LocalDate deadline, LocalDate startDate, LocalDate endDate) {
+        if (deadline == null) {
+            return;
+        }
+        if (deadline.isBefore(startDate) || deadline.isAfter(endDate)) {
             throw new ReviewCycleException(ErrorCode.INVALID_REVIEW_CYCLE_PERIOD);
         }
     }
