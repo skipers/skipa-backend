@@ -34,7 +34,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,20 +114,11 @@ public class LocalDataInitializer implements ApplicationRunner {
         Department manufacturing = departments.get(2);
         List<Department> reviewDepartments = List.of(semiconductor, telecom, manufacturing);
 
-        ReviewCycle currentCycle = reviewCycleRepository.findByYearAndQuarter(2026, 2)
-                .orElseGet(() -> reviewCycleRepository.save(ReviewCycle.builder()
-                        .year(2026)
-                        .quarter(2)
-                        .startDate(LocalDate.of(2026, 4, 1))
-                        .endDate(LocalDate.of(2026, 6, 30))
-                        .build()));
-        ReviewCycle previousCycle = reviewCycleRepository.findByYearAndQuarter(2026, 1)
-                .orElseGet(() -> reviewCycleRepository.save(ReviewCycle.builder()
-                        .year(2026)
-                        .quarter(1)
-                        .startDate(LocalDate.of(2026, 1, 1))
-                        .endDate(LocalDate.of(2026, 3, 31))
-                        .build()));
+        List<ReviewCycle> reviewCycles = ensureReviewCycles();
+        ReviewCycle currentCycle = findReviewCycle(reviewCycles, 2026, 2);
+        List<ReviewCycle> pastCycles = reviewCycles.stream()
+                .filter(reviewCycle -> reviewCycle.getEndDate().isBefore(LocalDate.of(2026, 6, 11)))
+                .toList();
 
         List<Patent> patents = new ArrayList<>();
         for (int index = 1; index <= 50; index++) {
@@ -162,8 +152,13 @@ public class LocalDataInitializer implements ApplicationRunner {
             ));
 
             reviews.add(currentReview(index, patent, department, currentCycle));
-            if (index <= 10) {
-                reviews.add(previousSubmittedReview(index, patent, department, previousCycle));
+        }
+        for (int cycleIndex = 0; cycleIndex < pastCycles.size(); cycleIndex++) {
+            ReviewCycle pastCycle = pastCycles.get(cycleIndex);
+            for (int offset = 0; offset < 3; offset++) {
+                int patentIndex = cycleIndex * 3 + offset + 1;
+                Patent patent = patents.get((patentIndex - 1) % patents.size());
+                reviews.add(previousSubmittedReview(patentIndex, patent, patent.getCurrentDepartment(), pastCycle));
             }
         }
 
@@ -173,6 +168,37 @@ public class LocalDataInitializer implements ApplicationRunner {
         reviewRepository.saveAll(reviews);
 
         log.info("Created {} sample patents and {} sample reviews", patents.size(), reviews.size());
+    }
+
+    private List<ReviewCycle> ensureReviewCycles() {
+        List<ReviewCycle> reviewCycles = new ArrayList<>();
+        for (int year = 2024; year <= 2027; year++) {
+            for (int quarter = 1; quarter <= 4; quarter++) {
+                reviewCycles.add(ensureReviewCycle(year, quarter));
+            }
+        }
+        return reviewCycles;
+    }
+
+    private ReviewCycle ensureReviewCycle(int year, int quarter) {
+        return reviewCycleRepository.findByYearAndQuarter(year, quarter)
+                .orElseGet(() -> reviewCycleRepository.save(ReviewCycle.builder()
+                        .year(year)
+                        .quarter(quarter)
+                        .startDate(quarterStart(year, quarter))
+                        .endDate(quarterStart(year, quarter).plusMonths(3).minusDays(1))
+                        .build()));
+    }
+
+    private ReviewCycle findReviewCycle(List<ReviewCycle> reviewCycles, int year, int quarter) {
+        return reviewCycles.stream()
+                .filter(reviewCycle -> reviewCycle.getYear() == year && reviewCycle.getQuarter() == quarter)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private LocalDate quarterStart(int year, int quarter) {
+        return LocalDate.of(year, (quarter - 1) * 3 + 1, 1);
     }
 
     private Patent samplePatent(int index, Department department) {
@@ -279,15 +305,16 @@ public class LocalDataInitializer implements ApplicationRunner {
     }
 
     private Review previousSubmittedReview(int index, Patent patent, Department department, ReviewCycle previousCycle) {
+        LocalDate submittedDate = previousCycle.getEndDate().minusDays(15 - index % 10);
         return Review.builder()
                 .patent(patent)
                 .department(department)
                 .reviewCycle(previousCycle)
                 .status(ReviewStatus.SUBMITTED)
                 .opinion(index % 2 == 0 ? BusinessOpinion.MAINTAIN : BusinessOpinion.ABANDON)
-                .comment("2026년 1분기 이력 확인용 제출 의견입니다.")
-                .submittedAt(Instant.parse("2026-03-%02dT02:30:00Z".formatted(10 + index)))
-                .dueDate(LocalDate.of(2026, 3, 20))
+                .comment("%d년 %d분기 이력 확인용 제출 의견입니다.".formatted(previousCycle.getYear(), previousCycle.getQuarter()))
+                .submittedAt(submittedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
+                .dueDate(previousCycle.getEndDate().minusDays(10))
                 .checked(true)
                 .build();
     }

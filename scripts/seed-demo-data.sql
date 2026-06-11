@@ -47,10 +47,18 @@ set name = excluded.name,
     status = 'ACTIVE',
     updated_at = now();
 
+with seed_cycles as (
+    select
+        year_value as cycle_year,
+        quarter_value as quarter,
+        make_date(year_value, (quarter_value - 1) * 3 + 1, 1) as start_date,
+        (make_date(year_value, (quarter_value - 1) * 3 + 1, 1) + interval '3 months' - interval '1 day')::date as end_date
+    from generate_series(2024, 2027) as years(year_value)
+    cross join generate_series(1, 4) as quarters(quarter_value)
+)
 insert into review_cycles (cycle_year, quarter, start_date, end_date, created_at, updated_at)
-values
-    (2026, 1, '2026-01-01', '2026-03-31', now(), now()),
-    (2026, 2, '2026-04-01', '2026-06-30', now(), now())
+select cycle_year, quarter, start_date, end_date, now(), now()
+from seed_cycles
 on conflict (cycle_year, quarter) do update
 set start_date = excluded.start_date,
     end_date = excluded.end_date,
@@ -303,8 +311,33 @@ set opinion = excluded.opinion,
     checked = excluded.checked,
     updated_at = now();
 
-with previous_cycle as (
-    select id from review_cycles where cycle_year = 2026 and quarter = 1
+with past_cycles as (
+    select
+        id,
+        cycle_year,
+        quarter,
+        end_date,
+        row_number() over (order by cycle_year, quarter) as cycle_index
+    from review_cycles
+    where end_date < '2026-06-11'
+      and cycle_year between 2024 and 2026
+),
+past_reviews as (
+    select
+        seed.idx,
+        seed.patent_id,
+        seed.department_id,
+        past_cycles.id as review_cycle_id,
+        past_cycles.cycle_year,
+        past_cycles.quarter,
+        past_cycles.end_date,
+        past_cycles.cycle_index,
+        offsets.offset_value,
+        ((past_cycles.cycle_index - 1) * 3 + offsets.offset_value + 1) as history_index
+    from past_cycles
+    cross join generate_series(0, 2) as offsets(offset_value)
+    join skipa_seed_patents seed
+      on seed.idx = (((past_cycles.cycle_index - 1) * 3 + offsets.offset_value) % 50) + 1
 )
 insert into reviews (
     patent_id,
@@ -320,20 +353,18 @@ insert into reviews (
     updated_at
 )
 select
-    seed.patent_id,
-    seed.department_id,
-    previous_cycle.id,
-    case when seed.idx % 2 = 0 then 'MAINTAIN' else 'ABANDON' end,
-    '2026년 1분기 이력 확인용 제출 의견입니다.',
+    past_reviews.patent_id,
+    past_reviews.department_id,
+    past_reviews.review_cycle_id,
+    case when past_reviews.history_index % 2 = 0 then 'MAINTAIN' else 'ABANDON' end,
+    past_reviews.cycle_year || '년 ' || past_reviews.quarter || '분기 이력 확인용 제출 의견입니다.',
     'SUBMITTED',
-    ('2026-03-' || lpad((10 + seed.idx)::text, 2, '0') || ' 02:30:00+00')::timestamptz,
-    '2026-03-20',
+    (past_reviews.end_date - (15 - past_reviews.history_index % 10))::timestamptz,
+    past_reviews.end_date - 10,
     true,
     now(),
     now()
-from skipa_seed_patents seed
-cross join previous_cycle
-where seed.idx <= 10
+from past_reviews
 on conflict (review_cycle_id, patent_id, department_id) do update
 set opinion = excluded.opinion,
     comment = excluded.comment,
