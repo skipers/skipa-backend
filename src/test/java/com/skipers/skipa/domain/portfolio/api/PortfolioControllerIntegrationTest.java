@@ -7,6 +7,9 @@ import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCache;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightClient;
+import com.skipers.skipa.domain.portfolio.dto.request.PortfolioInsightClientRequest;
 import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
@@ -35,7 +38,12 @@ import org.springframework.web.context.WebApplicationContext;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -77,11 +85,17 @@ class PortfolioControllerIntegrationTest {
     @Autowired
     private JwtProvider jwtProvider;
 
+    @Autowired
+    private PortfolioInsightCache portfolioInsightCache;
+
     @MockitoBean
     private ReportGenerationPublisher reportGenerationPublisher;
 
     @MockitoBean
     private ReportStorageService reportStorageService;
+
+    @MockitoBean
+    private PortfolioInsightClient portfolioInsightClient;
 
     private Department semiconductorDepartment;
     private Department batteryDepartment;
@@ -95,6 +109,7 @@ class PortfolioControllerIntegrationTest {
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .apply(springSecurity())
                 .build();
+        portfolioInsightCache.evict();
 
         semiconductorDepartment = departmentRepository.save(Department.builder()
                 .name("반도체 사업부")
@@ -159,11 +174,23 @@ class PortfolioControllerIntegrationTest {
     }
 
     @Test
-    void portfolioInsightsReturnsEmptyInsights() throws Exception {
+    void portfolioInsightsReturnsAiInsightsAndCachesThem() throws Exception {
+        when(portfolioInsightClient.generate(any(PortfolioInsightClientRequest.class)))
+                .thenReturn(List.of("인사이트 1", "인사이트 2", "인사이트 3"));
+
         mockMvc.perform(get("/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.insights.length()").value(0));
+                .andExpect(jsonPath("$.data.insights.length()").value(3))
+                .andExpect(jsonPath("$.data.insights[0]").value("인사이트 1"));
+
+        mockMvc.perform(get("/portfolio/insights")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.insights.length()").value(3))
+                .andExpect(jsonPath("$.data.insights[2]").value("인사이트 3"));
+
+        verify(portfolioInsightClient, times(1)).generate(any(PortfolioInsightClientRequest.class));
     }
 
     @Test
