@@ -214,7 +214,7 @@ select
     case
         when seed.idx % 15 = 0 then 'FAILED'
         when seed.idx % 10 = 0 then 'GENERATING'
-        else 'COMPLETED'
+        else 'EMBEDDING_COMPLETED'
     end,
     case when seed.idx % 10 = 0 or seed.idx % 15 = 0 then null else ('2026-04-01'::date + seed.idx)::timestamptz end,
     now(),

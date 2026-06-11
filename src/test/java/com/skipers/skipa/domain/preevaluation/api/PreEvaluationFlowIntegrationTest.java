@@ -137,13 +137,23 @@ class PreEvaluationFlowIntegrationTest {
                                 """.formatted(preEvaluationId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.preEvaluationId").value(preEvaluationId))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("REPORT_COMPLETED"))
                 .andExpect(jsonPath("$.data.reportUrl").doesNotExist());
 
         PreEvaluation completed = preEvaluationRepository.findById(preEvaluationId).orElseThrow();
-        assertThat(completed.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
+        assertThat(completed.getStatus()).isEqualTo(PreEvaluationStatus.REPORT_COMPLETED);
         assertThat(completed.getReportKey()).isEqualTo("pre-evaluations/%d/report.json".formatted(preEvaluationId));
         assertThat(completed.getCompletedAt()).isNotNull();
+
+        mockMvc.perform(patch("/internal/pre-evaluations/{preEvaluationId}/embedding-complete", preEvaluationId)
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.preEvaluationId").value(preEvaluationId))
+                .andExpect(jsonPath("$.data.status").value("EMBEDDING_COMPLETED"));
+
+        completed = preEvaluationRepository.findById(preEvaluationId).orElseThrow();
+        assertThat(completed.getStatus()).isEqualTo(PreEvaluationStatus.EMBEDDING_COMPLETED);
+
         when(reportStorageService.generatePresignedUrl("pre-evaluations/%d/report.json".formatted(preEvaluationId)))
                 .thenReturn("https://minio.example.com/presigned/pre-evaluations/%d/report.json".formatted(preEvaluationId));
 
@@ -152,7 +162,7 @@ class PreEvaluationFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(preEvaluationId))
                 .andExpect(jsonPath("$.data.claims.length()").value(2))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("EMBEDDING_COMPLETED"))
                 .andExpect(jsonPath("$.data.reportUrl").value("https://minio.example.com/presigned/pre-evaluations/%d/report.json".formatted(preEvaluationId)));
     }
 

@@ -77,7 +77,15 @@ public class PreEvaluationService {
     @Transactional
     public PreEvaluationStatusResponse complete(Long preEvaluationId, String reportKey) {
         PreEvaluation preEvaluation = getPreEvaluation(preEvaluationId);
-        preEvaluation.complete(reportKey, null);
+        preEvaluation.completeReport(reportKey, null);
+
+        return PreEvaluationStatusResponse.from(preEvaluation);
+    }
+
+    @Transactional
+    public PreEvaluationStatusResponse completeEmbedding(Long preEvaluationId) {
+        PreEvaluation preEvaluation = getPreEvaluation(preEvaluationId);
+        preEvaluation.completeEmbedding();
 
         return PreEvaluationStatusResponse.from(preEvaluation);
     }
@@ -109,7 +117,7 @@ public class PreEvaluationService {
     }
 
     private String generateReportUrl(PreEvaluation preEvaluation) {
-        if (!preEvaluation.isCompleted()) {
+        if (!preEvaluation.isReportGenerated()) {
             return null;
         }
 

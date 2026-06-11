@@ -297,7 +297,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .reportKey("reports/sample/demo-%03d.html".formatted(index))
                 .totalScore(score)
                 .valueGrade(grade)
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.EMBEDDING_COMPLETED)
                 .evaluatedAt(LocalDate.of(2026, 4, 1)
                         .plusDays(index)
                         .atStartOfDay(java.time.ZoneId.systemDefault())

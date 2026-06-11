@@ -1077,7 +1077,7 @@ class AuthApprovalFlowIntegrationTest {
                 .reportKey("reports/%d/report.html".formatted(patent.getId()))
                 .totalScore(new BigDecimal("91.50"))
                 .valueGrade("S")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.now())
                 .build());
         String businessToken = createActiveUserToken("business-opinion", "business-opinion@example.com", UserRole.BUSINESS);
@@ -1603,7 +1603,7 @@ class AuthApprovalFlowIntegrationTest {
                 .patent(latestPastPatent)
                 .totalScore(new BigDecimal("90.00"))
                 .valueGrade("S")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .build());
         String businessToken = createActiveUserToken("business-review-history", "business-review-history@example.com", UserRole.BUSINESS);
 
@@ -1695,7 +1695,7 @@ class AuthApprovalFlowIntegrationTest {
         Report assignedReport = reportRepository.save(Report.builder()
                 .patent(assignedPatent)
                 .reportKey("reports/assigned/report.html")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.parse("2026-06-07T08:55:00Z"))
                 .build());
         Report otherReport = reportRepository.save(Report.builder()
@@ -1884,7 +1884,7 @@ class AuthApprovalFlowIntegrationTest {
         Report report = reportRepository.save(Report.builder()
                 .patent(patent)
                 .reportKey("reports/admin/report.html")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.parse("2026-06-07T08:55:00Z"))
                 .build());
         Review review = reviewRepository.save(Review.builder()

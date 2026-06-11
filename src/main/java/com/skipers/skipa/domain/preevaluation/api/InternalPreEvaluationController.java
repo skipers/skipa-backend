@@ -20,13 +20,22 @@ public class InternalPreEvaluationController {
 
     private final PreEvaluationService preEvaluationService;
 
-    @PatchMapping("/{preEvaluationId}/complete")
+    @PatchMapping({"/{preEvaluationId}/complete", "/{preEvaluationId}/report-complete"})
     public ApiResponse<PreEvaluationCallbackResponse> complete(
             @PathVariable Long preEvaluationId,
             @Valid @RequestBody PreEvaluationCompleteRequest request
     ) {
         return ApiResponse.ok(PreEvaluationCallbackResponse.from(
                 preEvaluationService.complete(preEvaluationId, request.reportKey())
+        ));
+    }
+
+    @PatchMapping("/{preEvaluationId}/embedding-complete")
+    public ApiResponse<PreEvaluationCallbackResponse> completeEmbedding(
+            @PathVariable Long preEvaluationId
+    ) {
+        return ApiResponse.ok(PreEvaluationCallbackResponse.from(
+                preEvaluationService.completeEmbedding(preEvaluationId)
         ));
     }
 

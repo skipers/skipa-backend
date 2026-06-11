@@ -218,7 +218,7 @@ public class BusinessReviewService {
             return reportsByPatentId;
         }
 
-        reportRepository.findAllByStatus(ReportStatus.COMPLETED).stream()
+        reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)).stream()
                 .filter(report -> reviews.stream()
                         .anyMatch(review -> review.getPatent().getId().equals(report.getPatent().getId())))
                 .sorted(Comparator.comparing(Report::getId).reversed())

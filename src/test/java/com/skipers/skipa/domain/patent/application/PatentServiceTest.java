@@ -105,9 +105,9 @@ class PatentServiceTest {
     void setUp() {
         lenient().when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(any()))
                 .thenReturn(Optional.empty());
-        lenient().when(reportRepository.findFirstByPatentIdAndStatusOrderByIdDesc(any(), any()))
+        lenient().when(reportRepository.findFirstByPatentIdAndStatusInOrderByIdDesc(any(), any()))
                 .thenReturn(Optional.empty());
-        lenient().when(reportRepository.findAllByStatus(any()))
+        lenient().when(reportRepository.findAllByStatusIn(any()))
                 .thenReturn(List.of());
     }
 
@@ -252,7 +252,10 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
         when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(1L))
                 .thenReturn(Optional.of(latestStatus));
-        when(reportRepository.findFirstByPatentIdAndStatusOrderByIdDesc(1L, ReportStatus.COMPLETED))
+        when(reportRepository.findFirstByPatentIdAndStatusInOrderByIdDesc(
+                1L,
+                List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)
+        ))
                 .thenReturn(Optional.of(report(1L, patent, new BigDecimal("82.50"))));
 
         PatentDetailResponse response = patentService.get(1L);
@@ -411,7 +414,8 @@ class PatentServiceTest {
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(activeCycle));
         when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(maintainReview, abandonReview));
-        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(completedReport));
+        when(reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)))
+                .thenReturn(List.of(completedReport));
 
         Page<?> result = patentService.getAll(
                 legalUser(),
@@ -904,7 +908,7 @@ class PatentServiceTest {
     private Report report(Long id, Patent patent, BigDecimal totalScore) {
         Report report = Report.builder()
                 .patent(patent)
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .totalScore(totalScore)
                 .build();
         ReflectionTestUtils.setField(report, "id", id);

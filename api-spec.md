@@ -70,8 +70,8 @@
 | 권리 상태 | `PUBLISHED`, `REGISTERED`, `REJECTED`, `ABANDONED`, `EXPIRED`, `INVALIDATED`, `WITHDRAWN` |
 | 연차료 납부 상태 | `PAID`, `UNPAID`, `ABANDONED` |
 | 특허 추출 작업 상태 | `UPLOAD_PENDING`, `ANALYZING`, `COMPLETED`, `FAILED` |
-| 보고서 생성 상태 | `GENERATING`, `COMPLETED`, `FAILED` |
-| 사전 평가 상태 | `PROCESSING`, `COMPLETED`, `FAILED` |
+| 보고서 처리 상태 | `GENERATING`, `REPORT_COMPLETED`, `EMBEDDING_COMPLETED`, `FAILED` |
+| 사전 평가 처리 상태 | `PROCESSING`, `REPORT_COMPLETED`, `EMBEDDING_COMPLETED`, `FAILED` |
 | 사전 평가 채팅 역할 | `USER`, `ASSISTANT` |
 | 검토 주기 유형 | `QUARTERLY`, `AD_HOC` |
 | 검토 제출 상태 | `PENDING`, `SUBMITTED` |
@@ -1153,8 +1153,9 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 후 RabbitMQ 메시지 발행 | `LEGAL` |
 | 보고서 단일 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 완료된 보고서 상세 및 MinIO presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | `GENERATING` 상태 polling용 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/complete` | AI Worker가 생성 완료 및 `reportKey` 전달 | Internal API Key |
+| 평가 처리 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | 보고서 생성 및 임베딩 상태 polling용 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 생성 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달 | Internal API Key |
+| 임베딩 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/embedding-complete` | AI Worker가 임베딩 완료 전달 | Internal API Key |
 | 보고서 생성 실패 콜백 | `PATCH` | `/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 보고서만 조회할 수 있습니다.
@@ -1173,8 +1174,8 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
 | --- | --- | --- |
 | id | long | 보고서 ID |
 | patentId | long | 특허 ID |
-| status | string | `GENERATING` / `COMPLETED` / `FAILED` |
-| evaluatedAt | datetime | 평가 기준 일시. `COMPLETED`일 때만 값 있음 |
+| status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
+| evaluatedAt | datetime | 평가 기준 일시. `REPORT_COMPLETED` 이후 값 있음 |
 | createdAt | datetime | 생성 요청 일시 |
 
 **응답 예시**
@@ -1187,7 +1188,7 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
       {
         "id": 7,
         "patentId": 1,
-        "status": "COMPLETED",
+        "status": "EMBEDDING_COMPLETED",
         "evaluatedAt": "2026-05-01T09:00:00Z",
         "createdAt": "2026-05-01T08:55:00Z"
       }
@@ -1248,8 +1249,8 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 | --- | --- | --- |
 | id | long | 보고서 ID |
 | patentId | long | 특허 ID |
-| status | string | `GENERATING` / `COMPLETED` / `FAILED` |
-| url | string | MinIO presigned URL. `COMPLETED` 상태에서만 포함 |
+| status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
+| url | string | MinIO presigned URL. `REPORT_COMPLETED` 또는 `EMBEDDING_COMPLETED` 상태에서만 포함 |
 | evaluatedAt | datetime | 평가 기준 일시 |
 | createdAt | datetime | 생성 요청 일시 |
 
@@ -1261,7 +1262,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
   "data": {
     "id": 7,
     "patentId": 1,
-    "status": "COMPLETED",
+    "status": "REPORT_COMPLETED",
     "url": "https://minio.skipa.internal/skipa/reports/7/report.html?...",
     "evaluatedAt": "2026-05-01T09:00:00Z",
     "createdAt": "2026-05-01T08:55:00Z"
@@ -1279,15 +1280,15 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
-`GENERATING` 상태일 때 polling으로 호출합니다. `COMPLETED` 또는 `FAILED` 응답 시 polling을 종료합니다.
+`GENERATING` 상태일 때 polling으로 호출합니다. `REPORT_COMPLETED` 응답 시 보고서 조회가 가능하며, `EMBEDDING_COMPLETED` 또는 `FAILED` 응답 시 전체 처리가 종료됩니다.
 
 **응답**
 
 | Name | Type | Description |
 | --- | --- | --- |
-| reportId | long | 보고서 ID |
+| id | long | 보고서 ID |
 | patentId | long | 특허 ID |
-| status | string | `GENERATING` (polling 계속) / `COMPLETED` (단일 조회로 URL 획득) / `FAILED` (재시도) |
+| status | string | `GENERATING` (polling 계속) / `REPORT_COMPLETED` (보고서 조회 가능) / `EMBEDDING_COMPLETED` (임베딩 완료) / `FAILED` (재시도) |
 | evaluatedAt | datetime | 완료 일시. 완료 전에는 `null` |
 | updatedAt | datetime | 마지막 상태 변경 일시 |
 
@@ -1297,7 +1298,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 {
   "success": true,
   "data": {
-    "reportId": 8,
+    "id": 8,
     "patentId": 1,
     "status": "GENERATING",
     "evaluatedAt": null,
@@ -1310,9 +1311,11 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `PATCH /internal/reports/{reportId}/complete`
+#### `PATCH /internal/reports/{reportId}/report-complete`
 
 AI Worker가 보고서 생성 완료 후 호출합니다.
+
+기존 호환을 위해 `/internal/reports/{reportId}/complete`도 동일하게 동작합니다.
 
 **헤더**: `X-Internal-Api-Key: {secret}`
 
@@ -1321,19 +1324,23 @@ AI Worker가 보고서 생성 완료 후 호출합니다.
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
 | reportKey | string | * | MinIO object key. 전체 URL이 아닌 object key만 전달 |
+| totalScore | number | * | AI 평가 총점 |
+| valueGrade | string | * | AI 평가 등급. `S` / `A` / `B` / `C` / `D` |
 
 **요청 예시**
 
 ```json
 {
-  "reportKey": "reports/8001/report.html"
+  "reportKey": "reports/8001/report.html",
+  "totalScore": 82.5,
+  "valueGrade": "A"
 }
 ```
 
 **처리**
 
 - `reportKey` 저장
-- 보고서 상태를 `COMPLETED`로 변경
+- 보고서 상태를 `REPORT_COMPLETED`로 변경
 - `evaluatedAt`에 완료 시각 기록
 
 **응답 예시**
@@ -1343,7 +1350,37 @@ AI Worker가 보고서 생성 완료 후 호출합니다.
   "success": true,
   "data": {
     "reportId": 8001,
-    "status": "COMPLETED"
+    "status": "REPORT_COMPLETED",
+    "totalScore": 82.5,
+    "valueGrade": "A"
+  }
+}
+```
+
+---
+
+#### `PATCH /internal/reports/{reportId}/embedding-complete`
+
+AI Worker가 평가 보고서 임베딩 완료 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+요청 Body 없음.
+
+**처리**
+
+- 보고서 상태를 `EMBEDDING_COMPLETED`로 변경
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "reportId": 8001,
+    "status": "EMBEDDING_COMPLETED",
+    "totalScore": 82.5,
+    "valueGrade": "A"
   }
 }
 ```
@@ -1403,12 +1440,13 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | 사전 평가 시작 | `POST` | `/pre-evaluations` | 임시 특허 정보를 저장하고 AI 서버에 사전 평가 보고서 생성을 요청 | `BUSINESS` |
 | 사전 평가 목록 조회 | `GET` | `/pre-evaluations` | 현재 사용자의 사전 평가 이력 목록 조회 | `BUSINESS` |
 | 사전 평가 상세 조회 | `GET` | `/pre-evaluations/{preEvaluationId}` | 사전 평가 입력 정보, 상태, 보고서 URL 조회 | `BUSINESS` |
-| 사전 평가 상태 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/status` | 보고서 생성 상태 polling | `BUSINESS` |
+| 사전 평가 처리 상태 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/status` | 보고서 생성 및 임베딩 상태 polling | `BUSINESS` |
 | 사전 평가 이력 삭제 | `DELETE` | `/pre-evaluations/{preEvaluationId}` | 사전 평가와 관련 채팅 메시지 삭제 | `BUSINESS` |
 | 채팅 이력 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가별 채팅 메시지 목록 조회 | `BUSINESS` |
 | 채팅 메시지 전송 | `POST` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `BUSINESS` |
 | 채팅 초기화 | `DELETE` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 해당 사전 평가의 채팅 메시지 전체 삭제 | `BUSINESS` |
-| 사전 평가 완료 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/complete` | AI 서버가 보고서 생성 완료 후 호출 | Internal API Key |
+| 사전 평가 보고서 생성 완료 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/report-complete` | AI 서버가 보고서 생성 완료 후 호출 | Internal API Key |
+| 사전 평가 임베딩 완료 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/embedding-complete` | AI 서버가 임베딩 완료 후 호출 | Internal API Key |
 | 사전 평가 실패 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/fail` | AI 서버가 보고서 생성 실패 후 호출 | Internal API Key |
 
 사전 평가 상태값은 다음과 같습니다.
@@ -1416,7 +1454,8 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | status | 설명 |
 | --- | --- |
 | `PROCESSING` | 사전 평가 보고서 생성 중 |
-| `COMPLETED` | 보고서 생성 완료 |
+| `REPORT_COMPLETED` | 보고서 생성 완료 |
+| `EMBEDDING_COMPLETED` | 임베딩 완료 |
 | `FAILED` | 보고서 생성 실패 |
 
 ---
@@ -1521,7 +1560,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | --- | --- | --- |
 | id | long | 사전 평가 ID |
 | title | string | 특허명 |
-| status | string | `PROCESSING` / `COMPLETED` / `FAILED` |
+| status | string | `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
 | reportUrl | string | 보고서 URL. 완료 전에는 `null` |
 | completedAt | datetime | 완료 또는 실패 시각. 처리 중에는 `null` |
 | createdAt | datetime | 생성 시각 |
@@ -1537,7 +1576,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       {
         "id": 1,
         "title": "배터리 열폭주 감지 시스템",
-        "status": "COMPLETED",
+        "status": "EMBEDDING_COMPLETED",
         "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html",
         "completedAt": "2026-06-10T09:01:00Z",
         "createdAt": "2026-06-10T08:55:00Z",
@@ -1573,7 +1612,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | claims | array[string] | 청구항 목록 |
 | relatedBusiness | string | 관련 사업 |
 | targetCountries | string | 출원 예정 국가 |
-| status | string | `PROCESSING` / `COMPLETED` / `FAILED` |
+| status | string | `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
 | reportUrl | string | 보고서 URL. 완료 전에는 `null` |
 | completedAt | datetime | 완료 또는 실패 시각 |
 | createdAt | datetime | 생성 시각 |
@@ -1595,7 +1634,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
     ],
     "relatedBusiness": "전기차 배터리 안전 관리",
     "targetCountries": "한국, 미국",
-    "status": "COMPLETED",
+    "status": "REPORT_COMPLETED",
     "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html",
     "completedAt": "2026-06-10T09:01:00Z",
     "createdAt": "2026-06-10T08:55:00Z",
@@ -1617,8 +1656,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | Name | Type | Description |
 | --- | --- | --- |
 | id | long | 사전 평가 ID |
-| status | string | `PROCESSING` / `COMPLETED` / `FAILED` |
-| reportUrl | string | 보고서 URL. 완료 전에는 `null` |
+| status | string | `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
 | completedAt | datetime | 완료 또는 실패 시각 |
 | updatedAt | datetime | 수정 시각 |
 
@@ -1630,7 +1668,6 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
   "data": {
     "id": 1,
     "status": "PROCESSING",
-    "reportUrl": null,
     "completedAt": null,
     "updatedAt": "2026-06-10T08:55:00Z"
   }
@@ -1798,9 +1835,11 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `PATCH /internal/pre-evaluations/{preEvaluationId}/complete`
+#### `PATCH /internal/pre-evaluations/{preEvaluationId}/report-complete`
 
 AI 서버가 사전 평가 보고서 생성 완료 후 호출합니다.
+
+기존 호환을 위해 `/internal/pre-evaluations/{preEvaluationId}/complete`도 동일하게 동작합니다.
 
 **헤더**: `X-Internal-Api-Key: {secret}`
 
@@ -1808,20 +1847,20 @@ AI 서버가 사전 평가 보고서 생성 완료 후 호출합니다.
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| reportUrl | string | * | MinIO에 저장된 사전 평가 보고서 접근 URL |
+| reportKey | string | * | MinIO object key. 전체 URL이 아닌 object key만 전달 |
 
 **요청 예시**
 
 ```json
 {
-  "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html"
+  "reportKey": "pre-evaluations/1/report.html"
 }
 ```
 
 **처리**
 
-- `reportUrl` 저장
-- 사전 평가 상태를 `COMPLETED`로 변경
+- `reportKey` 저장
+- 사전 평가 상태를 `REPORT_COMPLETED`로 변경
 - `completedAt`에 완료 시각 기록
 
 **응답 예시**
@@ -1831,8 +1870,34 @@ AI 서버가 사전 평가 보고서 생성 완료 후 호출합니다.
   "success": true,
   "data": {
     "preEvaluationId": 1,
-    "status": "COMPLETED",
-    "reportUrl": "https://minio.example.com/pre-evaluations/1/report.html",
+    "status": "REPORT_COMPLETED",
+    "completedAt": "2026-06-10T09:01:00Z"
+  }
+}
+```
+
+---
+
+#### `PATCH /internal/pre-evaluations/{preEvaluationId}/embedding-complete`
+
+AI 서버가 사전 평가 임베딩 완료 후 호출합니다.
+
+**헤더**: `X-Internal-Api-Key: {secret}`
+
+요청 Body 없음.
+
+**처리**
+
+- 사전 평가 상태를 `EMBEDDING_COMPLETED`로 변경
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "preEvaluationId": 1,
+    "status": "EMBEDDING_COMPLETED",
     "completedAt": "2026-06-10T09:01:00Z"
   }
 }

@@ -148,14 +148,14 @@ class ReportServiceTest {
 
         ReportStatusResponse response = reportService.complete(1L, "reports/1/report.html", new BigDecimal("82.50"), "A");
 
-        assertThat(report.getStatus()).isEqualTo(ReportStatus.COMPLETED);
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.REPORT_COMPLETED);
         assertThat(report.getReportKey()).isEqualTo("reports/1/report.html");
         assertThat(report.getTotalScore()).isEqualByComparingTo("82.50");
         assertThat(report.getValueGrade()).isEqualTo("A");
         assertThat(report.getEvaluatedAt()).isNotNull();
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
-        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.status()).isEqualTo("REPORT_COMPLETED");
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
     }
@@ -168,6 +168,18 @@ class ReportServiceTest {
                 () -> reportService.complete(1L, "reports/1/report.html", new BigDecimal("82.50"), "A"),
                 ErrorCode.REPORT_NOT_FOUND
         );
+    }
+
+    @Test
+    void completeEmbeddingMarksReportEmbeddingCompleted() {
+        Report report = report(1L, 10L);
+        report.completeReport("reports/1/report.html", new BigDecimal("82.50"), "A", null);
+        when(reportRepository.findById(1L)).thenReturn(Optional.of(report));
+
+        ReportStatusResponse response = reportService.completeEmbedding(1L);
+
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.EMBEDDING_COMPLETED);
+        assertThat(response.status()).isEqualTo("EMBEDDING_COMPLETED");
     }
 
     @Test
@@ -194,7 +206,7 @@ class ReportServiceTest {
     @Test
     void getReturnsPresignedUrlWithoutExposingReportKey() {
         Report report = report(1L, 10L);
-        report.complete("reports/1/report.html", new BigDecimal("82.50"), "A", null);
+        report.completeReport("reports/1/report.html", new BigDecimal("82.50"), "A", null);
         Review review = submittedReview(20L, report, BusinessOpinion.MAINTAIN, "유지 의견");
         when(reportRepository.findByIdAndPatentId(1L, 10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.html"))
@@ -207,7 +219,7 @@ class ReportServiceTest {
         verify(businessPatentAccessValidator).validate(null, 10L);
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
-        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.status()).isEqualTo("REPORT_COMPLETED");
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
         assertThat(response.url()).isEqualTo("https://minio.example.com/skipa/reports/1/report.html?X-Amz-Signature=abc");
@@ -248,7 +260,7 @@ class ReportServiceTest {
     @Test
     void getLatestReturnsCompletedReportWithPresignedUrl() {
         Report report = report(1L, 10L);
-        report.complete("reports/1/report.json", new BigDecimal("82.50"), "A", null);
+        report.completeReport("reports/1/report.json", new BigDecimal("82.50"), "A", null);
         Review review = submittedReview(20L, report, BusinessOpinion.ABANDON, "포기 의견");
         when(reportRepository.findFirstByPatentIdOrderByIdDesc(10L)).thenReturn(Optional.of(report));
         when(reportStorageService.generatePresignedUrl("reports/1/report.json"))
@@ -258,7 +270,7 @@ class ReportServiceTest {
 
         ReportDetailResponse response = reportService.getLatest(null, 10L);
 
-        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.status()).isEqualTo("REPORT_COMPLETED");
         assertThat(response.totalScore()).isEqualByComparingTo("82.50");
         assertThat(response.valueGrade()).isEqualTo("A");
         assertThat(response.url()).isEqualTo("https://minio.example.com/reports/1/report.json?signature=abc");
@@ -281,7 +293,10 @@ class ReportServiceTest {
         Report oldestReport = completedReport(1L, 10L, "B", "75.00", "2026-01-01T00:00:00Z");
         Review oldReview = submittedReview(20L, oldReport, BusinessOpinion.MAINTAIN, "유지 의견");
         Review oldestReview = submittedReview(10L, oldestReport, BusinessOpinion.ABANDON, "포기 의견");
-        when(reportRepository.findByPatentIdAndStatusOrderByIdDesc(10L, ReportStatus.COMPLETED))
+        when(reportRepository.findByPatentIdAndStatusInOrderByIdDesc(
+                10L,
+                List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)
+        ))
                 .thenReturn(List.of(latestReport, oldReport, oldestReport));
         when(reviewRepository.findByPatentIdAndReportIdInAndStatus(
                 10L,
@@ -333,7 +348,7 @@ class ReportServiceTest {
 
     private Report completedReport(Long reportId, Long patentId, String grade, String score, String evaluatedAt) {
         Report report = report(reportId, patentId);
-        report.complete("reports/%d/report.html".formatted(reportId), new BigDecimal(score), grade, Instant.parse(evaluatedAt));
+        report.completeReport("reports/%d/report.html".formatted(reportId), new BigDecimal(score), grade, Instant.parse(evaluatedAt));
         return report;
     }
 

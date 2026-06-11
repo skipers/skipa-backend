@@ -84,7 +84,7 @@ class ReportChatServiceTest {
                 .patent(patent)
                 .build();
         ReflectionTestUtils.setField(report, "id", 1L);
-        report.complete("reports/1/report.json", new BigDecimal("82.50"), "A", null);
+        report.completeReport("reports/1/report.json", new BigDecimal("82.50"), "A", null);
     }
 
     @Test

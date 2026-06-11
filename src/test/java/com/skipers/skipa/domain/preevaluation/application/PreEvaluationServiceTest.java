@@ -109,16 +109,28 @@ class PreEvaluationServiceTest {
                 "pre-evaluations/1/report.json"
         );
 
-        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
+        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.REPORT_COMPLETED);
         assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.json");
         assertThat(preEvaluation.getCompletedAt()).isNotNull();
-        assertThat(response.status()).isEqualTo("COMPLETED");
+        assertThat(response.status()).isEqualTo("REPORT_COMPLETED");
+    }
+
+    @Test
+    void completeEmbeddingMarksEmbeddingCompleted() {
+        PreEvaluation preEvaluation = preEvaluation(1L);
+        preEvaluation.completeReport("pre-evaluations/1/report.json", null);
+        when(preEvaluationRepository.findById(1L)).thenReturn(Optional.of(preEvaluation));
+
+        PreEvaluationStatusResponse response = preEvaluationService.completeEmbedding(1L);
+
+        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.EMBEDDING_COMPLETED);
+        assertThat(response.status()).isEqualTo("EMBEDDING_COMPLETED");
     }
 
     @Test
     void getCompletedPreEvaluationReturnsGeneratedReportUrl() {
         PreEvaluation preEvaluation = preEvaluation(1L);
-        preEvaluation.complete("pre-evaluations/1/report.json", null);
+        preEvaluation.completeReport("pre-evaluations/1/report.json", null);
         when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
         when(reportStorageService.generatePresignedUrl("pre-evaluations/1/report.json"))
                 .thenReturn("https://minio.example.com/presigned/pre-evaluations/1/report.json");

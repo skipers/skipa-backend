@@ -119,7 +119,7 @@ class BusinessReviewServiceTest {
                 .patent(review.getPatent())
                 .totalScore(new BigDecimal("92.50"))
                 .valueGrade("S")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .build();
         ReflectionTestUtils.setField(report, "id", 1000L);
         stubActiveReviewCycle();
@@ -135,7 +135,8 @@ class BusinessReviewServiceTest {
                 sortedPageable
         ))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
-        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(report));
+        when(reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)))
+                .thenReturn(List.of(report));
 
         List<BusinessReviewResponse> responses = businessReviewService.getAll(
                 businessUser,
@@ -344,7 +345,7 @@ class BusinessReviewServiceTest {
                 .patent(review.getPatent())
                 .totalScore(new BigDecimal("88.00"))
                 .valueGrade("A")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .build();
         ReflectionTestUtils.setField(report, "id", 1000L);
         when(reviewRepository.findSubmittedBusinessReviewHistory(
@@ -355,7 +356,8 @@ class BusinessReviewServiceTest {
                 BusinessOpinion.MAINTAIN,
                 pageable
         )).thenReturn(new PageImpl<>(List.of(pastReview), pageable, 1));
-        when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(report));
+        when(reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)))
+                .thenReturn(List.of(report));
 
         List<BusinessReviewHistoryResponse> responses = businessReviewService.getHistory(
                 businessUser,

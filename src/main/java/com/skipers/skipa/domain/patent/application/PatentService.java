@@ -670,9 +670,12 @@ public class PatentService {
                 .map(legalStatus -> legalStatus.getStatus().name())
                 .orElse(null);
         BigDecimal latestReportScore = reportRepository
-                .findFirstByPatentIdAndStatusOrderByIdDesc(
+                .findFirstByPatentIdAndStatusInOrderByIdDesc(
                         patent.getId(),
-                        com.skipers.skipa.domain.report.domain.ReportStatus.COMPLETED
+                        List.of(
+                                com.skipers.skipa.domain.report.domain.ReportStatus.REPORT_COMPLETED,
+                                com.skipers.skipa.domain.report.domain.ReportStatus.EMBEDDING_COMPLETED
+                        )
                 )
                 .map(Report::getTotalScore)
                 .orElse(null);
@@ -682,7 +685,10 @@ public class PatentService {
     private Map<Long, BigDecimal> latestReportScoresByPatentId() {
         Map<Long, BigDecimal> scoresByPatentId = new HashMap<>();
         Map<Long, Long> reportIdsByPatentId = new HashMap<>();
-        for (Report report : reportRepository.findAllByStatus(com.skipers.skipa.domain.report.domain.ReportStatus.COMPLETED)) {
+        for (Report report : reportRepository.findAllByStatusIn(List.of(
+                com.skipers.skipa.domain.report.domain.ReportStatus.REPORT_COMPLETED,
+                com.skipers.skipa.domain.report.domain.ReportStatus.EMBEDDING_COMPLETED
+        ))) {
             Long patentId = report.getPatent().getId();
             Long currentReportId = reportIdsByPatentId.get(patentId);
             if (currentReportId == null || report.getId() > currentReportId) {

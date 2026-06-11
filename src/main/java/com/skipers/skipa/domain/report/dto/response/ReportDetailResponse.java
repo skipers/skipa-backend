@@ -15,7 +15,7 @@ public record ReportDetailResponse(
         @Schema(description = "특허 ID", example = "1")
         Long patentId,
 
-        @Schema(description = "평가 보고서 생성 상태", example = "COMPLETED")
+        @Schema(description = "평가 처리 상태", example = "REPORT_COMPLETED")
         String status,
 
         @Schema(description = "평가 보고서 접근 URL")

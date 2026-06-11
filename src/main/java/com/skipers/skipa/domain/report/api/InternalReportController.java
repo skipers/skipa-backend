@@ -27,7 +27,7 @@ public class InternalReportController {
      * @param request 완료 콜백 요청
      * @return 완료 처리된 평가 보고서 상태
      */
-    @PatchMapping("/{reportId}/complete")
+    @PatchMapping({"/{reportId}/complete", "/{reportId}/report-complete"})
     public ApiResponse<ReportCallbackResponse> complete(
             @PathVariable Long reportId,
             @Valid @RequestBody ReportCompleteRequest request
@@ -38,6 +38,19 @@ public class InternalReportController {
                 request.totalScore(),
                 request.valueGrade()
         )));
+    }
+
+    /**
+     * AI 서버의 평가 보고서 임베딩 완료 콜백을 처리한다.
+     *
+     * @param reportId 평가 보고서 ID
+     * @return 임베딩 완료 처리된 평가 보고서 상태
+     */
+    @PatchMapping("/{reportId}/embedding-complete")
+    public ApiResponse<ReportCallbackResponse> completeEmbedding(
+            @PathVariable Long reportId
+    ) {
+        return ApiResponse.ok(ReportCallbackResponse.from(reportService.completeEmbedding(reportId)));
     }
 
     /**
