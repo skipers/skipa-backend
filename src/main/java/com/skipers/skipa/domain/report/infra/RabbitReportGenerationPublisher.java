@@ -14,7 +14,7 @@ public class RabbitReportGenerationPublisher implements ReportGenerationPublishe
 
     private final RabbitTemplate rabbitTemplate;
 
-    @Value("${app.rabbitmq.report.exchange}")
+    @Value("${app.rabbitmq.exchange}")
     private String exchange;
 
     @Value("${app.rabbitmq.report.routing-key}")

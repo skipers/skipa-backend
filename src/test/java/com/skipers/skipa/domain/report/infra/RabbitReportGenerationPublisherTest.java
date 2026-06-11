@@ -20,14 +20,14 @@ class RabbitReportGenerationPublisherTest {
     @Test
     void publishSendsReportGenerateMessage() {
         RabbitReportGenerationPublisher publisher = new RabbitReportGenerationPublisher(rabbitTemplate);
-        ReflectionTestUtils.setField(publisher, "exchange", "skipa.report.exchange");
+        ReflectionTestUtils.setField(publisher, "exchange", "skipa.exchange");
         ReflectionTestUtils.setField(publisher, "routingKey", "report.generate");
 
         publisher.publish(8001L, 1001L);
 
         ArgumentCaptor<ReportGenerationMessage> messageCaptor = ArgumentCaptor.forClass(ReportGenerationMessage.class);
         verify(rabbitTemplate).convertAndSend(
-                org.mockito.ArgumentMatchers.eq("skipa.report.exchange"),
+                org.mockito.ArgumentMatchers.eq("skipa.exchange"),
                 org.mockito.ArgumentMatchers.eq("report.generate"),
                 messageCaptor.capture()
         );

@@ -14,12 +14,12 @@ public record PreEvaluationResponse(
         Instant updatedAt
 ) {
 
-    public static PreEvaluationResponse from(PreEvaluation preEvaluation) {
+    public static PreEvaluationResponse of(PreEvaluation preEvaluation, String reportUrl) {
         return new PreEvaluationResponse(
                 preEvaluation.getId(),
                 preEvaluation.getTitle(),
                 preEvaluation.getStatus().name(),
-                preEvaluation.getReportUrl(),
+                reportUrl,
                 preEvaluation.getCompletedAt(),
                 preEvaluation.getCreatedAt(),
                 preEvaluation.getUpdatedAt()

@@ -15,7 +15,7 @@ public class RabbitPreEvaluationGenerationPublisher implements PreEvaluationGene
 
     private final RabbitTemplate rabbitTemplate;
 
-    @Value("${app.rabbitmq.pre-evaluation.exchange}")
+    @Value("${app.rabbitmq.exchange}")
     private String exchange;
 
     @Value("${app.rabbitmq.pre-evaluation.routing-key}")

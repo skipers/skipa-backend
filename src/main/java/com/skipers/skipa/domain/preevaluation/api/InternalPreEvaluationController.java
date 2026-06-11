@@ -26,7 +26,7 @@ public class InternalPreEvaluationController {
             @Valid @RequestBody PreEvaluationCompleteRequest request
     ) {
         return ApiResponse.ok(PreEvaluationCallbackResponse.from(
-                preEvaluationService.complete(preEvaluationId, request.reportUrl())
+                preEvaluationService.complete(preEvaluationId, request.reportKey())
         ));
     }
 
