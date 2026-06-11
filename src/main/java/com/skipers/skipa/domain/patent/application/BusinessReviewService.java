@@ -91,11 +91,9 @@ public class BusinessReviewService {
                         nextDayStart(submittedTo),
                         sortedPageable
                 );
-        List<Review> approvedReviews = reviews.getContent().stream()
-                .filter(this::isApprovedPatent)
-                .toList();
-        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(approvedReviews);
-        List<BusinessReviewResponse> responses = approvedReviews.stream().map(review -> {
+        List<Review> reviewItems = reviews.getContent();
+        Map<Long, Report> reportsByPatentId = latestCompletedReportsByPatentId(reviewItems);
+        List<BusinessReviewResponse> responses = reviewItems.stream().map(review -> {
             Report report = reportsByPatentId.get(review.getPatent().getId());
             return BusinessReviewResponse.from(
                     review,
@@ -103,7 +101,7 @@ public class BusinessReviewService {
                     report == null ? null : report.getValueGrade()
             );
         }).toList();
-        return new PageImpl<>(responses, sortedPageable, responses.size());
+        return new PageImpl<>(responses, sortedPageable, reviews.getTotalElements());
     }
 
     public Page<BusinessReviewHistoryResponse> getHistory(
@@ -198,6 +196,8 @@ public class BusinessReviewService {
     private List<Review> currentDepartmentReviews(Long reviewCycleId, Long departmentId) {
         return reviewRepository.findAllByReviewCycleId(reviewCycleId).stream()
                 .filter(review -> review.getDepartment().getId().equals(departmentId))
+                .filter(review -> review.getPatent().getCurrentDepartment() != null)
+                .filter(review -> review.getPatent().getCurrentDepartment().getId().equals(departmentId))
                 .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
                 .filter(this::isApprovedPatent)
                 .toList();
@@ -218,7 +218,7 @@ public class BusinessReviewService {
             return reportsByPatentId;
         }
 
-        reportRepository.findAllByStatus(ReportStatus.COMPLETED).stream()
+        reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)).stream()
                 .filter(report -> reviews.stream()
                         .anyMatch(review -> review.getPatent().getId().equals(report.getPatent().getId())))
                 .sorted(Comparator.comparing(Report::getId).reversed())

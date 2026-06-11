@@ -120,6 +120,7 @@ class AuthApprovalFlowIntegrationTest {
                 .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(1))
+                .deadline(LocalDate.now().plusDays(1))
                 .build());
 
         userRepository.save(User.createActive(
@@ -1076,7 +1077,7 @@ class AuthApprovalFlowIntegrationTest {
                 .reportKey("reports/%d/report.html".formatted(patent.getId()))
                 .totalScore(new BigDecimal("91.50"))
                 .valueGrade("S")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.now())
                 .build());
         String businessToken = createActiveUserToken("business-opinion", "business-opinion@example.com", UserRole.BUSINESS);
@@ -1268,7 +1269,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.opinion").value(nullValue()))
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.submittedAt").value(nullValue()))
-                .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getEndDate().minusDays(14).toString()));
+                .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getDeadline().toString()));
 
         assertThat(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
                 reviewCycle.getId(),
@@ -1278,7 +1279,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
-    void legalUserCanCreateReviewRequestWithDueDate() throws Exception {
+    void legalUserCanCreateReviewRequestWithReviewCycleDeadline() throws Exception {
         LocalDate dueDate = LocalDate.of(2026, 6, 20);
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Review Request Due Date Patent")
@@ -1296,14 +1297,14 @@ class AuthApprovalFlowIntegrationTest {
                                 }
                                 """.formatted(dueDate)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.dueDate").value(dueDate.toString()));
+                .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getDeadline().toString()));
 
         Review review = reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(
                 reviewCycle.getId(),
                 patent.getId(),
                 department.getId()
         ).orElseThrow();
-        assertThat(review.getDueDate()).isEqualTo(dueDate);
+        assertThat(review.getDueDate()).isEqualTo(reviewCycle.getDeadline());
     }
 
 
@@ -1405,7 +1406,7 @@ class AuthApprovalFlowIntegrationTest {
                 eligiblePatent.getId(),
                 department.getId()
         ).orElseThrow();
-        assertThat(review.getDueDate()).isEqualTo(dueDate);
+        assertThat(review.getDueDate()).isEqualTo(reviewCycle.getDeadline());
     }
 
     @Test
@@ -1602,7 +1603,7 @@ class AuthApprovalFlowIntegrationTest {
                 .patent(latestPastPatent)
                 .totalScore(new BigDecimal("90.00"))
                 .valueGrade("S")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .build());
         String businessToken = createActiveUserToken("business-review-history", "business-review-history@example.com", UserRole.BUSINESS);
 
@@ -1694,7 +1695,7 @@ class AuthApprovalFlowIntegrationTest {
         Report assignedReport = reportRepository.save(Report.builder()
                 .patent(assignedPatent)
                 .reportKey("reports/assigned/report.html")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.parse("2026-06-07T08:55:00Z"))
                 .build());
         Report otherReport = reportRepository.save(Report.builder()
@@ -1883,7 +1884,7 @@ class AuthApprovalFlowIntegrationTest {
         Report report = reportRepository.save(Report.builder()
                 .patent(patent)
                 .reportKey("reports/admin/report.html")
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.parse("2026-06-07T08:55:00Z"))
                 .build());
         Review review = reviewRepository.save(Review.builder()

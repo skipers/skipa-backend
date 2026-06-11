@@ -44,6 +44,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class LocalDataInitializer implements ApplicationRunner {
 
+    private static final LocalDate SAMPLE_BASE_DATE = LocalDate.of(2026, 6, 11);
+
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final PasswordEncoder passwordEncoder;
@@ -141,6 +143,10 @@ public class LocalDataInitializer implements ApplicationRunner {
                     index % 2 == 0 ? PatentLegalStatusType.REGISTERED : PatentLegalStatusType.PUBLISHED,
                     LocalDate.of(2025, 1, 1).plusDays(index * 5L)
             ));
+            PatentLegalStatusType inactiveStatus = inactiveLegalStatus(index);
+            if (inactiveStatus != null) {
+                legalStatuses.add(legalStatus(patent, inactiveStatus, inactiveChangedAt(index)));
+            }
             annuities.add(annuity(
                     patent,
                     1,
@@ -151,7 +157,9 @@ public class LocalDataInitializer implements ApplicationRunner {
                     160000 + index * 12000
             ));
 
-            reviews.add(currentReview(index, patent, department, currentCycle));
+            if (hasCurrentReview(index)) {
+                reviews.add(currentReview(index, patent, department, currentCycle));
+            }
         }
         for (int cycleIndex = 0; cycleIndex < pastCycles.size(); cycleIndex++) {
             ReviewCycle pastCycle = pastCycles.get(cycleIndex);
@@ -182,11 +190,17 @@ public class LocalDataInitializer implements ApplicationRunner {
 
     private ReviewCycle ensureReviewCycle(int year, int quarter) {
         return reviewCycleRepository.findByYearAndQuarter(year, quarter)
+                .map(reviewCycle -> {
+                    reviewCycle.update(year, quarter, quarterStart(year, quarter), quarterStart(year, quarter).plusMonths(3).minusDays(1));
+                    reviewCycle.updateDeadline(defaultReviewCycleDeadline(year, quarter));
+                    return reviewCycle;
+                })
                 .orElseGet(() -> reviewCycleRepository.save(ReviewCycle.builder()
                         .year(year)
                         .quarter(quarter)
                         .startDate(quarterStart(year, quarter))
                         .endDate(quarterStart(year, quarter).plusMonths(3).minusDays(1))
+                        .deadline(defaultReviewCycleDeadline(year, quarter))
                         .build()));
     }
 
@@ -199,6 +213,13 @@ public class LocalDataInitializer implements ApplicationRunner {
 
     private LocalDate quarterStart(int year, int quarter) {
         return LocalDate.of(year, (quarter - 1) * 3 + 1, 1);
+    }
+
+    private LocalDate defaultReviewCycleDeadline(int year, int quarter) {
+        if (year == 2027 && quarter == 4) {
+            return null;
+        }
+        return quarterStart(year, quarter).plusMonths(2).plusDays(14);
     }
 
     private Patent samplePatent(int index, Department department) {
@@ -233,7 +254,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .applicationDate(LocalDate.of(2022 + index % 4, index % 12 + 1, index % 24 + 1))
                 .registrationDate(index % 2 == 0 ? LocalDate.of(2025, index % 12 + 1, index % 24 + 1) : null)
                 .publicationDate(LocalDate.of(2024, index % 12 + 1, index % 24 + 1))
-                .expiryDate(LocalDate.of(2042 + index % 4, index % 12 + 1, index % 24 + 1))
+                .expiryDate(sampleExpiryDate(index))
                 .ipcCodes(List.of(index % 2 == 0 ? "G06N 3/08" : "H04B 7/06", "G05B 23/02"))
                 .cpcCodes(List.of(index % 2 == 0 ? "G06N3/084" : "H04B7/0617", "G05B23/0243"))
                 .applicant(index % 3 == 0 ? "SK텔레콤" : index % 3 == 1 ? "SK하이닉스" : "SK온")
@@ -276,7 +297,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .reportKey("reports/sample/demo-%03d.html".formatted(index))
                 .totalScore(score)
                 .valueGrade(grade)
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.EMBEDDING_COMPLETED)
                 .evaluatedAt(LocalDate.of(2026, 4, 1)
                         .plusDays(index)
                         .atStartOfDay(java.time.ZoneId.systemDefault())
@@ -299,7 +320,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                         .atStartOfDay(java.time.ZoneId.systemDefault())
                         .toInstant()
                         : null)
-                .dueDate(currentDueDate(index, status))
+                .dueDate(currentCycle.getDeadline())
                 .checked(status == ReviewStatus.SUBMITTED && index % 2 == 0)
                 .build();
     }
@@ -314,7 +335,7 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .opinion(index % 2 == 0 ? BusinessOpinion.MAINTAIN : BusinessOpinion.ABANDON)
                 .comment("%d년 %d분기 이력 확인용 제출 의견입니다.".formatted(previousCycle.getYear(), previousCycle.getQuarter()))
                 .submittedAt(submittedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
-                .dueDate(previousCycle.getEndDate().minusDays(10))
+                .dueDate(previousCycle.getDeadline())
                 .checked(true)
                 .build();
     }
@@ -326,10 +347,41 @@ public class LocalDataInitializer implements ApplicationRunner {
         if (index % 4 == 0) {
             return ReviewStatus.OVERDUE;
         }
-        if (index % 3 == 0) {
+        int submissionBucket = index % 6;
+        if (submissionBucket >= 1 && submissionBucket <= 3) {
             return ReviewStatus.SUBMITTED;
         }
         return ReviewStatus.PENDING;
+    }
+
+    private boolean hasCurrentReview(int index) {
+        return index % 7 != 0;
+    }
+
+    private LocalDate sampleExpiryDate(int index) {
+        int offsetDays = index % 20;
+        return switch ((index - 1) % 6) {
+            case 0 -> SAMPLE_BASE_DATE.plusMonths(1).plusDays(offsetDays);
+            case 1 -> SAMPLE_BASE_DATE.plusMonths(4).plusDays(offsetDays);
+            case 2 -> SAMPLE_BASE_DATE.plusMonths(9).plusDays(offsetDays);
+            case 3 -> SAMPLE_BASE_DATE.plusMonths(24).plusDays(offsetDays);
+            case 4 -> SAMPLE_BASE_DATE.plusMonths(48).plusDays(offsetDays);
+            default -> SAMPLE_BASE_DATE.plusMonths(72).plusDays(offsetDays);
+        };
+    }
+
+    private PatentLegalStatusType inactiveLegalStatus(int index) {
+        return switch (index % 8) {
+            case 1 -> PatentLegalStatusType.ABANDONED;
+            case 2 -> PatentLegalStatusType.EXPIRED;
+            case 3 -> PatentLegalStatusType.WITHDRAWN;
+            case 4 -> PatentLegalStatusType.EXPIRED;
+            default -> null;
+        };
+    }
+
+    private LocalDate inactiveChangedAt(int index) {
+        return LocalDate.of(2022 + (index - 1) % 4, index % 12 + 1, index % 24 + 1);
     }
 
     private BusinessOpinion submittedOpinion(int index) {
@@ -340,14 +392,6 @@ public class LocalDataInitializer implements ApplicationRunner {
         return submittedOpinion(index) == BusinessOpinion.MAINTAIN
                 ? "사업 연계성이 높아 유지가 필요합니다."
                 : "대체 기술과 중복되어 포기 검토가 가능합니다.";
-    }
-
-    private LocalDate currentDueDate(int index, ReviewStatus status) {
-        return switch (status) {
-            case OVERDUE -> LocalDate.of(2026, 6, 1).plusDays(index % 5);
-            case SCHEDULED -> LocalDate.of(2026, 6, 26);
-            default -> LocalDate.of(2026, 6, 15).plusDays(index % 12);
-        };
     }
 
     private PatentLegalStatus legalStatus(Patent patent, PatentLegalStatusType status, LocalDate changedAt) {

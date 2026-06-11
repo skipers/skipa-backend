@@ -43,12 +43,16 @@ public class ReviewCycle extends BaseTimeEntity {
     @Column(name = "end_date", nullable = false) // 종료일
     private LocalDate endDate;
 
+    @Column(name = "deadline") // 검토 요청 회신 마감일
+    private LocalDate deadline;
+
     @Builder
-    private ReviewCycle(Integer year, Integer quarter, LocalDate startDate, LocalDate endDate) {
+    private ReviewCycle(Integer year, Integer quarter, LocalDate startDate, LocalDate endDate, LocalDate deadline) {
         this.year = year;
         this.quarter = quarter;
         this.startDate = startDate;
         this.endDate = endDate;
+        this.deadline = deadline;
     }
 
     public void update(Integer year, Integer quarter, LocalDate startDate, LocalDate endDate) {
@@ -56,5 +60,9 @@ public class ReviewCycle extends BaseTimeEntity {
         this.quarter = quarter;
         this.startDate = startDate;
         this.endDate = endDate;
+    }
+
+    public void updateDeadline(LocalDate deadline) {
+        this.deadline = deadline;
     }
 }

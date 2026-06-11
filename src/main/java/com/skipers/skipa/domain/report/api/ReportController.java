@@ -136,14 +136,14 @@ public class ReportController {
     }
 
     /**
-     * 특허의 평가 보고서 생성 상태를 조회한다.
+     * 특허의 평가 처리 상태를 조회한다.
      *
      * @param userDetails 인증 사용자 정보
      * @param patentId 특허 ID
      * @param reportId 평가 보고서 ID
-     * @return 평가 보고서 생성 상태
+     * @return 평가 처리 상태
      */
-    @Operation(summary = "[Common] 평가 보고서 생성 상태 조회", description = "평가 보고서의 생성 상태를 조회합니다.")
+    @Operation(summary = "[Common] 평가 처리 상태 조회", description = "평가 보고서 생성 및 임베딩 처리 상태를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping("/{reportId}/status")
     public ApiResponse<ReportStatusResponse> getStatus(

@@ -89,7 +89,7 @@ public class PreEvaluation extends BaseTimeEntity {
         this.completedAt = completedAt;
     }
 
-    public void complete(String reportKey, Instant completedAt) {
+    public void completeReport(String reportKey, Instant completedAt) {
         validateProcessing();
 
         if (reportKey == null || reportKey.isBlank()) {
@@ -97,8 +97,16 @@ public class PreEvaluation extends BaseTimeEntity {
         }
 
         this.reportKey = reportKey;
-        this.status = PreEvaluationStatus.COMPLETED;
+        this.status = PreEvaluationStatus.REPORT_COMPLETED;
         this.completedAt = completedAt != null ? completedAt : Instant.now();
+    }
+
+    public void completeEmbedding() {
+        if (status != PreEvaluationStatus.REPORT_COMPLETED) {
+            throw new PreEvaluationException(ErrorCode.PRE_EVALUATION_ALREADY_PROCESSED);
+        }
+
+        this.status = PreEvaluationStatus.EMBEDDING_COMPLETED;
     }
 
     public void fail() {
@@ -108,8 +116,8 @@ public class PreEvaluation extends BaseTimeEntity {
         this.completedAt = Instant.now();
     }
 
-    public boolean isCompleted() {
-        return status == PreEvaluationStatus.COMPLETED;
+    public boolean isReportGenerated() {
+        return status == PreEvaluationStatus.REPORT_COMPLETED || status == PreEvaluationStatus.EMBEDDING_COMPLETED;
     }
 
     private void validateProcessing() {

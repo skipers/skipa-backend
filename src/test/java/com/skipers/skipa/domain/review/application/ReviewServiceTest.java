@@ -82,6 +82,7 @@ class ReviewServiceTest {
                 .quarter(2)
                 .startDate(LocalDate.now().minusDays(1))
                 .endDate(LocalDate.now().plusDays(1))
+                .deadline(LocalDate.now().plusDays(1))
                 .build();
         ReflectionTestUtils.setField(reviewCycle, "id", 1L);
 
@@ -114,14 +115,14 @@ class ReviewServiceTest {
         assertThat(response.departmentId()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo("PENDING");
         assertThat(response.reviewCycleId()).isEqualTo(1L);
-        assertThat(response.dueDate()).isEqualTo(reviewCycle.getEndDate().minusDays(14));
+        assertThat(response.dueDate()).isEqualTo(reviewCycle.getDeadline());
         assertThat(response.opinion()).isNull();
         assertThat(response.submittedAt()).isNull();
         assertThat(response.checked()).isFalse();
     }
 
     @Test
-    void createUsesRequestedDueDate() {
+    void createUsesReviewCycleDeadline() {
         LocalDate dueDate = LocalDate.of(2026, 6, 20);
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
@@ -135,7 +136,7 @@ class ReviewServiceTest {
 
         ReviewResponse response = reviewService.create(10L, new ReviewCreateRequest(dueDate));
 
-        assertThat(response.dueDate()).isEqualTo(dueDate);
+        assertThat(response.dueDate()).isEqualTo(reviewCycle.getDeadline());
     }
 
     @Test
@@ -229,7 +230,7 @@ class ReviewServiceTest {
 
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.status()).isEqualTo("PENDING");
-        assertThat(response.dueDate()).isEqualTo(dueDate);
+        assertThat(response.dueDate()).isEqualTo(reviewCycle.getDeadline());
         assertThat(scheduledReview.getStatus()).isEqualTo(ReviewStatus.PENDING);
         verify(reviewRepository, never()).save(any());
     }
@@ -300,7 +301,7 @@ class ReviewServiceTest {
             }
             Review review = iterator.next();
             return review.getPatent().getId().equals(10L)
-                    && dueDate.equals(review.getDueDate())
+                    && reviewCycle.getDeadline().equals(review.getDueDate())
                     && !iterator.hasNext();
         }));
     }

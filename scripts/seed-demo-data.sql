@@ -56,12 +56,23 @@ with seed_cycles as (
     from generate_series(2024, 2027) as years(year_value)
     cross join generate_series(1, 4) as quarters(quarter_value)
 )
-insert into review_cycles (cycle_year, quarter, start_date, end_date, created_at, updated_at)
-select cycle_year, quarter, start_date, end_date, now(), now()
+insert into review_cycles (cycle_year, quarter, start_date, end_date, deadline, created_at, updated_at)
+select
+    cycle_year,
+    quarter,
+    start_date,
+    end_date,
+    case
+        when cycle_year = 2027 and quarter = 4 then null
+        else (start_date + interval '2 months' + interval '14 days')::date
+    end,
+    now(),
+    now()
 from seed_cycles
 on conflict (cycle_year, quarter) do update
 set start_date = excluded.start_date,
     end_date = excluded.end_date,
+    deadline = excluded.deadline,
     updated_at = now();
 
 create temp table if not exists skipa_seed_patents (
@@ -141,7 +152,14 @@ inserted as (
         make_date(2022 + source.idx % 4, source.idx % 12 + 1, source.idx % 24 + 1),
         case when source.idx % 2 = 0 then make_date(2025, source.idx % 12 + 1, source.idx % 24 + 1) else null end,
         make_date(2024, source.idx % 12 + 1, source.idx % 24 + 1),
-        make_date(2042 + source.idx % 4, source.idx % 12 + 1, source.idx % 24 + 1),
+        case (source.idx - 1) % 6
+            when 0 then ('2026-06-11'::date + interval '1 month' + (source.idx % 20) * interval '1 day')::date
+            when 1 then ('2026-06-11'::date + interval '4 months' + (source.idx % 20) * interval '1 day')::date
+            when 2 then ('2026-06-11'::date + interval '9 months' + (source.idx % 20) * interval '1 day')::date
+            when 3 then ('2026-06-11'::date + interval '24 months' + (source.idx % 20) * interval '1 day')::date
+            when 4 then ('2026-06-11'::date + interval '48 months' + (source.idx % 20) * interval '1 day')::date
+            else ('2026-06-11'::date + interval '72 months' + (source.idx % 20) * interval '1 day')::date
+        end,
         jsonb_build_array(case when source.idx % 2 = 0 then 'G06N 3/08' else 'H04B 7/06' end, 'G05B 23/02'),
         jsonb_build_array(case when source.idx % 2 = 0 then 'G06N3/084' else 'H04B7/0617' end, 'G05B23/0243'),
         case source.idx % 3 when 0 then 'SK텔레콤' when 1 then 'SK하이닉스' else 'SK온' end,
@@ -196,7 +214,7 @@ select
     case
         when seed.idx % 15 = 0 then 'FAILED'
         when seed.idx % 10 = 0 then 'GENERATING'
-        else 'COMPLETED'
+        else 'EMBEDDING_COMPLETED'
     end,
     case when seed.idx % 10 = 0 or seed.idx % 15 = 0 then null else ('2026-04-01'::date + seed.idx)::timestamptz end,
     now(),
@@ -214,9 +232,20 @@ from skipa_seed_patents seed
 cross join lateral (
     values
         ('APPLIED', '2023-01-01'::date + seed.idx * 9),
-        (case when seed.idx % 2 = 0 then 'REGISTERED' else 'PUBLISHED' end, '2025-01-01'::date + seed.idx * 5)
+        (case when seed.idx % 2 = 0 then 'REGISTERED' else 'PUBLISHED' end, '2025-01-01'::date + seed.idx * 5),
+        (
+            case seed.idx % 8
+                when 1 then 'ABANDONED'
+                when 2 then 'EXPIRED'
+                when 3 then 'WITHDRAWN'
+                when 4 then 'EXPIRED'
+                else null
+            end,
+            make_date(2022 + (seed.idx - 1) % 4, seed.idx % 12 + 1, seed.idx % 24 + 1)
+        )
 ) as legal(status_value, changed_at)
-where not exists (
+where legal.status_value is not null
+  and not exists (
     select 1
     from patent_legal_status existing
     where existing.patent_id = seed.patent_id
@@ -252,14 +281,16 @@ current_reviews as (
         seed.patent_id,
         seed.department_id,
         current_cycle.id as review_cycle_id,
+        current_cycle.deadline as deadline,
         case
             when seed.idx % 5 = 0 then 'SCHEDULED'
             when seed.idx % 4 = 0 then 'OVERDUE'
-            when seed.idx % 3 = 0 then 'SUBMITTED'
+            when seed.idx % 6 between 1 and 3 then 'SUBMITTED'
             else 'PENDING'
         end as review_status
     from skipa_seed_patents seed
     cross join current_cycle
+    where seed.idx % 7 <> 0
 )
 insert into reviews (
     patent_id,
@@ -293,11 +324,7 @@ select
         when current_reviews.review_status = 'SUBMITTED' then ('2026-06-01'::date + current_reviews.idx % 10)::timestamptz
         else null
     end,
-    case
-        when current_reviews.review_status = 'OVERDUE' then '2026-06-01'::date + current_reviews.idx % 5
-        when current_reviews.review_status = 'SCHEDULED' then '2026-06-26'::date
-        else '2026-06-15'::date + current_reviews.idx % 12
-    end,
+    current_reviews.deadline,
     current_reviews.review_status = 'SUBMITTED' and current_reviews.idx % 2 = 0,
     now(),
     now()
@@ -317,6 +344,7 @@ with past_cycles as (
         cycle_year,
         quarter,
         end_date,
+        deadline,
         row_number() over (order by cycle_year, quarter) as cycle_index
     from review_cycles
     where end_date < '2026-06-11'
@@ -331,6 +359,7 @@ past_reviews as (
         past_cycles.cycle_year,
         past_cycles.quarter,
         past_cycles.end_date,
+        past_cycles.deadline,
         past_cycles.cycle_index,
         offsets.offset_value,
         ((past_cycles.cycle_index - 1) * 3 + offsets.offset_value + 1) as history_index
@@ -360,7 +389,7 @@ select
     past_reviews.cycle_year || '년 ' || past_reviews.quarter || '분기 이력 확인용 제출 의견입니다.',
     'SUBMITTED',
     (past_reviews.end_date - (15 - past_reviews.history_index % 10)::integer)::timestamptz,
-    past_reviews.end_date - 10,
+    past_reviews.deadline,
     true,
     now(),
     now()

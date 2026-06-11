@@ -64,7 +64,7 @@ public class PreEvaluationController {
         return ApiResponse.ok(preEvaluationService.get(userDetails.getUser(), preEvaluationId));
     }
 
-    @Operation(summary = "[Common] 사전 평가 상태 조회", description = "현재 사용자의 사전 평가 보고서 생성 상태를 조회합니다.")
+    @Operation(summary = "[Common] 사전 평가 처리 상태 조회", description = "현재 사용자의 사전 평가 보고서 생성 및 임베딩 처리 상태를 조회합니다.")
     @PreAuthorize("hasRole('BUSINESS')")
     @GetMapping("/{preEvaluationId}/status")
     public ApiResponse<PreEvaluationStatusResponse> getStatus(

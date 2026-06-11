@@ -206,7 +206,7 @@ public class PortfolioService {
 
     private Map<Long, Report> latestCompletedReportsByPatentId() {
         Map<Long, Report> reportsByPatentId = new HashMap<>();
-        reportRepository.findAllByStatus(ReportStatus.COMPLETED).stream()
+        reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)).stream()
                 .sorted(Comparator.comparing(Report::getId).reversed())
                 .forEach(report -> reportsByPatentId.putIfAbsent(report.getPatent().getId(), report));
         return reportsByPatentId;

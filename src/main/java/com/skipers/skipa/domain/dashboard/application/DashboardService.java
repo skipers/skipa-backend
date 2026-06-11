@@ -84,13 +84,16 @@ public class DashboardService {
         Long departmentId = user.getDepartment().getId();
         List<Review> reviews = reviewRepository.findAllByReviewCycleId(reviewCycle.getId()).stream()
                 .filter(review -> review.getDepartment().getId().equals(departmentId))
+                .filter(review -> review.getPatent().getCurrentDepartment() != null)
+                .filter(review -> review.getPatent().getCurrentDepartment().getId().equals(departmentId))
                 .filter(review -> review.getStatus() != ReviewStatus.SCHEDULED)
                 .toList();
         List<Patent> departmentPatents = patentRepository.findByCurrentDepartmentId(
                 departmentId,
                 org.springframework.data.domain.Pageable.unpaged()
         ).getContent();
-        Map<Long, PatentLegalStatusType> latestLegalStatuses = latestLegalStatuses();
+        List<PatentLegalStatus> legalStatuses = patentLegalStatusRepository.findAll();
+        Map<Long, PatentLegalStatusType> latestLegalStatuses = latestLegalStatuses(legalStatuses);
 
         long submitted = countSubmitted(reviews);
         long notSubmitted = reviews.stream()
@@ -103,7 +106,7 @@ public class DashboardService {
                 pendingPatents(reviews),
                 recentSubmissions(reviews),
                 patentStatusSummary(departmentPatents, latestLegalStatuses, today),
-                yearlyTrends(departmentPatents, latestLegalStatuses)
+                yearlyTrends(departmentPatents, legalStatuses)
         );
     }
 
@@ -217,19 +220,24 @@ public class DashboardService {
 
     private List<BusinessDashboardResponse.YearlyTrend> yearlyTrends(
             List<Patent> patents,
-            Map<Long, PatentLegalStatusType> latestLegalStatuses
+            List<PatentLegalStatus> legalStatuses
     ) {
         Map<Integer, YearAccumulator> byYear = new LinkedHashMap<>();
+        Set<Long> patentIds = patents.stream()
+                .map(Patent::getId)
+                .collect(Collectors.toSet());
+
         patents.stream()
                 .map(Patent::getApplicationDate)
                 .filter(applicationDate -> applicationDate != null)
                 .map(LocalDate::getYear)
                 .sorted()
                 .forEach(year -> byYear.computeIfAbsent(year, YearAccumulator::new).applications++);
-        patents.stream()
-                .filter(patent -> isAbandonedOrExpired(latestLegalStatuses.get(patent.getId())))
-                .map(Patent::getExpiryDate)
-                .filter(expiryDate -> expiryDate != null)
+        legalStatuses.stream()
+                .filter(legalStatus -> patentIds.contains(legalStatus.getPatent().getId()))
+                .filter(legalStatus -> isAbandonedOrExpired(legalStatus.getStatus()))
+                .map(PatentLegalStatus::getChangedAt)
+                .filter(changedAt -> changedAt != null)
                 .map(LocalDate::getYear)
                 .sorted()
                 .forEach(year -> byYear.computeIfAbsent(year, YearAccumulator::new).expiredOrAbandoned++);
@@ -243,9 +251,9 @@ public class DashboardService {
                 .toList();
     }
 
-    private Map<Long, PatentLegalStatusType> latestLegalStatuses() {
+    private Map<Long, PatentLegalStatusType> latestLegalStatuses(List<PatentLegalStatus> legalStatuses) {
         Map<Long, PatentLegalStatus> latestByPatentId = new HashMap<>();
-        for (PatentLegalStatus legalStatus : patentLegalStatusRepository.findAll()) {
+        for (PatentLegalStatus legalStatus : legalStatuses) {
             Long patentId = legalStatus.getPatent().getId();
             PatentLegalStatus current = latestByPatentId.get(patentId);
             if (current == null || compareLegalStatusRecency(legalStatus, current) > 0) {

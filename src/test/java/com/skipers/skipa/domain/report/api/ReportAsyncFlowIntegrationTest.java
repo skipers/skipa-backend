@@ -98,7 +98,7 @@ class ReportAsyncFlowIntegrationTest {
         Report oldReport = reportRepository.save(Report.builder()
                 .patent(patent)
                 .build());
-        oldReport.complete(
+        oldReport.completeReport(
                 "reports/%d/report.html".formatted(oldReport.getId()),
                 new BigDecimal("91.00"),
                 "S",
@@ -149,7 +149,7 @@ class ReportAsyncFlowIntegrationTest {
                                 """.formatted(reportId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reportId").value(reportId))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("REPORT_COMPLETED"))
                 .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.valueGrade").value("A"));
 
@@ -159,7 +159,7 @@ class ReportAsyncFlowIntegrationTest {
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", patent.getId(), reportId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("REPORT_COMPLETED"))
                 .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.valueGrade").value("A"))
                 .andExpect(jsonPath("$.data.evaluatedAt").isNotEmpty());
@@ -167,7 +167,7 @@ class ReportAsyncFlowIntegrationTest {
         mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), reportId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("REPORT_COMPLETED"))
                 .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.valueGrade").value("A"))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
@@ -177,7 +177,7 @@ class ReportAsyncFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(reportId))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("REPORT_COMPLETED"))
                 .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.valueGrade").value("A"))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/%d/report.html?signature=abc".formatted(reportId)))
@@ -267,7 +267,7 @@ class ReportAsyncFlowIntegrationTest {
         Report report = reportRepository.save(Report.builder()
                 .patent(patent)
                 .build());
-        report.complete("reports/%d/report.json".formatted(report.getId()), new BigDecimal("82.50"), "A", null);
+        report.completeReport("reports/%d/report.json".formatted(report.getId()), new BigDecimal("82.50"), "A", null);
         String legalToken = createActiveUserToken("legal-report-chat", "legal-report-chat@example.com");
         when(reportChatClient.send(org.mockito.ArgumentMatchers.any()))
                 .thenReturn("The strongest risk is claim breadth.");

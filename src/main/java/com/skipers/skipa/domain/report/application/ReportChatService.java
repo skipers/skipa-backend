@@ -96,7 +96,7 @@ public class ReportChatService {
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        if (!report.isCompleted()) {
+        if (!report.isReportGenerated()) {
             throw new ReportException(ErrorCode.REPORT_NOT_COMPLETED);
         }
 

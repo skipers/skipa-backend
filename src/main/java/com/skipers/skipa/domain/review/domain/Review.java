@@ -107,7 +107,7 @@ public class Review extends BaseTimeEntity {
         this.comment = comment;
         this.status = status != null ? status : ReviewStatus.PENDING;
         this.submittedAt = submittedAt;
-        this.dueDate = dueDate != null ? dueDate : reviewCycle.getEndDate().minusDays(14);
+        this.dueDate = dueDate != null ? dueDate : defaultDueDate(reviewCycle);
         this.checked = checked != null && checked;
     }
 
@@ -133,5 +133,9 @@ public class Review extends BaseTimeEntity {
 
     public void confirm() {
         this.checked = true;
+    }
+
+    private LocalDate defaultDueDate(ReviewCycle reviewCycle) {
+        return reviewCycle.getDeadline() != null ? reviewCycle.getDeadline() : reviewCycle.getEndDate().minusDays(14);
     }
 }

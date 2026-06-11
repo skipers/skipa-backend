@@ -18,12 +18,12 @@ class PreEvaluationTest {
         PreEvaluation preEvaluation = processingPreEvaluation();
         Instant completedAt = Instant.parse("2026-06-10T08:00:00Z");
 
-        preEvaluation.complete("pre-evaluations/1/report.json", completedAt);
+        preEvaluation.completeReport("pre-evaluations/1/report.json", completedAt);
 
-        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
+        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.REPORT_COMPLETED);
         assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.json");
         assertThat(preEvaluation.getCompletedAt()).isEqualTo(completedAt);
-        assertThat(preEvaluation.isCompleted()).isTrue();
+        assertThat(preEvaluation.isReportGenerated()).isTrue();
     }
 
     @Test
@@ -31,7 +31,7 @@ class PreEvaluationTest {
         PreEvaluation preEvaluation = processingPreEvaluation();
 
         assertPreEvaluationError(
-                () -> preEvaluation.complete(" ", Instant.parse("2026-06-10T08:00:00Z")),
+                () -> preEvaluation.completeReport(" ", Instant.parse("2026-06-10T08:00:00Z")),
                 ErrorCode.INVALID_REQUEST
         );
 
@@ -48,20 +48,40 @@ class PreEvaluationTest {
         assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.FAILED);
         assertThat(preEvaluation.getReportKey()).isNull();
         assertThat(preEvaluation.getCompletedAt()).isNotNull();
-        assertThat(preEvaluation.isCompleted()).isFalse();
+        assertThat(preEvaluation.isReportGenerated()).isFalse();
     }
 
     @Test
     void finalizedPreEvaluationCannotBeCompletedAgain() {
         PreEvaluation preEvaluation = processingPreEvaluation();
-        preEvaluation.complete("pre-evaluations/1/report.json", null);
+        preEvaluation.completeReport("pre-evaluations/1/report.json", null);
 
         assertPreEvaluationError(
-                () -> preEvaluation.complete("pre-evaluations/1/retry.json", null),
+                () -> preEvaluation.completeReport("pre-evaluations/1/retry.json", null),
                 ErrorCode.PRE_EVALUATION_ALREADY_PROCESSED
         );
 
         assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.json");
+    }
+
+    @Test
+    void completeEmbeddingMarksEmbeddingCompleted() {
+        PreEvaluation preEvaluation = processingPreEvaluation();
+        preEvaluation.completeReport("pre-evaluations/1/report.json", null);
+
+        preEvaluation.completeEmbedding();
+
+        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.EMBEDDING_COMPLETED);
+        assertThat(preEvaluation.isReportGenerated()).isTrue();
+    }
+
+    @Test
+    void completeEmbeddingRejectsPreEvaluationWithoutGeneratedReport() {
+        PreEvaluation preEvaluation = processingPreEvaluation();
+
+        assertPreEvaluationError(preEvaluation::completeEmbedding, ErrorCode.PRE_EVALUATION_ALREADY_PROCESSED);
+
+        assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.PROCESSING);
     }
 
     @Test

@@ -309,7 +309,7 @@ class PortfolioControllerIntegrationTest {
                 .reportKey("reports/%s/report.html".formatted(patent.getId()))
                 .totalScore(valueGrade.equals("S") ? new java.math.BigDecimal("95.00") : new java.math.BigDecimal("85.00"))
                 .valueGrade(valueGrade)
-                .status(ReportStatus.COMPLETED)
+                .status(ReportStatus.REPORT_COMPLETED)
                 .evaluatedAt(Instant.now())
                 .build();
     }
