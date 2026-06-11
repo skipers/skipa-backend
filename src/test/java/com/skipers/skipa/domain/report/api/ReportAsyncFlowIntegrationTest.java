@@ -1,8 +1,12 @@
 package com.skipers.skipa.domain.report.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatRole;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
+import com.skipers.skipa.domain.report.application.ReportChatClient;
 import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
@@ -33,6 +37,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,6 +68,9 @@ class ReportAsyncFlowIntegrationTest {
     private ReportRepository reportRepository;
 
     @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -73,6 +81,9 @@ class ReportAsyncFlowIntegrationTest {
 
     @MockitoBean
     private ReportStorageService reportStorageService;
+
+    @MockitoBean
+    private ReportChatClient reportChatClient;
 
     @BeforeEach
     void setUp() {
@@ -248,6 +259,52 @@ class ReportAsyncFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REPORT_NOT_FOUND"));
+    }
+
+    @Test
+    void legalUserChatsWithCompletedReportAndClearsMessages() throws Exception {
+        Patent patent = savePatent("APP-REPORT-CHAT");
+        Report report = reportRepository.save(Report.builder()
+                .patent(patent)
+                .build());
+        report.complete("reports/%d/report.json".formatted(report.getId()), new BigDecimal("82.50"), "A", null);
+        String legalToken = createActiveUserToken("legal-report-chat", "legal-report-chat@example.com");
+        when(reportChatClient.send(org.mockito.ArgumentMatchers.any()))
+                .thenReturn("The strongest risk is claim breadth.");
+
+        mockMvc.perform(post("/patents/{patentId}/reports/{reportId}/chat/messages", patent.getId(), report.getId())
+                        .header("Authorization", "Bearer " + legalToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "message": "What is the key risk?"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.userMessage.reportId").value(report.getId()))
+                .andExpect(jsonPath("$.data.userMessage.role").value("USER"))
+                .andExpect(jsonPath("$.data.userMessage.content").value("What is the key risk?"))
+                .andExpect(jsonPath("$.data.assistantMessage.reportId").value(report.getId()))
+                .andExpect(jsonPath("$.data.assistantMessage.role").value("ASSISTANT"))
+                .andExpect(jsonPath("$.data.assistantMessage.content").value("The strongest risk is claim breadth."));
+
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, report.getId()))
+                .extracting(message -> message.getRole())
+                .containsExactly(ChatRole.USER, ChatRole.ASSISTANT);
+
+        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/chat/messages", patent.getId(), report.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].role").value("USER"))
+                .andExpect(jsonPath("$.data[1].role").value("ASSISTANT"));
+
+        mockMvc.perform(delete("/patents/{patentId}/reports/{reportId}/chat/messages", patent.getId(), report.getId())
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk());
+
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, report.getId()))
+                .isEmpty();
     }
 
     private Patent savePatent(String applicationNumber) {

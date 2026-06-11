@@ -1,10 +1,11 @@
 package com.skipers.skipa.domain.preevaluation.application;
 
-import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationChatMessageRepository;
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatMessage;
+import com.skipers.skipa.domain.chat.domain.ChatRole;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatMessage;
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatRole;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatMessageRequest;
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationChatMessageResponse;
@@ -39,7 +40,7 @@ class PreEvaluationChatServiceTest {
     private PreEvaluationRepository preEvaluationRepository;
 
     @Mock
-    private PreEvaluationChatMessageRepository chatMessageRepository;
+    private ChatMessageRepository chatMessageRepository;
 
     @Mock
     private PreEvaluationChatClient chatClient;
@@ -76,8 +77,8 @@ class PreEvaluationChatServiceTest {
     @Test
     void getMessagesReturnsOrderedMessages() {
         when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
-        when(chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(1L))
-                .thenReturn(List.of(message(100L, PreEvaluationChatRole.USER, "question")));
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.PRE_EVALUATION, 1L))
+                .thenReturn(List.of(message(100L, ChatRole.USER, "question")));
 
         List<PreEvaluationChatMessageResponse> responses = chatService.getMessages(user, 1L);
 
@@ -89,14 +90,14 @@ class PreEvaluationChatServiceTest {
 
     @Test
     void sendMessageStoresUserMessageAndAssistantMessage() {
-        PreEvaluationChatMessage previousMessage = message(99L, PreEvaluationChatRole.ASSISTANT, "previous answer");
+        ChatMessage previousMessage = message(99L, ChatRole.ASSISTANT, "previous answer");
         when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
-        when(chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(1L))
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.PRE_EVALUATION, 1L))
                 .thenReturn(List.of(previousMessage));
-        when(chatMessageRepository.save(any(PreEvaluationChatMessage.class))).thenAnswer(invocation -> {
-            PreEvaluationChatMessage message = invocation.getArgument(0);
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
+            ChatMessage message = invocation.getArgument(0);
             ReflectionTestUtils.setField(message, "id",
-                    message.getRole() == PreEvaluationChatRole.USER ? 100L : 101L);
+                    message.getRole() == ChatRole.USER ? 100L : 101L);
             return message;
         });
         when(chatClient.send(any(PreEvaluationChatClientRequest.class))).thenReturn("assistant answer");
@@ -108,8 +109,10 @@ class PreEvaluationChatServiceTest {
         );
 
         assertThat(response.userMessage().id()).isEqualTo(100L);
+        assertThat(response.userMessage().preEvaluationId()).isEqualTo(1L);
         assertThat(response.userMessage().role()).isEqualTo("USER");
         assertThat(response.assistantMessage().id()).isEqualTo(101L);
+        assertThat(response.assistantMessage().preEvaluationId()).isEqualTo(1L);
         assertThat(response.assistantMessage().role()).isEqualTo("ASSISTANT");
         assertThat(response.assistantMessage().content()).isEqualTo("assistant answer");
 
@@ -126,8 +129,8 @@ class PreEvaluationChatServiceTest {
     @Test
     void sendMessageWrapsAiClientFailure() {
         when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
-        when(chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(1L)).thenReturn(List.of());
-        when(chatMessageRepository.save(any(PreEvaluationChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.PRE_EVALUATION, 1L)).thenReturn(List.of());
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(chatClient.send(any(PreEvaluationChatClientRequest.class))).thenThrow(new RuntimeException("AI unavailable"));
 
         assertPreEvaluationError(
@@ -142,7 +145,7 @@ class PreEvaluationChatServiceTest {
 
         chatService.clearMessages(user, 1L);
 
-        verify(chatMessageRepository).deleteAllByPreEvaluationId(1L);
+        verify(chatMessageRepository).deleteAllByTargetTypeAndTargetId(ChatTargetType.PRE_EVALUATION, 1L);
     }
 
     @Test
@@ -152,9 +155,11 @@ class PreEvaluationChatServiceTest {
         assertPreEvaluationError(() -> chatService.getMessages(user, 1L), ErrorCode.PRE_EVALUATION_NOT_FOUND);
     }
 
-    private PreEvaluationChatMessage message(Long id, PreEvaluationChatRole role, String content) {
-        PreEvaluationChatMessage message = PreEvaluationChatMessage.builder()
-                .preEvaluation(preEvaluation)
+    private ChatMessage message(Long id, ChatRole role, String content) {
+        ChatMessage message = ChatMessage.builder()
+                .targetType(ChatTargetType.PRE_EVALUATION)
+                .targetId(preEvaluation.getId())
+                .user(user)
                 .role(role)
                 .content(content)
                 .build();

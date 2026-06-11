@@ -42,6 +42,7 @@ app:
     api-key: ${INTERNAL_API_KEY:}
   ai-server:
     base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
+    report-chat-path: ${AI_REPORT_CHAT_PATH:/reports/chat}
     pre-evaluation-chat-path: ${AI_PRE_EVALUATION_CHAT_PATH:/pre-evaluations/chat}
   rabbitmq:
     exchange: ${RABBITMQ_EXCHANGE:skipa.exchange}
@@ -56,8 +57,9 @@ app:
       routing-key: ${PRE_EVALUATION_GENERATE_ROUTING_KEY:pre-evaluation.generate}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${MINIO_PUBLIC_ENDPOINT:${MINIO_ENDPOINT:http://localhost:9000}}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
     secret-key: ${MINIO_SECRET_KEY:minioadmin}
-    bucket: ${MINIO_REPORT_BUCKET:skipa}
+    bucket: ${MINIO_BUCKET:skipa}
     region: ${MINIO_REGION:us-east-1}
     presigned-url-expiry-seconds: ${MINIO_PRESIGNED_URL_EXPIRY_SECONDS:600}

@@ -1,6 +1,7 @@
 package com.skipers.skipa.domain.preevaluation.application;
 
-import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationChatMessageRepository;
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationStatus;
@@ -40,7 +41,7 @@ class PreEvaluationServiceTest {
     private PreEvaluationRepository preEvaluationRepository;
 
     @Mock
-    private PreEvaluationChatMessageRepository chatMessageRepository;
+    private ChatMessageRepository chatMessageRepository;
 
     @Mock
     private PreEvaluationGenerationPublisher generationPublisher;
@@ -145,7 +146,7 @@ class PreEvaluationServiceTest {
 
         preEvaluationService.delete(user, 1L);
 
-        verify(chatMessageRepository).deleteAllByPreEvaluationId(1L);
+        verify(chatMessageRepository).deleteAllByTargetTypeAndTargetId(ChatTargetType.PRE_EVALUATION, 1L);
         verify(preEvaluationRepository).delete(preEvaluation);
     }
 
