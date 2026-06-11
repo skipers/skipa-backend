@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleCreateRequest;
+import com.skipers.skipa.domain.review.dto.request.ReviewCycleDeadlineUpdateRequest;
 import com.skipers.skipa.domain.review.dto.request.ReviewCycleUpdateRequest;
 import com.skipers.skipa.domain.review.dto.response.ReviewCycleResponse;
 import com.skipers.skipa.domain.review.exception.ReviewCycleException;
@@ -50,6 +51,7 @@ class ReviewCycleServiceTest {
                 .quarter(2)
                 .startDate(LocalDate.of(2026, 4, 1))
                 .endDate(LocalDate.of(2026, 6, 30))
+                .deadline(LocalDate.of(2026, 6, 15))
                 .build();
         ReflectionTestUtils.setField(reviewCycle, "id", 1L);
     }
@@ -124,6 +126,7 @@ class ReviewCycleServiceTest {
         assertThat(response.quarter()).isEqualTo(2);
         assertThat(response.startDate()).isEqualTo(LocalDate.of(2026, 4, 1));
         assertThat(response.endDate()).isEqualTo(LocalDate.of(2026, 6, 30));
+        assertThat(response.deadline()).isEqualTo(LocalDate.of(2026, 6, 15));
     }
 
     @Test
@@ -154,6 +157,29 @@ class ReviewCycleServiceTest {
         assertThat(response.year()).isEqualTo(2026);
         assertThat(response.quarter()).isEqualTo(3);
         assertThat(reviewCycle.getStartDate()).isEqualTo(LocalDate.of(2026, 5, 1));
+    }
+
+    @Test
+    void updateDeadlineChangesReviewCycleDeadline() {
+        when(reviewCycleRepository.findById(1L)).thenReturn(Optional.of(reviewCycle));
+
+        ReviewCycleResponse response = reviewCycleService.updateDeadline(
+                1L,
+                new ReviewCycleDeadlineUpdateRequest(LocalDate.of(2026, 6, 20))
+        );
+
+        assertThat(response.deadline()).isEqualTo(LocalDate.of(2026, 6, 20));
+        assertThat(reviewCycle.getDeadline()).isEqualTo(LocalDate.of(2026, 6, 20));
+    }
+
+    @Test
+    void updateDeadlineRejectsOutOfPeriodDeadline() {
+        when(reviewCycleRepository.findById(1L)).thenReturn(Optional.of(reviewCycle));
+
+        assertReviewCycleError(
+                () -> reviewCycleService.updateDeadline(1L, new ReviewCycleDeadlineUpdateRequest(LocalDate.of(2026, 7, 1))),
+                ErrorCode.INVALID_REVIEW_CYCLE_DEADLINE
+        );
     }
 
     @Test

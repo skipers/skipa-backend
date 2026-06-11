@@ -14,7 +14,8 @@ public record BusinessReviewSummaryResponse(
             Integer year,
             Integer quarter,
             LocalDate startDate,
-            LocalDate endDate
+            LocalDate endDate,
+            LocalDate deadline
     ) {
         public static ReviewCycleInfo from(ReviewCycle reviewCycle) {
             return new ReviewCycleInfo(
@@ -22,7 +23,8 @@ public record BusinessReviewSummaryResponse(
                     reviewCycle.getYear(),
                     reviewCycle.getQuarter(),
                     reviewCycle.getStartDate(),
-                    reviewCycle.getEndDate()
+                    reviewCycle.getEndDate(),
+                    reviewCycle.getDeadline()
             );
         }
     }
