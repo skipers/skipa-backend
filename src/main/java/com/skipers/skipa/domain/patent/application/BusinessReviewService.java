@@ -85,7 +85,9 @@ public class BusinessReviewService {
                         departmentId,
                         parsedStatus,
                         parsedOpinion,
+                        submittedFrom != null,
                         startOfDay(submittedFrom),
+                        submittedTo != null,
                         nextDayStart(submittedTo),
                         sortedPageable
                 );

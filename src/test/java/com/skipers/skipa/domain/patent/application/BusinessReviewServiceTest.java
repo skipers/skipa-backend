@@ -123,7 +123,17 @@ class BusinessReviewServiceTest {
                 .build();
         ReflectionTestUtils.setField(report, "id", 1000L);
         stubActiveReviewCycle();
-        when(reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(1L, 1L, null, null, null, null, sortedPageable))
+        when(reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
+                1L,
+                null,
+                null,
+                false,
+                null,
+                false,
+                null,
+                sortedPageable
+        ))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
         when(reportRepository.findAllByStatus(ReportStatus.COMPLETED)).thenReturn(List.of(report));
 
@@ -148,7 +158,17 @@ class BusinessReviewServiceTest {
         assertThat(responses.get(0))
                 .extracting(BusinessReviewResponse::totalScore, BusinessReviewResponse::valueGrade)
                 .containsExactly(new BigDecimal("92.50"), "S");
-        verify(reviewRepository).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(1L, 1L, null, null, null, null, sortedPageable);
+        verify(reviewRepository).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
+                1L,
+                null,
+                null,
+                false,
+                null,
+                false,
+                null,
+                sortedPageable
+        );
     }
 
     @Test
@@ -197,7 +217,9 @@ class BusinessReviewServiceTest {
                 1L,
                 ReviewStatus.SUBMITTED,
                 BusinessOpinion.MAINTAIN,
+                true,
                 submittedFrom.atStartOfDay(ZoneId.systemDefault()).toInstant(),
+                true,
                 submittedTo.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant(),
                 sortedPageable
         )).thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
@@ -228,7 +250,9 @@ class BusinessReviewServiceTest {
                 1L,
                 null,
                 null,
+                false,
                 null,
+                false,
                 null,
                 sortedPageable
         )).thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
@@ -247,7 +271,9 @@ class BusinessReviewServiceTest {
                 1L,
                 null,
                 null,
+                false,
                 null,
+                false,
                 null,
                 sortedPageable
         );
@@ -268,7 +294,9 @@ class BusinessReviewServiceTest {
                 1L,
                 null,
                 null,
+                false,
                 null,
+                false,
                 null,
                 sortedPageable
         )).thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
@@ -287,7 +315,9 @@ class BusinessReviewServiceTest {
                 1L,
                 null,
                 null,
+                false,
                 null,
+                false,
                 null,
                 sortedPageable
         );
@@ -390,7 +420,9 @@ class BusinessReviewServiceTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()
         );
