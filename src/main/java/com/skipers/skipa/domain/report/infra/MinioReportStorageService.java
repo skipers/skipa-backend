@@ -6,17 +6,20 @@ import com.skipers.skipa.global.exception.ErrorCode;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.Http;
 import io.minio.MinioClient;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("!local")
-@RequiredArgsConstructor
 public class MinioReportStorageService implements ReportStorageService {
 
     private final MinioClient minioClient;
+
+    public MinioReportStorageService(@Qualifier("publicMinioClient") MinioClient minioClient) {
+        this.minioClient = minioClient;
+    }
 
     @Value("${app.minio.bucket}")
     private String bucket;

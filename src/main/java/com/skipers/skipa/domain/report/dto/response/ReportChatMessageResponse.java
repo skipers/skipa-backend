@@ -1,19 +1,19 @@
-package com.skipers.skipa.domain.preevaluation.dto.response;
+package com.skipers.skipa.domain.report.dto.response;
 
 import com.skipers.skipa.domain.chat.domain.ChatMessage;
 
 import java.time.Instant;
 
-public record PreEvaluationChatMessageResponse(
+public record ReportChatMessageResponse(
         Long id,
-        Long preEvaluationId,
+        Long reportId,
         String role,
         String content,
         Instant createdAt
 ) {
 
-    public static PreEvaluationChatMessageResponse from(ChatMessage message) {
-        return new PreEvaluationChatMessageResponse(
+    public static ReportChatMessageResponse from(ChatMessage message) {
+        return new ReportChatMessageResponse(
                 message.getId(),
                 message.getTargetId(),
                 message.getRole().name(),

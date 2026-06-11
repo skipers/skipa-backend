@@ -1,6 +1,6 @@
 package com.skipers.skipa.domain.preevaluation.dto.response;
 
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatMessage;
+import com.skipers.skipa.domain.chat.domain.ChatMessage;
 
 public record PreEvaluationChatSendResponse(
         PreEvaluationChatMessageResponse userMessage,
@@ -8,8 +8,8 @@ public record PreEvaluationChatSendResponse(
 ) {
 
     public static PreEvaluationChatSendResponse of(
-            PreEvaluationChatMessage userMessage,
-            PreEvaluationChatMessage assistantMessage
+            ChatMessage userMessage,
+            ChatMessage assistantMessage
     ) {
         return new PreEvaluationChatSendResponse(
                 PreEvaluationChatMessageResponse.from(userMessage),

@@ -8,17 +8,25 @@ import io.minio.Http;
 import io.minio.MinioClient;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
 @Profile("!local")
-@RequiredArgsConstructor
 public class MinioPatentExtractStorageService implements PatentExtractStorageService {
 
     private final MinioClient minioClient;
+    private final MinioClient publicMinioClient;
+
+    public MinioPatentExtractStorageService(
+            MinioClient minioClient,
+            @Qualifier("publicMinioClient") MinioClient publicMinioClient
+    ) {
+        this.minioClient = minioClient;
+        this.publicMinioClient = publicMinioClient;
+    }
 
     @Value("${app.minio.bucket}")
     private String bucket;
@@ -32,7 +40,7 @@ public class MinioPatentExtractStorageService implements PatentExtractStorageSer
     @Override
     public String generateUploadPresignedUrl(String objectKey) {
         try {
-            return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            return publicMinioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .method(Http.Method.PUT)
                     .bucket(bucket)
                     .region(region)

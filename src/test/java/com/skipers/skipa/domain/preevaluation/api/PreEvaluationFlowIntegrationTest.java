@@ -1,12 +1,13 @@
 package com.skipers.skipa.domain.preevaluation.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatRole;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.preevaluation.application.PreEvaluationChatClient;
 import com.skipers.skipa.domain.preevaluation.application.PreEvaluationGenerationPublisher;
-import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationChatMessageRepository;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
-import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatRole;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationStatus;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
@@ -59,7 +60,7 @@ class PreEvaluationFlowIntegrationTest {
     private PreEvaluationRepository preEvaluationRepository;
 
     @Autowired
-    private PreEvaluationChatMessageRepository chatMessageRepository;
+    private ChatMessageRepository chatMessageRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -208,9 +209,12 @@ class PreEvaluationFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.assistantMessage.role").value("ASSISTANT"))
                 .andExpect(jsonPath("$.data.assistantMessage.content").value("Strengthen the claim around the detection algorithm."));
 
-        assertThat(chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(preEvaluation.getId()))
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                        ChatTargetType.PRE_EVALUATION,
+                        preEvaluation.getId()
+                ))
                 .extracting(message -> message.getRole())
-                .containsExactly(PreEvaluationChatRole.USER, PreEvaluationChatRole.ASSISTANT);
+                .containsExactly(ChatRole.USER, ChatRole.ASSISTANT);
 
         mockMvc.perform(get("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken))
@@ -223,7 +227,10 @@ class PreEvaluationFlowIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk());
 
-        assertThat(chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(preEvaluation.getId())).isEmpty();
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                ChatTargetType.PRE_EVALUATION,
+                preEvaluation.getId()
+        )).isEmpty();
     }
 
     @Test
@@ -253,7 +260,10 @@ class PreEvaluationFlowIntegrationTest {
                 .andExpect(status().isOk());
 
         assertThat(preEvaluationRepository.findById(preEvaluation.getId())).isEmpty();
-        assertThat(chatMessageRepository.findByPreEvaluationIdOrderByCreatedAtAsc(preEvaluation.getId())).isEmpty();
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(
+                ChatTargetType.PRE_EVALUATION,
+                preEvaluation.getId()
+        )).isEmpty();
     }
 
     @Test
