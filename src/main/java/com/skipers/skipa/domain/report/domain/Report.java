@@ -48,7 +48,7 @@ public class Report extends BaseTimeEntity {
     private String valueGrade;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20) // 생성 상태(GENERATING/COMPLETED/FAILED)
+    @Column(name = "status", nullable = false, length = 20)
     private ReportStatus status;
 
     @Column(name = "evaluated_at") // 평가 완료 시각
@@ -71,7 +71,7 @@ public class Report extends BaseTimeEntity {
         this.evaluatedAt = evaluatedAt;
     }
 
-    public void complete(String reportKey, BigDecimal totalScore, String valueGrade, Instant evaluatedAt) {
+    public void completeReport(String reportKey, BigDecimal totalScore, String valueGrade, Instant evaluatedAt) {
         validateGenerating();
 
         if (reportKey == null || reportKey.isBlank()) {
@@ -87,8 +87,16 @@ public class Report extends BaseTimeEntity {
         this.reportKey = reportKey;
         this.totalScore = totalScore;
         this.valueGrade = valueGrade;
-        this.status = ReportStatus.COMPLETED;
+        this.status = ReportStatus.REPORT_COMPLETED;
         this.evaluatedAt = evaluatedAt != null ? evaluatedAt : Instant.now();
+    }
+
+    public void completeEmbedding() {
+        if (status != ReportStatus.REPORT_COMPLETED) {
+            throw new ReportException(ErrorCode.REPORT_ALREADY_PROCESSED);
+        }
+
+        this.status = ReportStatus.EMBEDDING_COMPLETED;
     }
 
     public void fail() {
@@ -97,8 +105,8 @@ public class Report extends BaseTimeEntity {
         this.status = ReportStatus.FAILED;
     }
 
-    public boolean isCompleted() {
-        return status == ReportStatus.COMPLETED;
+    public boolean isReportGenerated() {
+        return status == ReportStatus.REPORT_COMPLETED || status == ReportStatus.EMBEDDING_COMPLETED;
     }
 
     private void validateGenerating() {

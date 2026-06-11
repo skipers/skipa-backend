@@ -62,16 +62,32 @@ class InternalReportControllerIntegrationTest {
                                 """.formatted(report.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reportId").value(report.getId()))
-                .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.status").value("REPORT_COMPLETED"))
                 .andExpect(jsonPath("$.data.totalScore").value(82.5))
                 .andExpect(jsonPath("$.data.valueGrade").value("A"));
 
         Report completedReport = reportRepository.findById(report.getId()).orElseThrow();
-        assertThat(completedReport.getStatus()).isEqualTo(ReportStatus.COMPLETED);
+        assertThat(completedReport.getStatus()).isEqualTo(ReportStatus.REPORT_COMPLETED);
         assertThat(completedReport.getReportKey()).isEqualTo("reports/%d/report.html".formatted(report.getId()));
         assertThat(completedReport.getTotalScore()).isEqualByComparingTo("82.50");
         assertThat(completedReport.getValueGrade()).isEqualTo("A");
         assertThat(completedReport.getEvaluatedAt()).isNotNull();
+    }
+
+    @Test
+    void embeddingCompleteMarksReportEmbeddingCompleted() throws Exception {
+        Report report = saveGeneratingReport("APP-EMBEDDING");
+        report.completeReport("reports/%d/report.html".formatted(report.getId()), java.math.BigDecimal.valueOf(82.5), "A", null);
+        reportRepository.saveAndFlush(report);
+
+        mockMvc.perform(patch("/internal/reports/{reportId}/embedding-complete", report.getId())
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.reportId").value(report.getId()))
+                .andExpect(jsonPath("$.data.status").value("EMBEDDING_COMPLETED"));
+
+        Report completedReport = reportRepository.findById(report.getId()).orElseThrow();
+        assertThat(completedReport.getStatus()).isEqualTo(ReportStatus.EMBEDDING_COMPLETED);
     }
 
     @Test

@@ -47,6 +47,11 @@ public class ReportService {
     private final ReviewRepository reviewRepository;
     private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
+    private static final List<ReportStatus> REPORT_GENERATED_STATUSES = List.of(
+            ReportStatus.REPORT_COMPLETED,
+            ReportStatus.EMBEDDING_COMPLETED
+    );
+
     @Transactional
     public ReportCreateResponse create(Long patentId) {
         Patent patent = approvedPatentValidator.getApprovedPatent(patentId);
@@ -81,7 +86,7 @@ public class ReportService {
         Report report = reportRepository.findByIdAndPatentId(reportId, patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        if (!report.isCompleted()) {
+        if (!report.isReportGenerated()) {
             throw new ReportException(ErrorCode.REPORT_NOT_COMPLETED);
         }
 
@@ -96,7 +101,7 @@ public class ReportService {
         Report report = reportRepository.findFirstByPatentIdOrderByIdDesc(patentId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        String url = report.isCompleted() ? reportStorageService.generatePresignedUrl(report.getReportKey()) : null;
+        String url = report.isReportGenerated() ? reportStorageService.generatePresignedUrl(report.getReportKey()) : null;
         Review review = latestSubmittedReview(patentId, report.getId());
         return ReportDetailResponse.of(report, url, review);
     }
@@ -106,7 +111,7 @@ public class ReportService {
         approvedPatentValidator.getApprovedPatent(patentId);
 
         List<Report> historyReports = reportRepository
-                .findByPatentIdAndStatusOrderByIdDesc(patentId, ReportStatus.COMPLETED)
+                .findByPatentIdAndStatusInOrderByIdDesc(patentId, REPORT_GENERATED_STATUSES)
                 .stream()
                 .skip(1)
                 .toList();
@@ -146,9 +151,19 @@ public class ReportService {
         Report report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
 
-        report.complete(reportKey, totalScore, valueGrade, Instant.now());
+        report.completeReport(reportKey, totalScore, valueGrade, Instant.now());
 
         portfolioInsightCacheInvalidator.evict();
+        return ReportStatusResponse.from(report);
+    }
+
+    @Transactional
+    public ReportStatusResponse completeEmbedding(Long reportId) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new ReportException(ErrorCode.REPORT_NOT_FOUND));
+
+        report.completeEmbedding();
+
         return ReportStatusResponse.from(report);
     }
 

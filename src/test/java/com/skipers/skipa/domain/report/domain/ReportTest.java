@@ -18,14 +18,14 @@ class ReportTest {
         Report report = generatingReport();
         Instant evaluatedAt = Instant.parse("2026-06-07T08:55:00Z");
 
-        report.complete("reports/1/report.html", new BigDecimal("82.50"), "A", evaluatedAt);
+        report.completeReport("reports/1/report.html", new BigDecimal("82.50"), "A", evaluatedAt);
 
-        assertThat(report.getStatus()).isEqualTo(ReportStatus.COMPLETED);
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.REPORT_COMPLETED);
         assertThat(report.getReportKey()).isEqualTo("reports/1/report.html");
         assertThat(report.getTotalScore()).isEqualByComparingTo("82.50");
         assertThat(report.getValueGrade()).isEqualTo("A");
         assertThat(report.getEvaluatedAt()).isEqualTo(evaluatedAt);
-        assertThat(report.isCompleted()).isTrue();
+        assertThat(report.isReportGenerated()).isTrue();
     }
 
     @Test
@@ -33,7 +33,7 @@ class ReportTest {
         Report report = generatingReport();
 
         assertReportError(
-                () -> report.complete(" ", new BigDecimal("82.50"), "A", Instant.parse("2026-06-07T08:55:00Z")),
+                () -> report.completeReport(" ", new BigDecimal("82.50"), "A", Instant.parse("2026-06-07T08:55:00Z")),
                 ErrorCode.INVALID_REQUEST
         );
 
@@ -46,7 +46,7 @@ class ReportTest {
         Report report = generatingReport();
 
         assertReportError(
-                () -> report.complete("reports/1/report.html", null, "A", Instant.parse("2026-06-07T08:55:00Z")),
+                () -> report.completeReport("reports/1/report.html", null, "A", Instant.parse("2026-06-07T08:55:00Z")),
                 ErrorCode.INVALID_REQUEST
         );
 
@@ -59,7 +59,7 @@ class ReportTest {
         Report report = generatingReport();
 
         assertReportError(
-                () -> report.complete("reports/1/report.html", new BigDecimal("82.50"), null, Instant.parse("2026-06-07T08:55:00Z")),
+                () -> report.completeReport("reports/1/report.html", new BigDecimal("82.50"), null, Instant.parse("2026-06-07T08:55:00Z")),
                 ErrorCode.INVALID_REQUEST
         );
 
@@ -76,20 +76,40 @@ class ReportTest {
         assertThat(report.getStatus()).isEqualTo(ReportStatus.FAILED);
         assertThat(report.getReportKey()).isNull();
         assertThat(report.getEvaluatedAt()).isNull();
-        assertThat(report.isCompleted()).isFalse();
+        assertThat(report.isReportGenerated()).isFalse();
     }
 
     @Test
     void finalizedReportCannotBeCompletedAgain() {
         Report report = generatingReport();
-        report.complete("reports/1/report.html", new BigDecimal("82.50"), "A", Instant.parse("2026-06-07T08:55:00Z"));
+        report.completeReport("reports/1/report.html", new BigDecimal("82.50"), "A", Instant.parse("2026-06-07T08:55:00Z"));
 
         assertReportError(
-                () -> report.complete("reports/1/retry.html", new BigDecimal("83.00"), "A", Instant.parse("2026-06-07T09:00:00Z")),
+                () -> report.completeReport("reports/1/retry.html", new BigDecimal("83.00"), "A", Instant.parse("2026-06-07T09:00:00Z")),
                 ErrorCode.REPORT_ALREADY_PROCESSED
         );
 
         assertThat(report.getReportKey()).isEqualTo("reports/1/report.html");
+    }
+
+    @Test
+    void completeEmbeddingMarksEmbeddingCompleted() {
+        Report report = generatingReport();
+        report.completeReport("reports/1/report.html", new BigDecimal("82.50"), "A", Instant.parse("2026-06-07T08:55:00Z"));
+
+        report.completeEmbedding();
+
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.EMBEDDING_COMPLETED);
+        assertThat(report.isReportGenerated()).isTrue();
+    }
+
+    @Test
+    void completeEmbeddingRejectsReportWithoutGeneratedReport() {
+        Report report = generatingReport();
+
+        assertReportError(report::completeEmbedding, ErrorCode.REPORT_ALREADY_PROCESSED);
+
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.GENERATING);
     }
 
     @Test
