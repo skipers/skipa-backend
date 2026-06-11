@@ -18,10 +18,10 @@ class PreEvaluationTest {
         PreEvaluation preEvaluation = processingPreEvaluation();
         Instant completedAt = Instant.parse("2026-06-10T08:00:00Z");
 
-        preEvaluation.complete("pre-evaluations/1/report.html", completedAt);
+        preEvaluation.complete("pre-evaluations/1/report.json", completedAt);
 
         assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
-        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.html");
+        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.json");
         assertThat(preEvaluation.getCompletedAt()).isEqualTo(completedAt);
         assertThat(preEvaluation.isCompleted()).isTrue();
     }
@@ -54,14 +54,14 @@ class PreEvaluationTest {
     @Test
     void finalizedPreEvaluationCannotBeCompletedAgain() {
         PreEvaluation preEvaluation = processingPreEvaluation();
-        preEvaluation.complete("pre-evaluations/1/report.html", null);
+        preEvaluation.complete("pre-evaluations/1/report.json", null);
 
         assertPreEvaluationError(
-                () -> preEvaluation.complete("pre-evaluations/1/retry.html", null),
+                () -> preEvaluation.complete("pre-evaluations/1/retry.json", null),
                 ErrorCode.PRE_EVALUATION_ALREADY_PROCESSED
         );
 
-        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.html");
+        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.json");
     }
 
     @Test

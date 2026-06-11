@@ -131,7 +131,7 @@ class PreEvaluationFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "reportKey": "pre-evaluations/%d/report.html"
+                                  "reportKey": "pre-evaluations/%d/report.json"
                                 }
                                 """.formatted(preEvaluationId)))
                 .andExpect(status().isOk())
@@ -141,10 +141,10 @@ class PreEvaluationFlowIntegrationTest {
 
         PreEvaluation completed = preEvaluationRepository.findById(preEvaluationId).orElseThrow();
         assertThat(completed.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
-        assertThat(completed.getReportKey()).isEqualTo("pre-evaluations/%d/report.html".formatted(preEvaluationId));
+        assertThat(completed.getReportKey()).isEqualTo("pre-evaluations/%d/report.json".formatted(preEvaluationId));
         assertThat(completed.getCompletedAt()).isNotNull();
-        when(reportStorageService.generatePresignedUrl("pre-evaluations/%d/report.html".formatted(preEvaluationId)))
-                .thenReturn("https://minio.example.com/presigned/pre-evaluations/%d/report.html".formatted(preEvaluationId));
+        when(reportStorageService.generatePresignedUrl("pre-evaluations/%d/report.json".formatted(preEvaluationId)))
+                .thenReturn("https://minio.example.com/presigned/pre-evaluations/%d/report.json".formatted(preEvaluationId));
 
         mockMvc.perform(get("/pre-evaluations/{preEvaluationId}", preEvaluationId)
                         .header("Authorization", "Bearer " + businessToken))
@@ -152,7 +152,7 @@ class PreEvaluationFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.id").value(preEvaluationId))
                 .andExpect(jsonPath("$.data.claims.length()").value(2))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.reportUrl").value("https://minio.example.com/presigned/pre-evaluations/%d/report.html".formatted(preEvaluationId)));
+                .andExpect(jsonPath("$.data.reportUrl").value("https://minio.example.com/presigned/pre-evaluations/%d/report.json".formatted(preEvaluationId)));
     }
 
     @Test
