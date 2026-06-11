@@ -359,7 +359,7 @@ select
     case when past_reviews.history_index % 2 = 0 then 'MAINTAIN' else 'ABANDON' end,
     past_reviews.cycle_year || '년 ' || past_reviews.quarter || '분기 이력 확인용 제출 의견입니다.',
     'SUBMITTED',
-    (past_reviews.end_date - (15 - past_reviews.history_index % 10))::timestamptz,
+    (past_reviews.end_date - (15 - past_reviews.history_index % 10)::integer)::timestamptz,
     past_reviews.end_date - 10,
     true,
     now(),
