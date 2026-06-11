@@ -11,6 +11,7 @@ import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCache;
 import com.skipers.skipa.domain.portfolio.application.PortfolioInsightClient;
 import com.skipers.skipa.domain.portfolio.dto.request.PortfolioInsightClientRequest;
 import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
+import com.skipers.skipa.domain.report.application.ReportService;
 import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
@@ -36,6 +37,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -87,6 +89,9 @@ class PortfolioControllerIntegrationTest {
 
     @Autowired
     private PortfolioInsightCache portfolioInsightCache;
+
+    @Autowired
+    private ReportService reportService;
 
     @MockitoBean
     private ReportGenerationPublisher reportGenerationPublisher;
@@ -176,7 +181,10 @@ class PortfolioControllerIntegrationTest {
     @Test
     void portfolioInsightsReturnsAiInsightsAndCachesThem() throws Exception {
         when(portfolioInsightClient.generate(any(PortfolioInsightClientRequest.class)))
-                .thenReturn(List.of("인사이트 1", "인사이트 2", "인사이트 3"));
+                .thenReturn(
+                        List.of("인사이트 1", "인사이트 2", "인사이트 3"),
+                        List.of("새 인사이트 1", "새 인사이트 2", "새 인사이트 3")
+                );
 
         mockMvc.perform(get("/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
@@ -191,6 +199,25 @@ class PortfolioControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.insights[2]").value("인사이트 3"));
 
         verify(portfolioInsightClient, times(1)).generate(any(PortfolioInsightClientRequest.class));
+
+        Report generatingReport = reportRepository.save(Report.builder()
+                .patent(semiconductorPatent)
+                .status(ReportStatus.GENERATING)
+                .build());
+        reportService.complete(
+                generatingReport.getId(),
+                "patents/%s/reports/%s/report.json".formatted(semiconductorPatent.getId(), generatingReport.getId()),
+                new BigDecimal("90.00"),
+                "A"
+        );
+
+        mockMvc.perform(get("/portfolio/insights")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.insights.length()").value(3))
+                .andExpect(jsonPath("$.data.insights[0]").value("새 인사이트 1"));
+
+        verify(portfolioInsightClient, times(2)).generate(any(PortfolioInsightClientRequest.class));
     }
 
     @Test

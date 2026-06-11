@@ -20,6 +20,7 @@ import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
@@ -66,6 +67,7 @@ public class PatentService {
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final PatentExtractJobRepository patentExtractJobRepository;
     private final PatentOriginalPdfStorageService patentOriginalPdfStorageService;
+    private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     @Transactional
     public PatentDetailResponse create(User user, PatentCreateRequest request) {
@@ -114,6 +116,7 @@ public class PatentService {
             assignExtractedStorageKeys(patent, extractJob);
         }
 
+        portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
     }
 
@@ -128,6 +131,7 @@ public class PatentService {
 
         patent.approve();
 
+        portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
     }
 
@@ -143,6 +147,7 @@ public class PatentService {
         }
 
         patent.changeCurrentDepartment(department);
+        portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
     }
 
@@ -340,6 +345,7 @@ public class PatentService {
                 request.summary()
         );
 
+        portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
     }
 
@@ -354,6 +360,7 @@ public class PatentService {
         reviewRepository.deleteAllByPatentId(patentId); // 사업부 검토
         reportRepository.deleteAllByPatentId(patentId); // 평가 보고서
         patentRepository.deleteById(patentId);
+        portfolioInsightCacheInvalidator.evict();
     }
 
     private String normalizeKeyword(String keyword) {

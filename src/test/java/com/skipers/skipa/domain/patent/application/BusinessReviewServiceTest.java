@@ -16,6 +16,7 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewHistoryResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -65,6 +66,9 @@ class BusinessReviewServiceTest {
 
     @Mock
     private ApprovedPatentValidator approvedPatentValidator;
+
+    @Mock
+    private PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     @InjectMocks
     private BusinessReviewService businessReviewService;

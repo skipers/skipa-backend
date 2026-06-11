@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.patent.dto.response.BusinessReviewDetailResponse
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewHistoryResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewResponse;
 import com.skipers.skipa.domain.patent.dto.response.BusinessReviewSummaryResponse;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
@@ -44,6 +45,7 @@ public class BusinessReviewService {
     private final PatentService patentService;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final ApprovedPatentValidator approvedPatentValidator;
+    private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     public BusinessReviewSummaryResponse getSummary(User user) {
         Long departmentId = getDepartmentId(user);
@@ -165,6 +167,7 @@ public class BusinessReviewService {
 
         review.submit(opinion, request.comment(), Instant.now());
 
+        portfolioInsightCacheInvalidator.evict();
         return BusinessReviewResponse.from(review);
     }
 

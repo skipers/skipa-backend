@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
@@ -66,6 +67,9 @@ class ReportServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
+
+    @Mock
+    private PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     @InjectMocks
     private ReportService reportService;
