@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -93,11 +94,11 @@ public class LocalDataInitializer implements ApplicationRunner {
                 User.createActive("legal02", "법무 담당자 2", "legal02@sk.com", encodedPassword, UserRole.LEGAL, null),
                 User.createActive("legal03", "법무 담당자 3", "legal03@sk.com", encodedPassword, UserRole.LEGAL, null),
                 User.createActive("legal04", "법무 담당자 4", "legal04@sk.com", encodedPassword, UserRole.LEGAL, null),
-                User.createActive("business01", "사업부 담당자 1", "business01@sk.com", encodedPassword, UserRole.BUSINESS, semiconductor),
-                User.createActive("business02", "사업부 담당자 2", "business02@sk.com", encodedPassword, UserRole.BUSINESS, semiconductor),
-                User.createActive("business03", "사업부 담당자 3", "business03@sk.com", encodedPassword, UserRole.BUSINESS, telecom),
-                User.createActive("business04", "사업부 담당자 4", "business04@sk.com", encodedPassword, UserRole.BUSINESS, manufacturing),
-                User.createActive("business05", "사업부 담당자 5", "business05@sk.com", encodedPassword, UserRole.BUSINESS, manufacturing)
+                User.createActive("biz01", "사업부 담당자 1", "biz01@sk.com", encodedPassword, UserRole.BUSINESS, semiconductor),
+                User.createActive("biz02", "사업부 담당자 2", "biz02@sk.com", encodedPassword, UserRole.BUSINESS, semiconductor),
+                User.createActive("biz03", "사업부 담당자 3", "biz03@sk.com", encodedPassword, UserRole.BUSINESS, telecom),
+                User.createActive("biz04", "사업부 담당자 4", "biz04@sk.com", encodedPassword, UserRole.BUSINESS, manufacturing),
+                User.createActive("biz05", "사업부 담당자 5", "biz05@sk.com", encodedPassword, UserRole.BUSINESS, manufacturing)
         );
 
         userRepository.saveAll(seedUsers);
@@ -112,6 +113,7 @@ public class LocalDataInitializer implements ApplicationRunner {
         Department semiconductor = departments.get(0);
         Department telecom = departments.get(1);
         Department manufacturing = departments.get(2);
+        List<Department> reviewDepartments = List.of(semiconductor, telecom, manufacturing);
 
         ReviewCycle currentCycle = reviewCycleRepository.findByYearAndQuarter(2026, 2)
                 .orElseGet(() -> reviewCycleRepository.save(ReviewCycle.builder()
@@ -128,227 +130,197 @@ public class LocalDataInitializer implements ApplicationRunner {
                         .endDate(LocalDate.of(2026, 3, 31))
                         .build()));
 
-        Patent edgeAi = Patent.builder()
-                .title("엣지 AI 반도체 전력 최적화 장치")
-                .applicationNumber("10-2026-000101")
-                .registrationNumber("10-2600101")
-                .publicationNumber("10-2026-700101")
-                .applicationDate(LocalDate.of(2024, 3, 12))
-                .registrationDate(LocalDate.of(2026, 2, 20))
-                .expiryDate(LocalDate.of(2044, 3, 12))
-                .ipcCodes(List.of("G06N 3/08", "H01L 23/00"))
-                .cpcCodes(List.of("G06N3/084", "H01L23/528"))
-                .applicant("SK하이닉스")
-                .inventor("김서준; 박민아")
-                .citationCount(18)
-                .examinationClaimCount(12)
-                .managementNumber("SKP-SEM-001")
-                .businessField("AI 반도체")
-                .techField("저전력 추론 가속")
-                .relatedProducts(List.of("HBM", "Edge AI SoC"))
-                .filingCountry("KR")
-                .isJointApplication(false)
-                .initialDepartment("반도체")
-                .currentDepartment(semiconductor)
-                .keywords(List.of("AI", "전력 최적화", "반도체"))
-                .summary("엣지 AI 칩의 연산 부하에 따라 전력 도메인을 동적으로 조절하는 기술입니다.")
+        List<Patent> patents = new ArrayList<>();
+        for (int index = 1; index <= 50; index++) {
+            patents.add(samplePatent(index, reviewDepartments.get((index - 1) % reviewDepartments.size())));
+        }
+        patents = patentRepository.saveAll(patents);
+
+        List<Report> reports = new ArrayList<>();
+        List<PatentLegalStatus> legalStatuses = new ArrayList<>();
+        List<PatentAnnuity> annuities = new ArrayList<>();
+        List<Review> reviews = new ArrayList<>();
+        for (int index = 1; index <= patents.size(); index++) {
+            Patent patent = patents.get(index - 1);
+            Department department = patent.getCurrentDepartment();
+
+            reports.add(sampleReport(index, patent));
+            legalStatuses.add(legalStatus(patent, PatentLegalStatusType.APPLIED, LocalDate.of(2023, 1, 1).plusDays(index * 9L)));
+            legalStatuses.add(legalStatus(
+                    patent,
+                    index % 2 == 0 ? PatentLegalStatusType.REGISTERED : PatentLegalStatusType.PUBLISHED,
+                    LocalDate.of(2025, 1, 1).plusDays(index * 5L)
+            ));
+            annuities.add(annuity(
+                    patent,
+                    1,
+                    index % 3 == 0 ? 3 : null,
+                    LocalDate.of(2026, 5, 15).plusDays(index % 75),
+                    index % 3 == 0 ? LocalDate.of(2026, 5, 1).plusDays(index % 20) : null,
+                    index % 3 == 0 ? PatentAnnuityStatus.PAID : PatentAnnuityStatus.UNPAID,
+                    160000 + index * 12000
+            ));
+
+            reviews.add(currentReview(index, patent, department, currentCycle));
+            if (index <= 10) {
+                reviews.add(previousSubmittedReview(index, patent, department, previousCycle));
+            }
+        }
+
+        reportRepository.saveAll(reports);
+        patentLegalStatusRepository.saveAll(legalStatuses);
+        patentAnnuityRepository.saveAll(annuities);
+        reviewRepository.saveAll(reviews);
+
+        log.info("Created {} sample patents and {} sample reviews", patents.size(), reviews.size());
+    }
+
+    private Patent samplePatent(int index, Department department) {
+        String sequence = "%03d".formatted(index);
+        String departmentName = department.getName();
+        String title = switch (departmentName) {
+            case "반도체" -> "AI 반도체 전력 최적화 샘플 특허 " + sequence;
+            case "통신" -> "5G/6G 네트워크 제어 샘플 특허 " + sequence;
+            default -> "스마트팩토리 예지보전 샘플 특허 " + sequence;
+        };
+        String businessField = switch (departmentName) {
+            case "반도체" -> "AI 반도체";
+            case "통신" -> "무선 네트워크";
+            default -> "제조 DX";
+        };
+        String techField = switch (departmentName) {
+            case "반도체" -> index % 2 == 0 ? "패키징 방열" : "저전력 추론 가속";
+            case "통신" -> index % 2 == 0 ? "빔포밍" : "네트워크 슬라이싱";
+            default -> index % 2 == 0 ? "예지보전" : "공정 최적화";
+        };
+        List<String> keywords = switch (departmentName) {
+            case "반도체" -> List.of("AI", "반도체", techField);
+            case "통신" -> List.of("5G", "6G", techField);
+            default -> List.of("스마트팩토리", "센서", techField);
+        };
+
+        return Patent.builder()
+                .title(title)
+                .applicationNumber("10-2026-%06d".formatted(100000 + index))
+                .registrationNumber(index % 2 == 0 ? "10-26%06d".formatted(index) : null)
+                .publicationNumber("10-2026-%06d".formatted(700000 + index))
+                .applicationDate(LocalDate.of(2022 + index % 4, index % 12 + 1, index % 24 + 1))
+                .registrationDate(index % 2 == 0 ? LocalDate.of(2025, index % 12 + 1, index % 24 + 1) : null)
+                .publicationDate(LocalDate.of(2024, index % 12 + 1, index % 24 + 1))
+                .expiryDate(LocalDate.of(2042 + index % 4, index % 12 + 1, index % 24 + 1))
+                .ipcCodes(List.of(index % 2 == 0 ? "G06N 3/08" : "H04B 7/06", "G05B 23/02"))
+                .cpcCodes(List.of(index % 2 == 0 ? "G06N3/084" : "H04B7/0617", "G05B23/0243"))
+                .applicant(index % 3 == 0 ? "SK텔레콤" : index % 3 == 1 ? "SK하이닉스" : "SK온")
+                .inventor("샘플 발명자 %02d; 공동 발명자 %02d".formatted(index, index + 50))
+                .citationCount(index * 3 % 41)
+                .examinationClaimCount(5 + index % 12)
+                .managementNumber("SKP-DEMO-%03d".formatted(index))
+                .businessField(businessField)
+                .techField(techField)
+                .relatedProducts(List.of(businessField + " 제품군", "Demo Product " + sequence))
+                .filingCountry(index % 5 == 0 ? "US" : "KR")
+                .isJointApplication(index % 7 == 0)
+                .jointApplicant(index % 7 == 0 ? "SK스퀘어" : null)
+                .initialDepartment(departmentName)
+                .currentDepartment(department)
+                .keywords(keywords)
+                .summary("%s의 화면 검증을 위해 생성된 샘플 특허입니다. 검토, 보고서, 권리 상태, 연차료 데이터를 함께 가집니다.".formatted(departmentName))
                 .approvalStatus(PatentApprovalStatus.APPROVED)
                 .build();
-        Patent rfBeam = Patent.builder()
-                .title("5G/6G 기지국 빔포밍 캘리브레이션 방법")
-                .applicationNumber("10-2026-000102")
-                .publicationNumber("10-2026-700102")
-                .applicationDate(LocalDate.of(2023, 11, 3))
-                .expiryDate(LocalDate.of(2043, 11, 3))
-                .ipcCodes(List.of("H04B 7/06", "H04W 16/28"))
-                .cpcCodes(List.of("H04B7/0617", "H04W16/28"))
-                .applicant("SK텔레콤")
-                .inventor("이도윤; 최하린")
-                .citationCount(9)
-                .examinationClaimCount(8)
-                .managementNumber("SKP-TEL-001")
-                .businessField("무선 네트워크")
-                .techField("빔포밍")
-                .relatedProducts(List.of("5G DU", "6G Massive MIMO"))
-                .filingCountry("KR")
-                .isJointApplication(true)
-                .jointApplicant("SK스퀘어")
-                .initialDepartment("통신")
-                .currentDepartment(telecom)
-                .keywords(List.of("5G", "6G", "빔포밍"))
-                .summary("다중 안테나 환경에서 캘리브레이션 시간을 줄이고 빔 정확도를 높이는 방법입니다.")
-                .approvalStatus(PatentApprovalStatus.APPROVED)
+    }
+
+    private Report sampleReport(int index, Patent patent) {
+        if (index % 15 == 0) {
+            return Report.builder()
+                    .patent(patent)
+                    .status(ReportStatus.FAILED)
+                    .build();
+        }
+        if (index % 10 == 0) {
+            return Report.builder()
+                    .patent(patent)
+                    .status(ReportStatus.GENERATING)
+                    .build();
+        }
+
+        String grade = index % 5 == 0 ? "S" : index % 3 == 0 ? "A" : index % 3 == 1 ? "B" : "C";
+        BigDecimal score = BigDecimal.valueOf(60 + index % 35).setScale(2);
+        return Report.builder()
+                .patent(patent)
+                .reportKey("reports/sample/demo-%03d.html".formatted(index))
+                .totalScore(score)
+                .valueGrade(grade)
+                .status(ReportStatus.COMPLETED)
+                .evaluatedAt(LocalDate.of(2026, 4, 1)
+                        .plusDays(index)
+                        .atStartOfDay(java.time.ZoneId.systemDefault())
+                        .toInstant())
                 .build();
-        Patent smartFactory = Patent.builder()
-                .title("스마트팩토리 예지보전 센서 데이터 처리 시스템")
-                .applicationNumber("10-2026-000103")
-                .registrationNumber("10-2600103")
-                .applicationDate(LocalDate.of(2022, 8, 19))
-                .registrationDate(LocalDate.of(2025, 10, 7))
-                .expiryDate(LocalDate.of(2042, 8, 19))
-                .ipcCodes(List.of("G05B 23/02", "G06Q 10/20"))
-                .cpcCodes(List.of("G05B23/0243", "G06Q10/20"))
-                .applicant("SK온")
-                .inventor("정유진; 한지훈")
-                .citationCount(27)
-                .examinationClaimCount(15)
-                .managementNumber("SKP-MFG-001")
-                .businessField("제조 DX")
-                .techField("예지보전")
-                .relatedProducts(List.of("배터리 생산라인", "MES"))
-                .filingCountry("KR")
-                .isJointApplication(false)
-                .initialDepartment("제조")
-                .currentDepartment(manufacturing)
-                .keywords(List.of("스마트팩토리", "센서", "예지보전"))
-                .summary("설비 센서 스트림을 분석해 이상 징후와 정비 시점을 예측하는 시스템입니다.")
-                .approvalStatus(PatentApprovalStatus.APPROVED)
-                .build();
-        Patent memoryPackage = Patent.builder()
-                .title("고대역폭 메모리 패키지 방열 구조")
-                .applicationNumber("10-2026-000104")
-                .applicationDate(LocalDate.of(2024, 6, 24))
-                .expiryDate(LocalDate.of(2044, 6, 24))
-                .ipcCodes(List.of("H01L 23/34"))
-                .cpcCodes(List.of("H01L23/367"))
-                .applicant("SK하이닉스")
-                .inventor("문태오")
-                .citationCount(4)
-                .examinationClaimCount(6)
-                .managementNumber("SKP-SEM-002")
-                .businessField("메모리")
-                .techField("패키징 방열")
-                .relatedProducts(List.of("HBM4"))
-                .filingCountry("US")
-                .isJointApplication(false)
-                .initialDepartment("반도체")
-                .currentDepartment(semiconductor)
-                .keywords(List.of("HBM", "방열", "패키지"))
-                .summary("고대역폭 메모리 적층 구조에서 열 확산 경로를 개선하는 방열 구조입니다.")
-                .approvalStatus(PatentApprovalStatus.APPROVED)
-                .build();
-        Patent pendingPatent = Patent.builder()
-                .title("사업부 등록 승인 대기 특허 샘플")
-                .applicationNumber("10-2026-000105")
-                .applicationDate(LocalDate.of(2026, 5, 2))
-                .expiryDate(LocalDate.of(2046, 5, 2))
-                .applicant("SK이노베이션")
-                .inventor("오지민")
-                .citationCount(0)
-                .examinationClaimCount(5)
-                .managementNumber("SKP-PENDING-001")
-                .businessField("배터리")
-                .techField("전극 공정")
-                .relatedProducts(List.of("배터리 셀"))
-                .filingCountry("KR")
-                .isJointApplication(false)
-                .initialDepartment("제조")
-                .currentDepartment(manufacturing)
-                .keywords(List.of("승인대기", "배터리"))
-                .summary("사업부가 직접 등록해 Legal 승인 대기 상태인 특허 샘플입니다.")
-                .approvalStatus(PatentApprovalStatus.PENDING_APPROVAL)
-                .build();
+    }
 
-        List<Patent> patents = patentRepository.saveAll(List.of(
-                edgeAi,
-                rfBeam,
-                smartFactory,
-                memoryPackage,
-                pendingPatent
-        ));
-
-        reportRepository.saveAll(List.of(
-                completedReport(edgeAi, "reports/sample/edge-ai.html", "92.50", "S", LocalDate.of(2026, 4, 18)),
-                completedReport(rfBeam, "reports/sample/rf-beam.html", "84.00", "A", LocalDate.of(2026, 4, 22)),
-                completedReport(smartFactory, "reports/sample/smart-factory.html", "71.25", "B", LocalDate.of(2026, 5, 6)),
-                Report.builder()
-                        .patent(memoryPackage)
-                        .status(ReportStatus.GENERATING)
-                        .build(),
-                Report.builder()
-                        .patent(pendingPatent)
-                        .status(ReportStatus.FAILED)
-                        .build()
-        ));
-
-        patentLegalStatusRepository.saveAll(List.of(
-                legalStatus(edgeAi, PatentLegalStatusType.APPLIED, LocalDate.of(2024, 3, 12)),
-                legalStatus(edgeAi, PatentLegalStatusType.REGISTERED, LocalDate.of(2026, 2, 20)),
-                legalStatus(rfBeam, PatentLegalStatusType.APPLIED, LocalDate.of(2023, 11, 3)),
-                legalStatus(rfBeam, PatentLegalStatusType.PUBLISHED, LocalDate.of(2025, 5, 3)),
-                legalStatus(smartFactory, PatentLegalStatusType.APPLIED, LocalDate.of(2022, 8, 19)),
-                legalStatus(smartFactory, PatentLegalStatusType.REGISTERED, LocalDate.of(2025, 10, 7)),
-                legalStatus(memoryPackage, PatentLegalStatusType.APPLIED, LocalDate.of(2024, 6, 24)),
-                legalStatus(pendingPatent, PatentLegalStatusType.APPLIED, LocalDate.of(2026, 5, 2))
-        ));
-
-        patentAnnuityRepository.saveAll(List.of(
-                annuity(edgeAi, 1, 3, LocalDate.of(2026, 7, 31), null, PatentAnnuityStatus.UNPAID, 420000),
-                annuity(rfBeam, 1, 2, LocalDate.of(2026, 5, 31), LocalDate.of(2026, 5, 20), PatentAnnuityStatus.PAID, 280000),
-                annuity(smartFactory, 1, 4, LocalDate.of(2026, 6, 5), null, PatentAnnuityStatus.UNPAID, 510000),
-                annuity(memoryPackage, 1, null, LocalDate.of(2026, 8, 12), null, PatentAnnuityStatus.UNPAID, 190000)
-        ));
-
-        Review submittedReview = Review.builder()
-                .patent(rfBeam)
-                .department(telecom)
+    private Review currentReview(int index, Patent patent, Department department, ReviewCycle currentCycle) {
+        ReviewStatus status = currentReviewStatus(index);
+        return Review.builder()
+                .patent(patent)
+                .department(department)
                 .reviewCycle(currentCycle)
-                .status(ReviewStatus.SUBMITTED)
-                .opinion(BusinessOpinion.MAINTAIN)
-                .comment("망 고도화 로드맵과 직접 연관되어 유지가 필요합니다.")
-                .submittedAt(Instant.parse("2026-06-10T02:15:00Z"))
-                .dueDate(LocalDate.of(2026, 6, 20))
+                .status(status)
+                .opinion(status == ReviewStatus.SUBMITTED ? submittedOpinion(index) : null)
+                .comment(status == ReviewStatus.SUBMITTED ? submittedComment(index) : null)
+                .submittedAt(status == ReviewStatus.SUBMITTED
+                        ? LocalDate.of(2026, 6, 1)
+                        .plusDays(index % 10)
+                        .atStartOfDay(java.time.ZoneId.systemDefault())
+                        .toInstant()
+                        : null)
+                .dueDate(currentDueDate(index, status))
+                .checked(status == ReviewStatus.SUBMITTED && index % 2 == 0)
                 .build();
-        Review previousSubmittedReview = Review.builder()
-                .patent(edgeAi)
-                .department(semiconductor)
+    }
+
+    private Review previousSubmittedReview(int index, Patent patent, Department department, ReviewCycle previousCycle) {
+        return Review.builder()
+                .patent(patent)
+                .department(department)
                 .reviewCycle(previousCycle)
                 .status(ReviewStatus.SUBMITTED)
-                .opinion(BusinessOpinion.ABANDON)
-                .comment("대체 출원과 권리범위가 중복되어 포기 의견입니다.")
-                .submittedAt(Instant.parse("2026-03-15T05:30:00Z"))
+                .opinion(index % 2 == 0 ? BusinessOpinion.MAINTAIN : BusinessOpinion.ABANDON)
+                .comment("2026년 1분기 이력 확인용 제출 의견입니다.")
+                .submittedAt(Instant.parse("2026-03-%02dT02:30:00Z".formatted(10 + index)))
                 .dueDate(LocalDate.of(2026, 3, 20))
                 .checked(true)
                 .build();
-
-        reviewRepository.saveAll(List.of(
-                Review.builder()
-                        .patent(edgeAi)
-                        .department(semiconductor)
-                        .reviewCycle(currentCycle)
-                        .status(ReviewStatus.PENDING)
-                        .dueDate(LocalDate.of(2026, 6, 24))
-                        .build(),
-                submittedReview,
-                Review.builder()
-                        .patent(smartFactory)
-                        .department(manufacturing)
-                        .reviewCycle(currentCycle)
-                        .status(ReviewStatus.OVERDUE)
-                        .dueDate(LocalDate.of(2026, 6, 5))
-                        .build(),
-                Review.builder()
-                        .patent(memoryPackage)
-                        .department(semiconductor)
-                        .reviewCycle(currentCycle)
-                        .status(ReviewStatus.SCHEDULED)
-                        .dueDate(LocalDate.of(2026, 6, 26))
-                        .build(),
-                previousSubmittedReview
-        ));
-
-        log.info("Created {} sample patents, 2 review cycles including 2026-Q2, and review sample data", patents.size());
     }
 
-    private Report completedReport(Patent patent, String reportKey, String score, String grade, LocalDate evaluatedDate) {
-        return Report.builder()
-                .patent(patent)
-                .reportKey(reportKey)
-                .totalScore(new BigDecimal(score))
-                .valueGrade(grade)
-                .status(ReportStatus.COMPLETED)
-                .evaluatedAt(evaluatedDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant())
-                .build();
+    private ReviewStatus currentReviewStatus(int index) {
+        if (index % 5 == 0) {
+            return ReviewStatus.SCHEDULED;
+        }
+        if (index % 4 == 0) {
+            return ReviewStatus.OVERDUE;
+        }
+        if (index % 3 == 0) {
+            return ReviewStatus.SUBMITTED;
+        }
+        return ReviewStatus.PENDING;
+    }
+
+    private BusinessOpinion submittedOpinion(int index) {
+        return index % 2 == 0 ? BusinessOpinion.MAINTAIN : BusinessOpinion.ABANDON;
+    }
+
+    private String submittedComment(int index) {
+        return submittedOpinion(index) == BusinessOpinion.MAINTAIN
+                ? "사업 연계성이 높아 유지가 필요합니다."
+                : "대체 기술과 중복되어 포기 검토가 가능합니다.";
+    }
+
+    private LocalDate currentDueDate(int index, ReviewStatus status) {
+        return switch (status) {
+            case OVERDUE -> LocalDate.of(2026, 6, 1).plusDays(index % 5);
+            case SCHEDULED -> LocalDate.of(2026, 6, 26);
+            default -> LocalDate.of(2026, 6, 15).plusDays(index % 12);
+        };
     }
 
     private PatentLegalStatus legalStatus(Patent patent, PatentLegalStatusType status, LocalDate changedAt) {

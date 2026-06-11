@@ -103,7 +103,7 @@ class LocalDataInitializerTest {
             assertThat(result).filteredOn(user -> user.getRole() == UserRole.BUSINESS).hasSize(5);
             assertThat(result).allMatch(user -> user.getPassword().equals("encoded-password"));
             assertThat(result).extracting(User::getLoginId)
-                    .contains("admin", "legal01", "legal04", "business01", "business05");
+                    .contains("admin", "legal01", "legal04", "biz01", "biz05");
             return true;
         }));
     }

@@ -66,7 +66,7 @@ src/main/resources
 | --- | --- |
 | `ADMIN` | `admin` |
 | `LEGAL` | `legal01`, `legal02`, `legal03`, `legal04` |
-| `BUSINESS` | `business01`, `business02`, `business03`, `business04`, `business05` |
+| `BUSINESS` | `biz01`, `biz02`, `biz03`, `biz04`, `biz05` |
 
 `prod` profile은 PostgreSQL과 `ddl-auto: validate`를 사용합니다. 스키마 변경은 배포 전에 DB에 별도로 반영해야 합니다.
 
