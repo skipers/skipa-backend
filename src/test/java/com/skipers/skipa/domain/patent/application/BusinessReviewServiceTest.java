@@ -250,6 +250,46 @@ class BusinessReviewServiceTest {
     }
 
     @Test
+    void getAllSortsByCitationCount() {
+        PageRequest pageable = PageRequest.of(0, 20);
+        PageRequest sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.DESC, "patent.citationCount")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        stubActiveReviewCycle();
+        when(reviewRepository.findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
+                1L,
+                null,
+                null,
+                null,
+                null,
+                sortedPageable
+        )).thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
+
+        assertThat(businessReviewService.getAll(
+                businessUser,
+                null,
+                null,
+                null,
+                null,
+                "citationCount,desc",
+                pageable
+        ).getContent()).hasSize(1);
+        verify(reviewRepository).findLatestBusinessReviewsByReviewCycleIdAndDepartmentId(
+                1L,
+                1L,
+                null,
+                null,
+                null,
+                null,
+                sortedPageable
+        );
+    }
+
+    @Test
     void getHistoryReturnsSubmittedPastReviewsWithYearQuarterFilters() {
         PageRequest pageable = PageRequest.of(0, 20);
         ReviewCycle pastCycle = ReviewCycle.builder()

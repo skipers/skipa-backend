@@ -65,6 +65,7 @@ public record PatentSortOption(
             case "applicationNumber" -> "patent.applicationNumber";
             case "applicationDate" -> "patent.applicationDate";
             case "expiryDate" -> "patent.expiryDate";
+            case "citationCount" -> "patent.citationCount";
             case "id" -> "id";
             default -> throw new BusinessException(ErrorCode.INVALID_REQUEST);
         };
