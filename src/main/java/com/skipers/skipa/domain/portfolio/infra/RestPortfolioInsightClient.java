@@ -7,10 +7,12 @@ import com.skipers.skipa.domain.portfolio.exception.PortfolioException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Duration;
 import java.util.List;
 
 @Component
@@ -22,9 +24,18 @@ public class RestPortfolioInsightClient implements PortfolioInsightClient {
 
     public RestPortfolioInsightClient(
             @Value("${app.ai-server.base-url}") String baseUrl,
-            @Value("${app.ai-server.portfolio-insights-path}") String insightsPath
+            @Value("${app.ai-server.portfolio-insights-path}") String insightsPath,
+            @Value("${app.ai-server.portfolio-insights-connect-timeout-ms:3000}") long connectTimeoutMs,
+            @Value("${app.ai-server.portfolio-insights-read-timeout-ms:30000}") long readTimeoutMs
     ) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofMillis(connectTimeoutMs));
+        requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
+
+        this.restClient = RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .build();
         this.insightsPath = insightsPath;
     }
 
