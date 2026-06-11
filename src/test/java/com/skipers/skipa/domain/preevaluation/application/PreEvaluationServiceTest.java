@@ -6,8 +6,10 @@ import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationStatus;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationCreateRequest;
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationCreateResponse;
+import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationDetailResponse;
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationStatusResponse;
 import com.skipers.skipa.domain.preevaluation.exception.PreEvaluationException;
+import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.domain.user.domain.UserStatus;
@@ -42,6 +44,9 @@ class PreEvaluationServiceTest {
 
     @Mock
     private PreEvaluationGenerationPublisher generationPublisher;
+
+    @Mock
+    private ReportStorageService reportStorageService;
 
     @InjectMocks
     private PreEvaluationService preEvaluationService;
@@ -94,20 +99,32 @@ class PreEvaluationServiceTest {
     }
 
     @Test
-    void completeStoresReportUrlAndMarksCompleted() {
+    void completeStoresReportKeyAndMarksCompleted() {
         PreEvaluation preEvaluation = preEvaluation(1L);
         when(preEvaluationRepository.findById(1L)).thenReturn(Optional.of(preEvaluation));
 
         PreEvaluationStatusResponse response = preEvaluationService.complete(
                 1L,
-                "https://minio.example.com/pre-evaluations/1/report.html"
+                "pre-evaluations/1/report.html"
         );
 
         assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
-        assertThat(preEvaluation.getReportUrl()).isEqualTo("https://minio.example.com/pre-evaluations/1/report.html");
+        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.html");
         assertThat(preEvaluation.getCompletedAt()).isNotNull();
         assertThat(response.status()).isEqualTo("COMPLETED");
-        assertThat(response.reportUrl()).isEqualTo("https://minio.example.com/pre-evaluations/1/report.html");
+    }
+
+    @Test
+    void getCompletedPreEvaluationReturnsGeneratedReportUrl() {
+        PreEvaluation preEvaluation = preEvaluation(1L);
+        preEvaluation.complete("pre-evaluations/1/report.html", null);
+        when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
+        when(reportStorageService.generatePresignedUrl("pre-evaluations/1/report.html"))
+                .thenReturn("https://minio.example.com/presigned/pre-evaluations/1/report.html");
+
+        PreEvaluationDetailResponse response = preEvaluationService.get(user, 1L);
+
+        assertThat(response.reportUrl()).isEqualTo("https://minio.example.com/presigned/pre-evaluations/1/report.html");
     }
 
     @Test

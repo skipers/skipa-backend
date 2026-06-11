@@ -9,6 +9,7 @@ import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationDetailRe
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationResponse;
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationStatusResponse;
 import com.skipers.skipa.domain.preevaluation.exception.PreEvaluationException;
+import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class PreEvaluationService {
     private final PreEvaluationRepository preEvaluationRepository;
     private final PreEvaluationChatMessageRepository chatMessageRepository;
     private final PreEvaluationGenerationPublisher generationPublisher;
+    private final ReportStorageService reportStorageService;
 
     @Transactional
     public PreEvaluationCreateResponse create(User user, PreEvaluationCreateRequest request) {
@@ -52,11 +54,12 @@ public class PreEvaluationService {
         );
 
         return preEvaluationRepository.findByUserId(user.getId(), sortedPageable)
-                .map(PreEvaluationResponse::from);
+                .map(preEvaluation -> PreEvaluationResponse.of(preEvaluation, generateReportUrl(preEvaluation)));
     }
 
     public PreEvaluationDetailResponse get(User user, Long preEvaluationId) {
-        return PreEvaluationDetailResponse.from(getOwnedPreEvaluation(user, preEvaluationId));
+        PreEvaluation preEvaluation = getOwnedPreEvaluation(user, preEvaluationId);
+        return PreEvaluationDetailResponse.of(preEvaluation, generateReportUrl(preEvaluation));
     }
 
     public PreEvaluationStatusResponse getStatus(User user, Long preEvaluationId) {
@@ -71,9 +74,9 @@ public class PreEvaluationService {
     }
 
     @Transactional
-    public PreEvaluationStatusResponse complete(Long preEvaluationId, String reportUrl) {
+    public PreEvaluationStatusResponse complete(Long preEvaluationId, String reportKey) {
         PreEvaluation preEvaluation = getPreEvaluation(preEvaluationId);
-        preEvaluation.complete(reportUrl, null);
+        preEvaluation.complete(reportKey, null);
 
         return PreEvaluationStatusResponse.from(preEvaluation);
     }
@@ -102,5 +105,13 @@ public class PreEvaluationService {
         } catch (RuntimeException e) {
             throw new PreEvaluationException(ErrorCode.EXTERNAL_SERVICE_ERROR, e);
         }
+    }
+
+    private String generateReportUrl(PreEvaluation preEvaluation) {
+        if (!preEvaluation.isCompleted()) {
+            return null;
+        }
+
+        return reportStorageService.generatePresignedUrl(preEvaluation.getReportKey());
     }
 }

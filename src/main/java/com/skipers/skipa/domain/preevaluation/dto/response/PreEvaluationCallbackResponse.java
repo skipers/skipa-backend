@@ -5,7 +5,6 @@ import java.time.Instant;
 public record PreEvaluationCallbackResponse(
         Long preEvaluationId,
         String status,
-        String reportUrl,
         Instant completedAt
 ) {
 
@@ -13,7 +12,6 @@ public record PreEvaluationCallbackResponse(
         return new PreEvaluationCallbackResponse(
                 response.id(),
                 response.status(),
-                response.reportUrl(),
                 response.completedAt()
         );
     }

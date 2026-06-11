@@ -14,20 +14,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PreEvaluationTest {
 
     @Test
-    void completeStoresReportUrlAndCompletionTime() {
+    void completeStoresReportKeyAndCompletionTime() {
         PreEvaluation preEvaluation = processingPreEvaluation();
         Instant completedAt = Instant.parse("2026-06-10T08:00:00Z");
 
-        preEvaluation.complete("https://minio.example.com/pre-evaluations/1/report.html", completedAt);
+        preEvaluation.complete("pre-evaluations/1/report.html", completedAt);
 
         assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
-        assertThat(preEvaluation.getReportUrl()).isEqualTo("https://minio.example.com/pre-evaluations/1/report.html");
+        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.html");
         assertThat(preEvaluation.getCompletedAt()).isEqualTo(completedAt);
         assertThat(preEvaluation.isCompleted()).isTrue();
     }
 
     @Test
-    void completeRejectsBlankReportUrl() {
+    void completeRejectsBlankReportKey() {
         PreEvaluation preEvaluation = processingPreEvaluation();
 
         assertPreEvaluationError(
@@ -36,7 +36,7 @@ class PreEvaluationTest {
         );
 
         assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.PROCESSING);
-        assertThat(preEvaluation.getReportUrl()).isNull();
+        assertThat(preEvaluation.getReportKey()).isNull();
     }
 
     @Test
@@ -46,7 +46,7 @@ class PreEvaluationTest {
         preEvaluation.fail();
 
         assertThat(preEvaluation.getStatus()).isEqualTo(PreEvaluationStatus.FAILED);
-        assertThat(preEvaluation.getReportUrl()).isNull();
+        assertThat(preEvaluation.getReportKey()).isNull();
         assertThat(preEvaluation.getCompletedAt()).isNotNull();
         assertThat(preEvaluation.isCompleted()).isFalse();
     }
@@ -54,14 +54,14 @@ class PreEvaluationTest {
     @Test
     void finalizedPreEvaluationCannotBeCompletedAgain() {
         PreEvaluation preEvaluation = processingPreEvaluation();
-        preEvaluation.complete("https://minio.example.com/pre-evaluations/1/report.html", null);
+        preEvaluation.complete("pre-evaluations/1/report.html", null);
 
         assertPreEvaluationError(
-                () -> preEvaluation.complete("https://minio.example.com/pre-evaluations/1/retry.html", null),
+                () -> preEvaluation.complete("pre-evaluations/1/retry.html", null),
                 ErrorCode.PRE_EVALUATION_ALREADY_PROCESSED
         );
 
-        assertThat(preEvaluation.getReportUrl()).isEqualTo("https://minio.example.com/pre-evaluations/1/report.html");
+        assertThat(preEvaluation.getReportKey()).isEqualTo("pre-evaluations/1/report.html");
     }
 
     @Test

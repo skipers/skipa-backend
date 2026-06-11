@@ -20,7 +20,7 @@ public record PreEvaluationDetailResponse(
         Instant updatedAt
 ) {
 
-    public static PreEvaluationDetailResponse from(PreEvaluation preEvaluation) {
+    public static PreEvaluationDetailResponse of(PreEvaluation preEvaluation, String reportUrl) {
         return new PreEvaluationDetailResponse(
                 preEvaluation.getId(),
                 preEvaluation.getUser().getId(),
@@ -30,7 +30,7 @@ public record PreEvaluationDetailResponse(
                 preEvaluation.getRelatedBusiness(),
                 preEvaluation.getTargetCountries(),
                 preEvaluation.getStatus().name(),
-                preEvaluation.getReportUrl(),
+                reportUrl,
                 preEvaluation.getCompletedAt(),
                 preEvaluation.getCreatedAt(),
                 preEvaluation.getUpdatedAt()

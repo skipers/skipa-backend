@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Profile;
 public class RabbitMqConfig {
 
     @Bean
-    public TopicExchange reportExchange(@Value("${app.rabbitmq.report.exchange}") String exchangeName) {
+    public TopicExchange rabbitExchange(@Value("${app.rabbitmq.exchange}") String exchangeName) {
         return new TopicExchange(exchangeName, true, false);
     }
 
@@ -28,15 +28,10 @@ public class RabbitMqConfig {
     @Bean
     public Binding reportGenerateBinding(
             Queue reportGenerateQueue,
-            TopicExchange reportExchange,
+            TopicExchange rabbitExchange,
             @Value("${app.rabbitmq.report.routing-key}") String routingKey
     ) {
-        return BindingBuilder.bind(reportGenerateQueue).to(reportExchange).with(routingKey);
-    }
-
-    @Bean
-    public TopicExchange patentExtractExchange(@Value("${app.rabbitmq.patent-extract.exchange}") String exchangeName) {
-        return new TopicExchange(exchangeName, true, false);
+        return BindingBuilder.bind(reportGenerateQueue).to(rabbitExchange).with(routingKey);
     }
 
     @Bean
@@ -47,15 +42,10 @@ public class RabbitMqConfig {
     @Bean
     public Binding patentExtractBinding(
             Queue patentExtractQueue,
-            TopicExchange patentExtractExchange,
+            TopicExchange rabbitExchange,
             @Value("${app.rabbitmq.patent-extract.routing-key}") String routingKey
     ) {
-        return BindingBuilder.bind(patentExtractQueue).to(patentExtractExchange).with(routingKey);
-    }
-
-    @Bean
-    public TopicExchange preEvaluationExchange(@Value("${app.rabbitmq.pre-evaluation.exchange}") String exchangeName) {
-        return new TopicExchange(exchangeName, true, false);
+        return BindingBuilder.bind(patentExtractQueue).to(rabbitExchange).with(routingKey);
     }
 
     @Bean
@@ -66,10 +56,10 @@ public class RabbitMqConfig {
     @Bean
     public Binding preEvaluationGenerateBinding(
             Queue preEvaluationGenerateQueue,
-            TopicExchange preEvaluationExchange,
+            TopicExchange rabbitExchange,
             @Value("${app.rabbitmq.pre-evaluation.routing-key}") String routingKey
     ) {
-        return BindingBuilder.bind(preEvaluationGenerateQueue).to(preEvaluationExchange).with(routingKey);
+        return BindingBuilder.bind(preEvaluationGenerateQueue).to(rabbitExchange).with(routingKey);
     }
 
     @Bean

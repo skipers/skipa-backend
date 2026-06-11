@@ -9,6 +9,7 @@ import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationChatRole;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluationStatus;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
+import com.skipers.skipa.domain.report.application.ReportStorageService;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -72,6 +73,9 @@ class PreEvaluationFlowIntegrationTest {
     @MockitoBean
     private PreEvaluationChatClient chatClient;
 
+    @MockitoBean
+    private ReportStorageService reportStorageService;
+
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
@@ -120,24 +124,27 @@ class PreEvaluationFlowIntegrationTest {
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("PROCESSING"))
-                .andExpect(jsonPath("$.data.reportUrl").isEmpty());
+                .andExpect(jsonPath("$.data.reportUrl").doesNotExist());
 
         mockMvc.perform(patch("/internal/pre-evaluations/{preEvaluationId}/complete", preEvaluationId)
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "reportUrl": "https://minio.example.com/pre-evaluations/%d/report.html"
+                                  "reportKey": "pre-evaluations/%d/report.html"
                                 }
                                 """.formatted(preEvaluationId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.preEvaluationId").value(preEvaluationId))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.reportUrl").value("https://minio.example.com/pre-evaluations/%d/report.html".formatted(preEvaluationId)));
+                .andExpect(jsonPath("$.data.reportUrl").doesNotExist());
 
         PreEvaluation completed = preEvaluationRepository.findById(preEvaluationId).orElseThrow();
         assertThat(completed.getStatus()).isEqualTo(PreEvaluationStatus.COMPLETED);
+        assertThat(completed.getReportKey()).isEqualTo("pre-evaluations/%d/report.html".formatted(preEvaluationId));
         assertThat(completed.getCompletedAt()).isNotNull();
+        when(reportStorageService.generatePresignedUrl("pre-evaluations/%d/report.html".formatted(preEvaluationId)))
+                .thenReturn("https://minio.example.com/presigned/pre-evaluations/%d/report.html".formatted(preEvaluationId));
 
         mockMvc.perform(get("/pre-evaluations/{preEvaluationId}", preEvaluationId)
                         .header("Authorization", "Bearer " + businessToken))
@@ -145,7 +152,7 @@ class PreEvaluationFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.id").value(preEvaluationId))
                 .andExpect(jsonPath("$.data.claims.length()").value(2))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
-                .andExpect(jsonPath("$.data.reportUrl").value("https://minio.example.com/pre-evaluations/%d/report.html".formatted(preEvaluationId)));
+                .andExpect(jsonPath("$.data.reportUrl").value("https://minio.example.com/presigned/pre-evaluations/%d/report.html".formatted(preEvaluationId)));
     }
 
     @Test

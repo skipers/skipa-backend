@@ -14,7 +14,7 @@ public class RabbitPatentExtractPublisher implements PatentExtractPublisher {
 
     private final RabbitTemplate rabbitTemplate;
 
-    @Value("${app.rabbitmq.patent-extract.exchange}")
+    @Value("${app.rabbitmq.exchange}")
     private String exchange;
 
     @Value("${app.rabbitmq.patent-extract.routing-key}")
