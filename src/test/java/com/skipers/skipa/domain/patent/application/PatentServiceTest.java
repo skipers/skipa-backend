@@ -21,6 +21,7 @@ import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJobStatus;
 import com.skipers.skipa.domain.patentextract.exception.PatentExtractException;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
@@ -93,6 +94,9 @@ class PatentServiceTest {
 
     @Mock
     private PatentOriginalPdfStorageService patentOriginalPdfStorageService;
+
+    @Mock
+    private PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     @InjectMocks
     private PatentService patentService;
