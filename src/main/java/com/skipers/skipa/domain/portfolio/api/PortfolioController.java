@@ -25,7 +25,7 @@ public class PortfolioController {
      *
      * @return 포트폴리오 인사이트
      */
-    @Operation(summary = "[Legal] 포트폴리오 인사이트 조회", description = "포트폴리오 분석 화면의 인사이트를 조회합니다. 인사이트 생성 로직은 추후 연동 예정이며, 현재는 빈 배열을 반환합니다.")
+    @Operation(summary = "[Legal] 포트폴리오 인사이트 조회", description = "포트폴리오 추이, 분포, 결정 비율 데이터를 기반으로 AI가 생성한 인사이트를 조회합니다.")
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @GetMapping("/insights")
     public ApiResponse<PortfolioInsightsResponse> getInsights() {

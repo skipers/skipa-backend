@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
@@ -44,6 +45,7 @@ public class ReportService {
     private final ReportGenerationPublisher reportGenerationPublisher;
     private final ReportStorageService reportStorageService;
     private final ReviewRepository reviewRepository;
+    private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     @Transactional
     public ReportCreateResponse create(Long patentId) {
@@ -146,6 +148,7 @@ public class ReportService {
 
         report.complete(reportKey, totalScore, valueGrade, Instant.now());
 
+        portfolioInsightCacheInvalidator.evict();
         return ReportStatusResponse.from(report);
     }
 

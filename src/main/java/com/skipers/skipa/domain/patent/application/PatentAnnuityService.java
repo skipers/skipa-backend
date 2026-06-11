@@ -7,6 +7,7 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
+import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.BusinessException;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -28,6 +29,7 @@ public class PatentAnnuityService {
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final ApprovedPatentValidator approvedPatentValidator;
+    private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
     @Transactional
     public PatentAnnuityResponse create(Long patentId, PatentAnnuityCreateRequest request) {
@@ -39,6 +41,7 @@ public class PatentAnnuityService {
         patentAnnuity.pay(request.paymentYears(), request.amount(), LocalDate.now());
         createNextUnpaidAnnuity(patentAnnuity, request.paymentYears());
 
+        portfolioInsightCacheInvalidator.evict();
         return PatentAnnuityResponse.from(patentAnnuity);
     }
 

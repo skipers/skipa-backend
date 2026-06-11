@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
+import com.skipers.skipa.domain.portfolio.dto.request.PortfolioInsightClientRequest;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioInsightsResponse;
@@ -17,9 +18,11 @@ import com.skipers.skipa.domain.review.domain.BusinessOpinion;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
@@ -38,9 +41,16 @@ public class PortfolioService {
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
+    private final PortfolioInsightClient portfolioInsightClient;
+    private final PortfolioInsightCache portfolioInsightCache;
+
+    @Value("${app.portfolio.insights-cache-ttl-seconds:86400}")
+    private long insightsCacheTtlSeconds;
 
     public PortfolioInsightsResponse getInsights() {
-        return new PortfolioInsightsResponse(List.of());
+        return portfolioInsightCache.get()
+                .map(PortfolioInsightsResponse::new)
+                .orElseGet(this::generateInsights);
     }
 
     public PortfolioDistributionResponse getDistribution() {
@@ -163,6 +173,17 @@ public class PortfolioService {
                 departmentDecisions(byDepartment),
                 techFieldDecisions(byTechField)
         );
+    }
+
+    private PortfolioInsightsResponse generateInsights() {
+        PortfolioInsightClientRequest request = new PortfolioInsightClientRequest(
+                getTrends(),
+                getDistribution(),
+                getDecisions()
+        );
+        List<String> insights = portfolioInsightClient.generate(request);
+        portfolioInsightCache.put(insights, Duration.ofSeconds(insightsCacheTtlSeconds));
+        return new PortfolioInsightsResponse(insights);
     }
 
     private String submittedQuarter(Review review) {
