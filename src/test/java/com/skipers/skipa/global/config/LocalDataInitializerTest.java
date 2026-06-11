@@ -2,6 +2,12 @@ package com.skipers.skipa.global.config;
 
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
+import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
+import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
+import com.skipers.skipa.domain.patent.dao.PatentRepository;
+import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
+import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -15,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -34,34 +41,58 @@ class LocalDataInitializerTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private PatentRepository patentRepository;
+
+    @Mock
+    private PatentLegalStatusRepository patentLegalStatusRepository;
+
+    @Mock
+    private PatentAnnuityRepository patentAnnuityRepository;
+
+    @Mock
+    private ReviewCycleRepository reviewCycleRepository;
+
+    @Mock
+    private ReviewRepository reviewRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
+
     private LocalDataInitializer initializer;
 
     @BeforeEach
     void setUp() {
-        initializer = new LocalDataInitializer(userRepository, departmentRepository, passwordEncoder);
+        initializer = new LocalDataInitializer(
+                userRepository,
+                departmentRepository,
+                passwordEncoder,
+                patentRepository,
+                patentLegalStatusRepository,
+                patentAnnuityRepository,
+                reviewCycleRepository,
+                reviewRepository,
+                reportRepository
+        );
         ReflectionTestUtils.setField(initializer, "seedPassword", "1234");
     }
 
     @Test
     void createsDepartmentsAndTenEncodedSampleUsersWhenLocalDatabaseHasNoUsers() {
         when(userRepository.count()).thenReturn(0L);
+        when(patentRepository.count()).thenReturn(1L);
         when(passwordEncoder.encode("1234")).thenReturn("encoded-password");
 
-        Department semiconductor = Department.builder().name("반도체").build();
-        Department telecom = Department.builder().name("통신").build();
-        Department manufacturing = Department.builder().name("제조").build();
-        when(departmentRepository.saveAll(anyList())).thenReturn(List.of(semiconductor, telecom, manufacturing));
+        when(departmentRepository.findByName("반도체")).thenReturn(Optional.empty());
+        when(departmentRepository.findByName("통신")).thenReturn(Optional.empty());
+        when(departmentRepository.findByName("제조")).thenReturn(Optional.empty());
+        when(departmentRepository.save(any(Department.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         initializer.run(new DefaultApplicationArguments());
 
-        verify(departmentRepository).saveAll(argThat(departments -> {
-            List<Department> result = new java.util.ArrayList<>();
-            departments.forEach(result::add);
-            assertThat(result).hasSize(3);
-            assertThat(result).extracting(Department::getName)
-                    .contains("반도체", "통신", "제조");
-            return true;
-        }));
+        verify(departmentRepository).save(argThat(department -> department.getName().equals("반도체")));
+        verify(departmentRepository).save(argThat(department -> department.getName().equals("통신")));
+        verify(departmentRepository).save(argThat(department -> department.getName().equals("제조")));
 
         verify(userRepository).saveAll(argThat(users -> {
             List<User> result = new java.util.ArrayList<>();
@@ -72,19 +103,27 @@ class LocalDataInitializerTest {
             assertThat(result).filteredOn(user -> user.getRole() == UserRole.BUSINESS).hasSize(5);
             assertThat(result).allMatch(user -> user.getPassword().equals("encoded-password"));
             assertThat(result).extracting(User::getLoginId)
-                    .contains("admin", "legal01", "legal04", "business01", "business05");
+                    .contains("admin", "legal01", "legal04", "biz01", "biz05");
             return true;
         }));
     }
 
     @Test
-    void doesNotCreateSeedDataWhenLocalDatabaseAlreadyHasUsers() {
+    void doesNotCreateSeedDataWhenLocalDatabaseAlreadyHasUsersAndPatents() {
         when(userRepository.count()).thenReturn(1L);
+        when(patentRepository.count()).thenReturn(1L);
+        Department semiconductor = Department.builder().name("반도체").build();
+        Department telecom = Department.builder().name("통신").build();
+        Department manufacturing = Department.builder().name("제조").build();
+        when(departmentRepository.findByName("반도체")).thenReturn(Optional.of(semiconductor));
+        when(departmentRepository.findByName("통신")).thenReturn(Optional.of(telecom));
+        when(departmentRepository.findByName("제조")).thenReturn(Optional.of(manufacturing));
 
         initializer.run(new DefaultApplicationArguments());
 
         verify(passwordEncoder, never()).encode(anyString());
-        verify(departmentRepository, never()).saveAll(anyList());
+        verify(departmentRepository, never()).save(any());
         verify(userRepository, never()).saveAll(anyList());
+        verify(patentRepository, never()).saveAll(anyList());
     }
 }

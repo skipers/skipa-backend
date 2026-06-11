@@ -20,14 +20,14 @@ class RabbitPatentExtractPublisherTest {
     @Test
     void publishSendsPatentExtractMessage() {
         RabbitPatentExtractPublisher publisher = new RabbitPatentExtractPublisher(rabbitTemplate);
-        ReflectionTestUtils.setField(publisher, "exchange", "skipa.patent-extract.exchange");
+        ReflectionTestUtils.setField(publisher, "exchange", "skipa.exchange");
         ReflectionTestUtils.setField(publisher, "routingKey", "patent.extract");
 
         publisher.publish(1L, "tmp/patent-extract-jobs/1/original.pdf");
 
         ArgumentCaptor<PatentExtractMessage> messageCaptor = ArgumentCaptor.forClass(PatentExtractMessage.class);
         verify(rabbitTemplate).convertAndSend(
-                org.mockito.ArgumentMatchers.eq("skipa.patent-extract.exchange"),
+                org.mockito.ArgumentMatchers.eq("skipa.exchange"),
                 org.mockito.ArgumentMatchers.eq("patent.extract"),
                 messageCaptor.capture()
         );

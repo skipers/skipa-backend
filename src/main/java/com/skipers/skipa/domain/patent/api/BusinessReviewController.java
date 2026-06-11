@@ -69,7 +69,7 @@ public class BusinessReviewController {
                     + "각 특허의 요약, 키워드, 최신 완료 평가 보고서 점수와 등급을 함께 반환합니다. "
                     + "필터: status(PENDING, OVERDUE, SUBMITTED), opinion(MAINTAIN, ABANDON), "
                     + "submittedFrom/submittedTo(제출일, YYYY-MM-DD, 양 끝 포함). "
-                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc, citationCount,asc|desc. "
                     + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
     )
     @PreAuthorize("hasRole('BUSINESS')")

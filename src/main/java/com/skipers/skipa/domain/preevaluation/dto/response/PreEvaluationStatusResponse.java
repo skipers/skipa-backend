@@ -7,7 +7,6 @@ import java.time.Instant;
 public record PreEvaluationStatusResponse(
         Long id,
         String status,
-        String reportUrl,
         Instant completedAt,
         Instant updatedAt
 ) {
@@ -16,7 +15,6 @@ public record PreEvaluationStatusResponse(
         return new PreEvaluationStatusResponse(
                 preEvaluation.getId(),
                 preEvaluation.getStatus().name(),
-                preEvaluation.getReportUrl(),
                 preEvaluation.getCompletedAt(),
                 preEvaluation.getUpdatedAt()
         );

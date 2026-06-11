@@ -7,7 +7,7 @@ create table pre_evaluations (
     related_business varchar(500),
     target_countries varchar(500),
     status varchar(20) not null,
-    report_url varchar(1000),
+    report_key varchar(500),
     completed_at timestamp(6) with time zone,
     created_at timestamp(6) with time zone not null,
     updated_at timestamp(6) with time zone not null,

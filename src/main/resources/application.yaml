@@ -44,16 +44,14 @@ app:
     base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
     pre-evaluation-chat-path: ${AI_PRE_EVALUATION_CHAT_PATH:/pre-evaluations/chat}
   rabbitmq:
+    exchange: ${RABBITMQ_EXCHANGE:skipa.exchange}
     report:
-      exchange: ${REPORT_EXCHANGE:skipa.report.exchange}
       queue: ${REPORT_GENERATE_QUEUE:skipa.report.generate}
       routing-key: ${REPORT_GENERATE_ROUTING_KEY:report.generate}
     patent-extract:
-      exchange: ${PATENT_EXTRACT_EXCHANGE:skipa.patent-extract.exchange}
       queue: ${PATENT_EXTRACT_QUEUE:skipa.patent-extract}
       routing-key: ${PATENT_EXTRACT_ROUTING_KEY:patent.extract}
     pre-evaluation:
-      exchange: ${PRE_EVALUATION_EXCHANGE:skipa.pre-evaluation.exchange}
       queue: ${PRE_EVALUATION_GENERATE_QUEUE:skipa.pre-evaluation.generate}
       routing-key: ${PRE_EVALUATION_GENERATE_ROUTING_KEY:pre-evaluation.generate}
   minio:

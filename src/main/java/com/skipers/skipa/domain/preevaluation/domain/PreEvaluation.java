@@ -60,8 +60,8 @@ public class PreEvaluation extends BaseTimeEntity {
     @Column(name = "status", nullable = false, length = 20)
     private PreEvaluationStatus status;
 
-    @Column(name = "report_url", length = 1000)
-    private String reportUrl;
+    @Column(name = "report_key", length = 500)
+    private String reportKey;
 
     @Column(name = "completed_at")
     private Instant completedAt;
@@ -75,7 +75,7 @@ public class PreEvaluation extends BaseTimeEntity {
             String relatedBusiness,
             String targetCountries,
             PreEvaluationStatus status,
-            String reportUrl,
+            String reportKey,
             Instant completedAt
     ) {
         this.user = user;
@@ -85,18 +85,18 @@ public class PreEvaluation extends BaseTimeEntity {
         this.relatedBusiness = relatedBusiness;
         this.targetCountries = targetCountries;
         this.status = status != null ? status : PreEvaluationStatus.PROCESSING;
-        this.reportUrl = reportUrl;
+        this.reportKey = reportKey;
         this.completedAt = completedAt;
     }
 
-    public void complete(String reportUrl, Instant completedAt) {
+    public void complete(String reportKey, Instant completedAt) {
         validateProcessing();
 
-        if (reportUrl == null || reportUrl.isBlank()) {
+        if (reportKey == null || reportKey.isBlank()) {
             throw new PreEvaluationException(ErrorCode.INVALID_REQUEST);
         }
 
-        this.reportUrl = reportUrl;
+        this.reportKey = reportKey;
         this.status = PreEvaluationStatus.COMPLETED;
         this.completedAt = completedAt != null ? completedAt : Instant.now();
     }
