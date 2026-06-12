@@ -257,6 +257,38 @@ class PatentServiceTest {
     }
 
     @Test
+    void getAllowsBusinessUserToReadOtherDepartmentPatentMetadataWithoutReportScore() {
+        Department userDepartment = department("통신", 1L);
+        Department otherDepartment = department("제조", 2L);
+        Patent patent = patent(
+                1L,
+                "Other Department Patent",
+                "APP-OTHER-DEPARTMENT",
+                "반도체",
+                "KR",
+                LocalDate.now().plusYears(1),
+                otherDepartment
+        );
+        PatentLegalStatus latestStatus = legalStatus(
+                20L,
+                patent,
+                PatentLegalStatusType.REGISTERED,
+                LocalDate.now()
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(1L))
+                .thenReturn(Optional.of(latestStatus));
+
+        PatentDetailResponse response = patentService.get(businessUser(userDepartment), 1L);
+
+        assertThat(response.id()).isEqualTo(1L);
+        assertThat(response.title()).isEqualTo("Other Department Patent");
+        assertThat(response.latestLegalStatus()).isEqualTo("REGISTERED");
+        assertThat(response.latestReportScore()).isNull();
+        verify(reportRepository, never()).findFirstByPatentIdAndStatusInOrderByIdDesc(any(), any());
+    }
+
+    @Test
     void getAllWithoutKeywordUsesPagedFindAll() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Pageable pageable = PageRequest.of(0, 20);

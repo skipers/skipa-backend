@@ -828,6 +828,8 @@ class AuthApprovalFlowIntegrationTest {
         Patent otherPatent = patentRepository.save(Patent.builder()
                 .title("Other Patent")
                 .applicationNumber("APP-OTHER-DEPT")
+                .techField("Semiconductor")
+                .businessField("Memory")
                 .currentDepartment(otherDepartment)
                 .build());
         String businessToken = createActiveUserToken("business-patent-reader", "business-patent-reader@example.com", UserRole.BUSINESS);
@@ -858,8 +860,12 @@ class AuthApprovalFlowIntegrationTest {
 
         mockMvc.perform(get("/patents/{patentId}", otherPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(otherPatent.getId()))
+                .andExpect(jsonPath("$.data.title").value("Other Patent"))
+                .andExpect(jsonPath("$.data.techField").value("Semiconductor"))
+                .andExpect(jsonPath("$.data.businessField").value("Memory"))
+                .andExpect(jsonPath("$.data.latestReportScore").value(nullValue()));
     }
 
     @Test

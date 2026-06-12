@@ -58,7 +58,6 @@ public class PatentService {
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
-    private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final PatentExtractJobRepository patentExtractJobRepository;
     private final PatentOriginalPdfStorageService patentOriginalPdfStorageService;
     private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
@@ -146,13 +145,11 @@ public class PatentService {
     }
 
     public PatentDetailResponse get(User user, Long patentId) {
-        businessPatentAccessValidator.validate(user, patentId);
-
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
         validateReadablePatent(user, patent);
 
-        return toDetailResponse(patent);
+        return toDetailResponse(user, patent);
     }
 
     public PatentDetailResponse get(Long patentId) {
@@ -554,11 +551,29 @@ public class PatentService {
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {
+        return toDetailResponse(null, patent);
+    }
+
+    private PatentDetailResponse toDetailResponse(User user, Patent patent) {
         String latestLegalStatus = patentLegalStatusRepository
                 .findFirstByPatentIdOrderByChangedAtDescIdDesc(patent.getId())
                 .map(legalStatus -> legalStatus.getStatus().name())
                 .orElse(null);
-        BigDecimal latestReportScore = reportRepository
+        BigDecimal latestReportScore = canReadReportMetadata(user, patent) ? latestReportScore(patent) : null;
+        return PatentDetailResponse.of(patent, latestLegalStatus, latestReportScore);
+    }
+
+    private boolean canReadReportMetadata(User user, Patent patent) {
+        if (user == null || user.getRole() != UserRole.BUSINESS) {
+            return true;
+        }
+        return user.getDepartment() != null
+                && patent.getCurrentDepartment() != null
+                && patent.getCurrentDepartment().getId().equals(user.getDepartment().getId());
+    }
+
+    private BigDecimal latestReportScore(Patent patent) {
+        return reportRepository
                 .findFirstByPatentIdAndStatusInOrderByIdDesc(
                         patent.getId(),
                         List.of(
@@ -568,7 +583,6 @@ public class PatentService {
                 )
                 .map(Report::getTotalScore)
                 .orElse(null);
-        return PatentDetailResponse.of(patent, latestLegalStatus, latestReportScore);
     }
 
 }
