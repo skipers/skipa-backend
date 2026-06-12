@@ -1706,6 +1706,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | preEvaluationId | long | 사전 평가 ID |
 | role | string | `USER` / `ASSISTANT` |
 | content | string | 메시지 내용 |
+| sourceCards | array | AI 응답 근거 카드. 사용자 메시지는 빈 배열 |
 | createdAt | datetime | 생성 시각 |
 
 **응답 예시**
@@ -1719,6 +1720,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "USER",
       "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+      "sourceCards": [],
       "createdAt": "2026-06-10T09:10:00Z"
     },
     {
@@ -1726,6 +1728,20 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "ASSISTANT",
       "content": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+      "sourceCards": [
+        {
+          "label": "S1",
+          "title": "사전평가 보고서",
+          "display_title": "사전평가 보고서",
+          "source_type": "pre_evaluation",
+          "page_no": 1,
+          "url": "https://example.com/pre-evaluations/1/report.html",
+          "location_label": "section 1",
+          "source_path": "pre-evaluations/1/report.html",
+          "match_terms": ["청구항"],
+          "snippet": "청구항에서 센서 데이터 처리 알고리즘의 차별성을..."
+        }
+      ],
       "createdAt": "2026-06-10T09:10:02Z"
     }
   ]
@@ -1757,29 +1773,23 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 **처리**
 
 - 사용자 메시지를 `USER` 역할로 저장
-- 이전 대화 이력과 현재 메시지를 포함해 AI 서버 채팅 API를 직접 호출
-- AI 응답을 `ASSISTANT` 역할로 저장
+- 최근 질문/답변 5쌍을 `chat_history`로 구성해 AI 서버 채팅 API를 직접 호출
+- AI 응답의 `answer`를 `ASSISTANT` 메시지로 저장하고, `source_cards`는 `metadata`를 제외해 함께 저장
 
 **AI 서버 채팅 요청 예시**
 
+`POST /api/v1/pre-eval/cases/{case_id}/chat`
+
 ```json
 {
-  "preEvaluationId": 1,
-  "userId": 10,
-  "title": "배터리 열폭주 감지 시스템",
-  "technicalDescription": "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술",
-  "claims": [
-    "센서부를 포함하는 배터리 열폭주 감지 시스템"
-  ],
-  "relatedBusiness": "전기차 배터리 안전 관리",
-  "targetCountries": "한국, 미국",
-  "message": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
-  "history": [
+  "chat_history": [
     {
-      "role": "USER",
-      "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?"
+      "question": "이 사전평가 보고서의 주요 리스크를 알려줘",
+      "answer": "주요 리스크는 청구항의 구체성 부족입니다."
     }
-  ]
+  ],
+  "question": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+  "user_id": "10"
 }
 ```
 
@@ -1787,7 +1797,25 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ```json
 {
-  "message": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다."
+  "query": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+  "patent_id": "1",
+  "answer": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+  "source_cards": [
+    {
+      "label": "S1",
+      "title": "사전평가 보고서",
+      "display_title": "사전평가 보고서",
+      "source_type": "pre_evaluation",
+      "page_no": 1,
+      "url": "https://example.com/pre-evaluations/1/report.html",
+      "location_label": "section 1",
+      "source_path": "pre-evaluations/1/report.html",
+      "match_terms": ["청구항"],
+      "snippet": "청구항에서 센서 데이터 처리 알고리즘의 차별성을...",
+      "metadata": {}
+    }
+  ],
+  "metrics": {}
 }
 ```
 
@@ -1802,6 +1830,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "USER",
       "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+      "sourceCards": [],
       "createdAt": "2026-06-10T09:10:00Z"
     },
     "assistantMessage": {
@@ -1809,6 +1838,20 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "ASSISTANT",
       "content": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+      "sourceCards": [
+        {
+          "label": "S1",
+          "title": "사전평가 보고서",
+          "display_title": "사전평가 보고서",
+          "source_type": "pre_evaluation",
+          "page_no": 1,
+          "url": "https://example.com/pre-evaluations/1/report.html",
+          "location_label": "section 1",
+          "source_path": "pre-evaluations/1/report.html",
+          "match_terms": ["청구항"],
+          "snippet": "청구항에서 센서 데이터 처리 알고리즘의 차별성을..."
+        }
+      ],
       "createdAt": "2026-06-10T09:10:02Z"
     }
   }

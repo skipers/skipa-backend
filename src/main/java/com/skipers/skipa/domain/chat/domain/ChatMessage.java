@@ -71,4 +71,8 @@ public class ChatMessage extends BaseTimeEntity {
         this.content = content;
         this.sourceCards = sourceCards != null ? sourceCards : List.of();
     }
+
+    public List<ChatSourceCard> getSourceCards() {
+        return sourceCards != null ? sourceCards : List.of();
+    }
 }

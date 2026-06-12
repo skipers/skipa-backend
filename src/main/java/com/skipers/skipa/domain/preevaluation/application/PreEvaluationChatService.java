@@ -4,6 +4,7 @@ import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
 import com.skipers.skipa.domain.chat.domain.ChatMessage;
 import com.skipers.skipa.domain.chat.domain.ChatRole;
 import com.skipers.skipa.domain.chat.domain.ChatTargetType;
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
@@ -17,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -61,18 +61,14 @@ public class PreEvaluationChatService {
                 .content(request.message())
                 .build());
 
-        List<PreEvaluationChatClientRequest.Message> history = new ArrayList<>(previousMessages.stream()
-                .map(PreEvaluationChatClientRequest.Message::from)
-                .toList());
-        history.add(PreEvaluationChatClientRequest.Message.from(userMessage));
-
-        String assistantContent = sendToAiServer(preEvaluation, request.message(), history);
+        ChatClientResult aiResult = sendToAiServer(preEvaluation, request.message(), toRecentHistory(previousMessages));
         ChatMessage assistantMessage = chatMessageRepository.save(ChatMessage.builder()
                 .targetType(ChatTargetType.PRE_EVALUATION)
                 .targetId(preEvaluation.getId())
                 .user(user)
                 .role(ChatRole.ASSISTANT)
-                .content(assistantContent)
+                .content(aiResult.answer())
+                .sourceCards(aiResult.sourceCards())
                 .build());
 
         return PreEvaluationChatSendResponse.of(userMessage, assistantMessage);
@@ -84,16 +80,33 @@ public class PreEvaluationChatService {
         chatMessageRepository.deleteAllByTargetTypeAndTargetId(ChatTargetType.PRE_EVALUATION, preEvaluation.getId());
     }
 
-    private String sendToAiServer(
+    private ChatClientResult sendToAiServer(
             PreEvaluation preEvaluation,
             String message,
-            List<PreEvaluationChatClientRequest.Message> history
+            List<PreEvaluationChatClientRequest.History> history
     ) {
         try {
             return chatClient.send(PreEvaluationChatClientRequest.of(preEvaluation, message, history));
         } catch (RuntimeException e) {
             throw new PreEvaluationException(ErrorCode.AI_SERVER_ERROR, e);
         }
+    }
+
+    private List<PreEvaluationChatClientRequest.History> toRecentHistory(List<ChatMessage> messages) {
+        List<PreEvaluationChatClientRequest.History> histories = new java.util.ArrayList<>();
+        String pendingQuestion = null;
+
+        for (ChatMessage message : messages) {
+            if (message.getRole() == ChatRole.USER) {
+                pendingQuestion = message.getContent();
+            } else if (message.getRole() == ChatRole.ASSISTANT && pendingQuestion != null) {
+                histories.add(new PreEvaluationChatClientRequest.History(pendingQuestion, message.getContent()));
+                pendingQuestion = null;
+            }
+        }
+
+        int fromIndex = Math.max(0, histories.size() - 5);
+        return histories.subList(fromIndex, histories.size());
     }
 
     private PreEvaluation getOwnedPreEvaluation(User user, Long preEvaluationId) {

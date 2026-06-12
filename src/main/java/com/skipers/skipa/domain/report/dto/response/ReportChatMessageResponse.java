@@ -8,7 +8,7 @@ import java.util.List;
 
 public record ReportChatMessageResponse(
         Long id,
-        Long reportId,
+        Long patentId,
         String role,
         String content,
         List<ChatSourceCard> sourceCards,
