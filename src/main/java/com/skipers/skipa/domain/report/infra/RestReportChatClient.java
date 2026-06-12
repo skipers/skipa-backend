@@ -8,6 +8,7 @@ import com.skipers.skipa.domain.report.exception.ReportException;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -31,6 +32,8 @@ public class RestReportChatClient implements ReportChatClient {
     public ChatClientResult send(ReportChatClientRequest request) {
         ReportChatClientResponse response = restClient.post()
                 .uri(chatPath, request.patentId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .body(request)
                 .retrieve()
                 .body(ReportChatClientResponse.class);
