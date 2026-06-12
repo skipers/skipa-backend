@@ -339,22 +339,9 @@
 | status | string (복수) | N | 권리 상태 필터. `PUBLISHED` / `REGISTERED` / `REJECTED` / `ABANDONED` / `EXPIRED` / `INVALIDATED` / `WITHDRAWN`. 복수 지정 가능 (`?status=EXPIRED&status=ABANDONED`) |
 | filingCountry | string | N | 출원국 코드. `KR` / `US` / `EP` / `JP` / `CN` |
 | departmentId | long | N | 현재 담당 사업부 ID. `-1` 지정 시 미배정 특허만 조회 |
-| reviewStatus | string | N | 재평가 관리 탭 필터. `unread` / `unassigned` / `requested` / `overdue` / `done`. 생략 시 전체 (현재 활성 QUARTERLY 주기 기준 자동 적용) |
-| decision | string | N | 결정 필터. `MAINTAIN` / `ABANDON` |
 | sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 20) |
-
-**reviewStatus 값과 서버 조건**
-
-| reviewStatus | 서버 조건 |
-| --- | --- |
-| (생략) | 현재 활성 QUARTERLY 주기 내 전체 특허 |
-| `unread` | `reviews.status = SUBMITTED AND confirmed_at IS NULL` |
-| `unassigned` | `patents.current_department_id IS NULL` |
-| `requested` | `reviews.status = PENDING AND due_date >= today` |
-| `overdue` | `reviews.status = PENDING AND due_date < today` |
-| `done` | `reviews.status = SUBMITTED` |
 
 **응답 items[] 필드**
 
@@ -374,9 +361,6 @@
 | filingCountry | string | 출원국 코드 |
 | currentDepartmentId | long | 현재 담당 부서 ID. 미배정이면 `null` |
 | currentDepartmentName | string | 현재 담당 부서명. 미배정이면 `null` |
-| reviewStatus | string | 검토 상태. `reviewStatus` 파라미터 사용 시 포함 |
-| decision | string | 사업부 결정. `MAINTAIN` / `ABANDON` / `null` |
-| isOverdue | boolean | 기한 초과 여부. `reviewStatus` 파라미터 사용 시 포함 |
 
 **응답 예시**
 
@@ -399,10 +383,7 @@
         "citationCount": 14,
         "filingCountry": "KR",
         "currentDepartmentId": 3,
-        "currentDepartmentName": "에너지솔루션 사업부",
-        "reviewStatus": "done",
-        "decision": "MAINTAIN",
-        "isOverdue": false
+        "currentDepartmentName": "에너지솔루션 사업부"
       }
     ],
     "page": 0,
@@ -415,7 +396,7 @@
 }
 ```
 
-**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404 — 활성 QUARTERLY 주기 없음, `reviewStatus` 사용 시)
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
 
 ---
 
