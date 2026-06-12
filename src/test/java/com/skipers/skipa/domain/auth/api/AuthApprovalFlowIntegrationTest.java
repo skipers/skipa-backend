@@ -1739,11 +1739,15 @@ class AuthApprovalFlowIntegrationTest {
         Patent firstPatent = patentRepository.save(Patent.builder()
                 .title("First Review Patent")
                 .applicationNumber("APP-REVIEW-FIRST")
+                .techField("Battery")
+                .businessField("Energy")
                 .currentDepartment(department)
                 .build());
         Patent secondPatent = patentRepository.save(Patent.builder()
                 .title("Second Review Patent")
                 .applicationNumber("APP-REVIEW-SECOND")
+                .techField("Semiconductor")
+                .businessField("Memory")
                 .currentDepartment(otherDepartment)
                 .build());
         Review firstReview = reviewRepository.save(Review.builder()
@@ -1770,6 +1774,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(firstReview.getId()))
+                .andExpect(jsonPath("$.data.items[0].techField").value("Battery"))
+                .andExpect(jsonPath("$.data.items[0].businessField").value("Energy"))
                 .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
 
         mockMvc.perform(get("/review-targets")
@@ -1792,6 +1798,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"))
                 .andExpect(jsonPath("$.data.items[0].comment").value("유지 의견입니다."))
                 .andExpect(jsonPath("$.data.items[0].status").value("SUBMITTED"))
+                .andExpect(jsonPath("$.data.items[0].techField").value("Semiconductor"))
+                .andExpect(jsonPath("$.data.items[0].businessField").value("Memory"))
                 .andExpect(jsonPath("$.data.items[0].checked").value(false));
 
         mockMvc.perform(get("/review-targets/{reviewId}", secondReview.getId())
@@ -1801,6 +1809,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.patentId").value(secondPatent.getId()))
                 .andExpect(jsonPath("$.data.departmentId").value(otherDepartment.getId()))
                 .andExpect(jsonPath("$.data.opinion").value("MAINTAIN"))
+                .andExpect(jsonPath("$.data.techField").value("Semiconductor"))
+                .andExpect(jsonPath("$.data.businessField").value("Memory"))
                 .andExpect(jsonPath("$.data.checked").value(false))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
 
