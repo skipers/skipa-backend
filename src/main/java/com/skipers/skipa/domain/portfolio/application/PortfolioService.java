@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
+import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioTrendsResponse;
@@ -32,6 +33,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PortfolioService {
+
+    private static final int TREND_YEAR_COUNT = 7;
 
     private final PatentRepository patentRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
@@ -78,36 +81,40 @@ public class PortfolioService {
     }
 
     public PortfolioTrendsResponse getTrends() {
+        int currentYear = LocalDate.now().getYear();
+        int startYear = currentYear - TREND_YEAR_COUNT + 1;
         List<Patent> patents = patentRepository.findAll();
         List<PatentAnnuity> annuities = patentAnnuityRepository.findAll();
-        Map<Integer, YearPatentAccumulator> patentTrends = new LinkedHashMap<>();
-        Map<Integer, Long> annuityCosts = new LinkedHashMap<>();
+        Map<Integer, YearPatentAccumulator> patentTrends = patentTrendYears(startYear, currentYear);
+        Map<Integer, Long> annuityCosts = annuityCostYears(startYear, currentYear);
 
         patents.stream()
                 .map(Patent::getApplicationDate)
                 .filter(date -> date != null)
                 .map(LocalDate::getYear)
-                .sorted()
+                .filter(year -> isTrendYear(year, startYear, currentYear))
                 .forEach(year -> patentTrends.computeIfAbsent(year, YearPatentAccumulator::new).applications++);
         patents.stream()
                 .map(Patent::getRegistrationDate)
                 .filter(date -> date != null)
                 .map(LocalDate::getYear)
-                .sorted()
+                .filter(year -> isTrendYear(year, startYear, currentYear))
                 .forEach(year -> patentTrends.computeIfAbsent(year, YearPatentAccumulator::new).registrations++);
         patents.stream()
                 .map(Patent::getExpiryDate)
                 .filter(date -> date != null)
                 .map(LocalDate::getYear)
-                .sorted()
+                .filter(year -> isTrendYear(year, startYear, currentYear))
                 .forEach(year -> patentTrends.computeIfAbsent(year, YearPatentAccumulator::new).expiries++);
 
         annuities.stream()
+                .filter(annuity -> annuity.getStatus() == PatentAnnuityStatus.PAID)
                 .filter(annuity -> annuity.getAmount() != null)
+                .filter(annuity -> annuity.getPaidDate() != null)
                 .forEach(annuity -> {
-                    LocalDate baseDate = annuity.getPaidDate() != null ? annuity.getPaidDate() : annuity.getDueDate();
-                    if (baseDate != null) {
-                        annuityCosts.merge(baseDate.getYear(), annuity.getAmount().longValue(), Long::sum);
+                    int year = annuity.getPaidDate().getYear();
+                    if (isTrendYear(year, startYear, currentYear)) {
+                        annuityCosts.merge(year, annuity.getAmount().longValue(), Long::sum);
                     }
                 });
 
@@ -125,6 +132,26 @@ public class PortfolioService {
                         .map(entry -> new PortfolioTrendsResponse.YearlyAnnuityCost(entry.getKey(), entry.getValue()))
                         .toList()
         );
+    }
+
+    private Map<Integer, YearPatentAccumulator> patentTrendYears(int startYear, int currentYear) {
+        Map<Integer, YearPatentAccumulator> trends = new LinkedHashMap<>();
+        for (int year = startYear; year <= currentYear; year++) {
+            trends.put(year, new YearPatentAccumulator(year));
+        }
+        return trends;
+    }
+
+    private Map<Integer, Long> annuityCostYears(int startYear, int currentYear) {
+        Map<Integer, Long> costs = new LinkedHashMap<>();
+        for (int year = startYear; year <= currentYear; year++) {
+            costs.put(year, 0L);
+        }
+        return costs;
+    }
+
+    private boolean isTrendYear(int year, int startYear, int currentYear) {
+        return year >= startYear && year <= currentYear;
     }
 
     public PortfolioDecisionResponse getDecisions() {
