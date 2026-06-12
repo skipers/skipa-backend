@@ -3,15 +3,15 @@ package com.skipers.skipa.domain.portfolio.dto.response;
 import java.util.List;
 
 public record PortfolioDecisionResponse(
-        List<QuarterDecision> byQuarter,
-        List<DepartmentDecision> byDepartment,
-        List<TechFieldDecision> byTechField
+        List<QuarterDecision> byQuarter
 ) {
 
     public record QuarterDecision(
             String quarter,
             long maintain,
-            long abandon
+            long abandon,
+            List<DepartmentDecision> byDepartment,
+            List<TechFieldDecision> byTechField
     ) {
     }
 
