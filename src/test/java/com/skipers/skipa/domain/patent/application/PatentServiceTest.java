@@ -3,7 +3,6 @@ package com.skipers.skipa.domain.patent.application;
 import com.skipers.skipa.domain.department.dao.DepartmentRepository;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.department.exception.DepartmentException;
-import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
@@ -27,10 +26,6 @@ import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
-import com.skipers.skipa.domain.review.domain.BusinessOpinion;
-import com.skipers.skipa.domain.review.domain.Review;
-import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.global.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,7 +42,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -79,9 +73,6 @@ class PatentServiceTest {
 
     @Mock
     private ReviewRepository reviewRepository;
-
-    @Mock
-    private ReviewCycleRepository reviewCycleRepository;
 
     @Mock
     private ReportRepository reportRepository;
@@ -355,8 +346,6 @@ class PatentServiceTest {
         );
         when(patentRepository.findAll()).thenReturn(List.of(assignedPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.empty());
 
         Page<?> result = patentService.getAssigned(
                 businessUser(department),
@@ -449,28 +438,15 @@ class PatentServiceTest {
                 LocalDate.now().plusDays(20),
                 battery
         );
-        ReviewCycle activeCycle = reviewCycle();
-        Review maintainReview = submittedReview(10L, maintainPatent, telecom, activeCycle, BusinessOpinion.MAINTAIN, false);
-        Review abandonReview = submittedReview(20L, abandonPatent, battery, activeCycle, BusinessOpinion.ABANDON, true);
-        Report completedReport = report(1L, maintainPatent, new BigDecimal("82.50"));
         when(patentRepository.findAll()).thenReturn(List.of(abandonPatent, maintainPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of(
                 legalStatus(100L, maintainPatent, PatentLegalStatusType.REGISTERED, LocalDate.now()),
                 legalStatus(200L, abandonPatent, PatentLegalStatusType.EXPIRED, LocalDate.now())
         ));
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.of(activeCycle));
-        when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(maintainReview, abandonReview));
-        when(reportRepository.findAllByStatusIn(List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)))
-                .thenReturn(List.of(completedReport));
-
         Page<?> result = patentService.getAll(
                 legalUser(),
                 null,
                 1L,
-                "done",
-                "MAINTAIN",
-                false,
                 List.of("REGISTERED"),
                 "KR",
                 "expiryDate",
@@ -481,9 +457,8 @@ class PatentServiceTest {
         Object item = result.getContent().get(0);
         assertThat(item)
                 .extracting("id", "latestLegalStatus", "techField", "currentDepartmentId", "currentDepartmentName",
-                        "reviewStatus", "opinion", "checked", "latestReportScore", "isOverdue", "filingCountry")
-                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "done", "MAINTAIN", false,
-                        new BigDecimal("82.50"), false, "KR");
+                        "filingCountry")
+                .containsExactly(1L, "REGISTERED", "반도체", 1L, "통신", "KR");
     }
 
     @Test
@@ -517,14 +492,9 @@ class PatentServiceTest {
         );
         when(patentRepository.findAll()).thenReturn(List.of(betaPatent, alphaFirstPatent, alphaSecondPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.empty());
 
         Page<?> result = patentService.getAll(
                 legalUser(),
-                null,
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -561,14 +531,9 @@ class PatentServiceTest {
         );
         when(patentRepository.findAll()).thenReturn(List.of(approvedPatent, pendingPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.empty());
 
         Page<?> result = patentService.getAll(
                 legalUser(),
-                null,
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -605,8 +570,6 @@ class PatentServiceTest {
         );
         when(patentRepository.findAll()).thenReturn(List.of(approvedPatent, pendingPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.empty());
 
         Page<?> result = patentService.getPendingApprovals(
                 legalUser(),
@@ -621,7 +584,7 @@ class PatentServiceTest {
     }
 
     @Test
-    void getAllFiltersUnassignedPatentsByReviewStatusAndDepartmentSentinel() {
+    void getAllFiltersUnassignedPatentsByDepartmentSentinel() {
         Patent assignedPatent = patent(
                 1L,
                 "Assigned Patent",
@@ -642,69 +605,11 @@ class PatentServiceTest {
         );
         when(patentRepository.findAll()).thenReturn(List.of(assignedPatent, unassignedPatent));
         when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.empty());
 
         Page<?> result = patentService.getAll(
                 legalUser(),
                 null,
                 -1L,
-                "unassigned",
-                null,
-                null,
-                null,
-                null,
-                null,
-                PageRequest.of(0, 20)
-        );
-
-        assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0))
-                .extracting("id", "reviewStatus", "currentDepartmentId")
-                .containsExactly(2L, "unassigned", null);
-    }
-
-    @Test
-    void getAllFiltersUnrequestedPatentsByReviewStatus() {
-        Department department = department("통신", 1L);
-        Patent unrequestedPatent = patent(
-                1L,
-                "Unrequested Patent",
-                "APP-LIST-UNREQUESTED",
-                "반도체",
-                "KR",
-                null,
-                department
-        );
-        Patent requestedPatent = patent(
-                2L,
-                "Requested Patent",
-                "APP-LIST-REQUESTED",
-                "반도체",
-                "KR",
-                null,
-                department
-        );
-        ReviewCycle activeCycle = reviewCycle();
-        Review review = Review.builder()
-                .patent(requestedPatent)
-                .department(department)
-                .reviewCycle(activeCycle)
-                .build();
-        ReflectionTestUtils.setField(review, "id", 1L);
-        when(patentRepository.findAll()).thenReturn(List.of(unrequestedPatent, requestedPatent));
-        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
-        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
-                .thenReturn(Optional.of(activeCycle));
-        when(reviewRepository.findAllByReviewCycleId(1L)).thenReturn(List.of(review));
-
-        Page<?> result = patentService.getAll(
-                legalUser(),
-                null,
-                null,
-                "unrequested",
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -713,8 +618,8 @@ class PatentServiceTest {
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().get(0))
-                .extracting("id", "reviewStatus", "checked")
-                .containsExactly(1L, "unrequested", null);
+                .extracting("id", "currentDepartmentId")
+                .containsExactly(2L, null);
     }
 
     @Test
@@ -913,38 +818,6 @@ class PatentServiceTest {
                 .build();
         ReflectionTestUtils.setField(legalStatus, "id", id);
         return legalStatus;
-    }
-
-    private ReviewCycle reviewCycle() {
-        ReviewCycle reviewCycle = ReviewCycle.builder()
-                .year(2026)
-                .quarter(2)
-                .startDate(LocalDate.now().minusDays(1))
-                .endDate(LocalDate.now().plusDays(1))
-                .build();
-        ReflectionTestUtils.setField(reviewCycle, "id", 1L);
-        return reviewCycle;
-    }
-
-    private Review submittedReview(
-            Long id,
-            Patent patent,
-            Department department,
-            ReviewCycle reviewCycle,
-            BusinessOpinion opinion,
-            boolean checked
-    ) {
-        Review review = Review.builder()
-                .patent(patent)
-                .department(department)
-                .reviewCycle(reviewCycle)
-                .status(ReviewStatus.SUBMITTED)
-                .opinion(opinion)
-                .submittedAt(Instant.now())
-                .checked(checked)
-                .build();
-        ReflectionTestUtils.setField(review, "id", id);
-        return review;
     }
 
     private Report report(Long id, Patent patent, BigDecimal totalScore) {
