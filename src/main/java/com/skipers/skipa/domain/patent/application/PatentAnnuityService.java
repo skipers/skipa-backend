@@ -55,7 +55,9 @@ public class PatentAnnuityService {
                 Sort.by(Sort.Direction.DESC, "id")
         );
 
-        return patentAnnuityRepository.findByPatentId(patentId, sortedPageable).map(PatentAnnuityResponse::from);
+        return patentAnnuityRepository
+                .findByPatentIdAndStatus(patentId, PatentAnnuityStatus.PAID, sortedPageable)
+                .map(PatentAnnuityResponse::from);
     }
 
     private void createNextUnpaidAnnuity(PatentAnnuity paidAnnuity, int paymentYears) {

@@ -127,24 +127,24 @@ class PatentAnnuityServiceTest {
     }
 
     @Test
-    void getAllValidatesAccessAndUsesDescendingIdSort() {
+    void getAllReturnsOnlyPaidAnnuityHistoriesWithDescendingIdSort() {
         User user = legalUser();
         PatentAnnuity annuity = PatentAnnuity.builder()
                 .patent(patent())
                 .startYear(3)
-                .status(PatentAnnuityStatus.UNPAID)
+                .status(PatentAnnuityStatus.PAID)
                 .build();
         ReflectionTestUtils.setField(annuity, "id", 10L);
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(patentAnnuityRepository.findByPatentId(1L, sortedPageable))
+        when(patentAnnuityRepository.findByPatentIdAndStatus(1L, PatentAnnuityStatus.PAID, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(annuity), sortedPageable, 1));
 
         assertThat(patentAnnuityService.getAll(user, 1L, pageable).getContent())
                 .extracting(PatentAnnuityResponse::id)
                 .containsExactly(10L);
         verify(businessPatentAccessValidator).validate(user, 1L);
-        verify(patentAnnuityRepository).findByPatentId(1L, sortedPageable);
+        verify(patentAnnuityRepository).findByPatentIdAndStatus(1L, PatentAnnuityStatus.PAID, sortedPageable);
     }
 
     @Test
@@ -159,7 +159,7 @@ class PatentAnnuityServiceTest {
         );
 
         verify(businessPatentAccessValidator).validate(user, 1L);
-        verify(patentAnnuityRepository, never()).findByPatentId(any(), any());
+        verify(patentAnnuityRepository, never()).findByPatentIdAndStatus(any(), any(), any());
     }
 
     private Patent patent() {

@@ -882,10 +882,10 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 납부 완료(`PAID`) 이력 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 연차료 납부 이력 추가 | `POST` | `/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
 
-`BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다.
+`BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다. 조회 결과에는 `PAID` 상태의 납부 완료 이력만 포함됩니다.
 
 ---
 
