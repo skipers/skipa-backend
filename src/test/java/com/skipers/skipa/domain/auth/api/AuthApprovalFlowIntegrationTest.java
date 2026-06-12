@@ -816,7 +816,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
-    void businessUserCanReadOnlyCurrentlyAssignedPatents() throws Exception {
+    void businessUserCanListAllPatentsAndListOnlyCurrentlyAssignedPatentsSeparately() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")
                 .build());
@@ -835,12 +835,18 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
 
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("keyword", "assigned"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
+
+        mockMvc.perform(get("/patents/assigned")
+                        .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));

@@ -313,7 +313,8 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 특허 목록 조회 | `GET` | `/patents` | 키워드·상태·국가·기술분야·사업부·검토상태·정렬 필터 포함 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 목록 조회 | `GET` | `/patents` | 키워드·상태·국가·사업부·검토상태·정렬 필터 포함 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 담당 특허 목록 조회 | `GET` | `/patents/assigned` | 현재 담당 부서가 본인 소속 부서와 일치하는 특허 목록 조회 | `BUSINESS` |
 | 특허 통계 조회 | `GET` | `/patents/stats` | 권리 상태별·기술분야별·국가별·사업부별 집계 | `ADMIN`, `LEGAL` |
 | 특허 단일 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 특허 등록 | `POST` | `/patents` | 특허 정보 수동 등록 | `ADMIN`, `LEGAL` |
@@ -321,7 +322,8 @@
 | 담당 부서 변경 | `PATCH` | `/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
 | 특허 삭제 | `DELETE` | `/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
 
-`BUSINESS` 사용자는 현재 담당 부서가 본인 소속 부서와 같은 특허만 조회할 수 있습니다.
+`GET /patents`는 `BUSINESS` 사용자도 승인 완료된 전체 특허를 조회할 수 있습니다.
+담당 특허만 필요한 경우 `GET /patents/assigned`를 사용합니다.
 
 ---
 
@@ -333,7 +335,7 @@
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| query | string | N | 특허명 키워드 검색 |
+| keyword | string | N | 특허명 키워드 검색 |
 | status | string (복수) | N | 권리 상태 필터. `PUBLISHED` / `REGISTERED` / `REJECTED` / `ABANDONED` / `EXPIRED` / `INVALIDATED` / `WITHDRAWN`. 복수 지정 가능 (`?status=EXPIRED&status=ABANDONED`) |
 | filingCountry | string | N | 출원국 코드. `KR` / `US` / `EP` / `JP` / `CN` |
 | departmentId | long | N | 현재 담당 사업부 ID. `-1` 지정 시 미배정 특허만 조회 |
@@ -414,6 +416,29 @@
 ```
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404 — 활성 QUARTERLY 주기 없음, `reviewStatus` 사용 시)
+
+---
+
+#### `GET /patents/assigned`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**권한**: `BUSINESS`
+
+현재 담당 부서가 로그인한 사업부 사용자의 소속 부서와 일치하는 승인 완료 특허만 조회합니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| keyword | string | N | 특허명 키워드 검색 |
+| sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 20) |
+
+**응답 items[] 필드**: `GET /patents`와 동일
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 사업부 사용자의 소속 부서 없음)
 
 ---
 

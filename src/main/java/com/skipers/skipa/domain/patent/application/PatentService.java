@@ -176,9 +176,7 @@ public class PatentService {
                 Sort.by(Sort.Direction.ASC, "applicationNumber").and(Sort.by(Sort.Direction.DESC, "id"))
         );
 
-        Page<Patent> patents = user.getRole() == UserRole.BUSINESS
-                ? findBusinessPatents(user, normalizedKeyword, sortedPageable)
-                : findPatents(normalizedKeyword, sortedPageable);
+        Page<Patent> patents = findPatents(normalizedKeyword, sortedPageable);
 
         List<PatentListResponse> responses = patents.getContent().stream()
                 .filter(patent -> matchesApprovalStatus(patent, PatentApprovalStatus.APPROVED))
@@ -214,6 +212,31 @@ public class PatentService {
         );
     }
 
+    public Page<PatentListResponse> getAssigned(
+            User user,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        if (user.getDepartment() == null) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+
+        return getAllByApprovalStatus(
+                user,
+                keyword,
+                user.getDepartment().getId(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.APPROVED,
+                sort,
+                pageable
+        );
+    }
+
     private Page<PatentListResponse> getAllByApprovalStatus(
             User user,
             String keyword,
@@ -228,9 +251,7 @@ public class PatentService {
             Pageable pageable
     ) {
         String normalizedKeyword = normalizeKeyword(keyword);
-        List<Patent> patents = user.getRole() == UserRole.BUSINESS
-                ? findBusinessPatents(user, normalizedKeyword)
-                : findPatents(normalizedKeyword);
+        List<Patent> patents = findPatents(normalizedKeyword);
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
         Optional<ReviewCycle> activeReviewCycle = findActiveReviewCycle();
         Map<Long, Review> reviewsByPatentId = activeReviewCycle
