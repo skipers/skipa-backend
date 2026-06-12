@@ -884,8 +884,30 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | --- | --- | --- | --- | --- |
 | 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 납부 완료(`PAID`) 이력 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 연차료 납부 이력 추가 | `POST` | `/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
+| 연차료 납부 이력 수정 | `PUT` | `/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력의 납부 연수, 금액, 납부일자 수정 | `LEGAL` |
+| 연차료 납부 이력 삭제 | `DELETE` | `/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력 삭제 | `LEGAL` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다. 조회 결과에는 `PAID` 상태의 납부 완료 이력만 포함됩니다.
+수정/삭제 대상도 `PAID` 상태의 납부 완료 이력으로 제한됩니다.
+
+**추가 요청 예시**
+
+```json
+{
+  "paymentYears": 2,
+  "amount": 1000000
+}
+```
+
+**수정 요청 예시**
+
+```json
+{
+  "paymentYears": 2,
+  "amount": 1000000,
+  "paidDate": "2026-06-12"
+}
+```
 
 ---
 

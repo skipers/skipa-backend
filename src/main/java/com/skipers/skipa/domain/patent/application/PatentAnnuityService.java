@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
@@ -60,6 +61,27 @@ public class PatentAnnuityService {
                 .map(PatentAnnuityResponse::from);
     }
 
+    @Transactional
+    public PatentAnnuityResponse update(Long patentId, Long annuityId, PatentAnnuityUpdateRequest request) {
+        approvedPatentValidator.getApprovedPatent(patentId);
+
+        PatentAnnuity annuity = getPaidAnnuity(patentId, annuityId);
+        annuity.updatePayment(request.paymentYears(), request.amount(), request.paidDate());
+
+        portfolioInsightCacheInvalidator.evict();
+        return PatentAnnuityResponse.from(annuity);
+    }
+
+    @Transactional
+    public void delete(Long patentId, Long annuityId) {
+        approvedPatentValidator.getApprovedPatent(patentId);
+
+        PatentAnnuity annuity = getPaidAnnuity(patentId, annuityId);
+        patentAnnuityRepository.delete(annuity);
+
+        portfolioInsightCacheInvalidator.evict();
+    }
+
     private void createNextUnpaidAnnuity(PatentAnnuity paidAnnuity, int paymentYears) {
         int nextStartYear = paidAnnuity.getEndYear() + 1;
         Long patentId = paidAnnuity.getPatent().getId();
@@ -80,5 +102,11 @@ public class PatentAnnuityService {
             return null;
         }
         return paidAnnuity.getDueDate().plusYears(paymentYears);
+    }
+
+    private PatentAnnuity getPaidAnnuity(Long patentId, Long annuityId) {
+        return patentAnnuityRepository
+                .findByIdAndPatentIdAndStatus(annuityId, patentId, PatentAnnuityStatus.PAID)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PATENT_ANNUITY_NOT_FOUND));
     }
 }
