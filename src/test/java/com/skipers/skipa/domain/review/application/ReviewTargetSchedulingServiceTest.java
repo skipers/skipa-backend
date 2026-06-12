@@ -1,12 +1,17 @@
 package com.skipers.skipa.domain.review.application;
 
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
+import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.Review;
@@ -50,6 +55,12 @@ class ReviewTargetSchedulingServiceTest {
     @Mock
     private ApprovedPatentValidator approvedPatentValidator;
 
+    @Mock
+    private ReportGenerationPublisher reportGenerationPublisher;
+
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
+
     @InjectMocks
     private ReviewTargetSchedulingService reviewTargetSchedulingService;
 
@@ -77,6 +88,11 @@ class ReviewTargetSchedulingServiceTest {
                 .status(PatentAnnuityStatus.UNPAID)
                 .build();
         ReflectionTestUtils.setField(annuity, "id", 1000L);
+        Report report = Report.builder()
+                .patent(patent)
+                .status(ReportStatus.GENERATING)
+                .build();
+        ReflectionTestUtils.setField(report, "id", 200L);
         lenient().doNothing().when(approvedPatentValidator).validateApproved(any(Patent.class));
 
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(
@@ -88,14 +104,22 @@ class ReviewTargetSchedulingServiceTest {
                 any(),
                 any()
         )).thenReturn(List.of(annuity));
+        when(reportRepository.save(any(Report.class))).thenReturn(report);
 
         int created = reviewTargetSchedulingService.scheduleNextQuarterReviewTargets();
 
         assertThat(created).isEqualTo(1);
+        verify(reportRepository).save(argThat(savedReport ->
+                savedReport.getPatent() == patent
+                        && savedReport.getStatus() == ReportStatus.GENERATING
+        ));
+        verify(chatMessageRepository).deleteAllByTargetTypeAndTargetId(ChatTargetType.REPORT, 10L);
+        verify(reportGenerationPublisher).publish(200L, 10L);
         verify(reviewRepository).save(argThat(review ->
                 review.getPatent() == patent
                         && review.getDepartment() == department
                         && review.getReviewCycle() == reviewCycle
+                        && review.getReport() == report
                         && review.getPatentAnnuity() == annuity
                         && review.getStatus() == ReviewStatus.SCHEDULED
         ));
@@ -112,6 +136,8 @@ class ReviewTargetSchedulingServiceTest {
 
         assertThat(created).isZero();
         verify(patentAnnuityRepository, never()).findByStatusAndDueDateBetween(any(), any(), any());
+        verify(reportRepository, never()).save(any());
+        verify(reportGenerationPublisher, never()).publish(any(), any());
         verify(reviewRepository, never()).save(any());
     }
 
