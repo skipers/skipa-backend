@@ -11,9 +11,12 @@ import com.skipers.skipa.global.exception.ErrorCode;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+
+import java.time.Duration;
 
 @Component
 @Profile("!local")
@@ -28,7 +31,14 @@ public class RestReportChatClient implements ReportChatClient {
             @Value("${app.ai-server.report-chat-path}") String chatPath,
             ObjectMapper objectMapper
     ) {
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofMillis(3000));
+        requestFactory.setReadTimeout(Duration.ofMillis(120000));
+
+        this.restClient = RestClient.builder()
+                .baseUrl(baseUrl)
+                .requestFactory(requestFactory)
+                .build();
         this.chatPath = chatPath;
         this.objectMapper = objectMapper;
     }
