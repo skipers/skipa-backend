@@ -951,9 +951,6 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("departmentId", department.getId().toString())
-                        .param("reviewStatus", "done")
-                        .param("opinion", "MAINTAIN")
-                        .param("checked", "false")
                         .param("status", "REGISTERED")
                         .param("filingCountry", "KR")
                         .param("sort", "expiryDate"))
@@ -971,10 +968,12 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].filingCountry").value("KR"))
                 .andExpect(jsonPath("$.data.items[0].currentDepartmentId").value(department.getId()))
                 .andExpect(jsonPath("$.data.items[0].currentDepartmentName").value(department.getName()))
-                .andExpect(jsonPath("$.data.items[0].reviewStatus").value("done"))
-                .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"))
-                .andExpect(jsonPath("$.data.items[0].checked").value(false))
-                .andExpect(jsonPath("$.data.items[0].isOverdue").value(false));
+                .andExpect(jsonPath("$.data.items[0].reviewStatus").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].opinion").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].checked").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].latestReportScore").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].latestReportStatus").doesNotExist())
+                .andExpect(jsonPath("$.data.items[0].isOverdue").doesNotExist());
     }
 
     @Test

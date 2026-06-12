@@ -24,11 +24,6 @@ import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInval
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
-import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
-import com.skipers.skipa.domain.review.domain.BusinessOpinion;
-import com.skipers.skipa.domain.review.domain.Review;
-import com.skipers.skipa.domain.review.domain.ReviewCycle;
-import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
 import com.skipers.skipa.global.exception.ErrorCode;
@@ -62,7 +57,6 @@ public class PatentService {
     private final PatentLegalStatusRepository patentLegalStatusRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
     private final ReviewRepository reviewRepository;
-    private final ReviewCycleRepository reviewCycleRepository;
     private final ReportRepository reportRepository;
     private final BusinessPatentAccessValidator businessPatentAccessValidator;
     private final PatentExtractJobRepository patentExtractJobRepository;
@@ -189,9 +183,6 @@ public class PatentService {
             User user,
             String keyword,
             Long departmentId,
-            String reviewStatus,
-            String opinion,
-            Boolean checked,
             List<String> statuses,
             String filingCountry,
             String sort,
@@ -201,9 +192,6 @@ public class PatentService {
                 user,
                 keyword,
                 departmentId,
-                reviewStatus,
-                opinion,
-                checked,
                 statuses,
                 filingCountry,
                 PatentApprovalStatus.APPROVED,
@@ -228,9 +216,6 @@ public class PatentService {
                 user.getDepartment().getId(),
                 null,
                 null,
-                null,
-                null,
-                null,
                 PatentApprovalStatus.APPROVED,
                 sort,
                 pageable
@@ -241,9 +226,6 @@ public class PatentService {
             User user,
             String keyword,
             Long departmentId,
-            String reviewStatus,
-            String opinion,
-            Boolean checked,
             List<String> statuses,
             String filingCountry,
             PatentApprovalStatus approvalStatus,
@@ -253,29 +235,16 @@ public class PatentService {
         String normalizedKeyword = normalizeKeyword(keyword);
         List<Patent> patents = findPatents(normalizedKeyword);
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
-        Optional<ReviewCycle> activeReviewCycle = findActiveReviewCycle();
-        Map<Long, Review> reviewsByPatentId = activeReviewCycle
-                .map(reviewCycle -> latestReviewsByPatentId(reviewRepository.findAllByReviewCycleId(reviewCycle.getId())))
-                .orElseGet(Map::of);
-        Map<Long, BigDecimal> latestReportScores = latestReportScoresByPatentId();
         Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
-        BusinessOpinion parsedOpinion = parseOpinion(opinion);
-        LocalDate today = LocalDate.now();
 
         List<PatentListResponse> responses = patents.stream()
                 .filter(patent -> matchesApprovalStatus(patent, approvalStatus))
                 .filter(patent -> matchesDepartment(patent, departmentId))
-                .filter(patent -> matchesReviewStatus(patent, reviewsByPatentId.get(patent.getId()), reviewStatus, today))
-                .filter(patent -> matchesOpinion(reviewsByPatentId.get(patent.getId()), parsedOpinion))
-                .filter(patent -> matchesChecked(reviewsByPatentId.get(patent.getId()), checked))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
                 .map(patent -> toListResponse(
                         patent,
-                        latestStatuses.get(patent.getId()),
-                        reviewsByPatentId.get(patent.getId()),
-                        latestReportScores.get(patent.getId()),
-                        today
+                        latestStatuses.get(patent.getId())
                 ))
                 .sorted(listSort(sort))
                 .toList();
@@ -292,9 +261,6 @@ public class PatentService {
         return getAllByApprovalStatus(
                 user,
                 keyword,
-                null,
-                null,
-                null,
                 null,
                 null,
                 null,
@@ -441,24 +407,6 @@ public class PatentService {
         return latestStatuses;
     }
 
-    private Optional<ReviewCycle> findActiveReviewCycle() {
-        LocalDate today = LocalDate.now();
-        return reviewCycleRepository
-                .findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(today, today);
-    }
-
-    private Map<Long, Review> latestReviewsByPatentId(List<Review> reviews) {
-        Map<Long, Review> latestReviews = new HashMap<>();
-        for (Review review : reviews) {
-            Long patentId = review.getPatent().getId();
-            Review current = latestReviews.get(patentId);
-            if (current == null || review.getId() > current.getId()) {
-                latestReviews.put(patentId, review);
-            }
-        }
-        return latestReviews;
-    }
-
     private Set<PatentLegalStatusType> parseLegalStatuses(List<String> statuses) {
         if (statuses == null || statuses.isEmpty()) {
             return Set.of();
@@ -476,17 +424,6 @@ public class PatentService {
             }
         }
         return parsedStatuses;
-    }
-
-    private BusinessOpinion parseOpinion(String opinion) {
-        if (opinion == null || opinion.isBlank()) {
-            return null;
-        }
-        try {
-            return BusinessOpinion.valueOf(opinion);
-        } catch (IllegalArgumentException e) {
-            throw new PatentException(ErrorCode.INVALID_REQUEST);
-        }
     }
 
     private boolean matchesApprovalStatus(Patent patent, PatentApprovalStatus approvalStatus) {
@@ -514,37 +451,6 @@ public class PatentService {
         return department != null && department.getId().equals(departmentId);
     }
 
-    private boolean matchesReviewStatus(Patent patent, Review review, String reviewStatus, LocalDate today) {
-        if (reviewStatus == null || reviewStatus.isBlank()) {
-            return true;
-        }
-        return switch (reviewStatus) {
-            case "unassigned" -> patent.getCurrentDepartment() == null;
-            case "unrequested" -> review == null;
-            case "unread" -> review != null
-                    && review.getStatus() == ReviewStatus.SUBMITTED
-                    && !review.isChecked();
-            case "requested" -> review != null
-                    && review.getStatus() == ReviewStatus.PENDING
-                    && !review.getDueDate().isBefore(today);
-            case "overdue" -> review != null
-                    && isOverdueReview(review, today);
-            case "done" -> review != null && review.getStatus() == ReviewStatus.SUBMITTED;
-            default -> throw new PatentException(ErrorCode.INVALID_REQUEST);
-        };
-    }
-
-    private boolean matchesOpinion(Review review, BusinessOpinion opinion) {
-        return opinion == null || review != null && review.getOpinion() == opinion;
-    }
-
-    private boolean matchesChecked(Review review, Boolean checked) {
-        return checked == null
-                || review != null
-                && review.getStatus() == ReviewStatus.SUBMITTED
-                && review.isChecked() == checked;
-    }
-
     private boolean matchesLegalStatus(PatentLegalStatusType latestStatus, Set<PatentLegalStatusType> statuses) {
         return statuses.isEmpty() || latestStatus != null && statuses.contains(latestStatus);
     }
@@ -561,45 +467,12 @@ public class PatentService {
 
     private PatentListResponse toListResponse(
             Patent patent,
-            PatentLegalStatusType latestLegalStatus,
-            Review review,
-            BigDecimal latestReportScore,
-            LocalDate today
+            PatentLegalStatusType latestLegalStatus
     ) {
-        String reviewStatus = reviewStatus(patent, review, today);
         return PatentListResponse.of(
                 patent,
-                latestLegalStatus == null ? null : latestLegalStatus.name(),
-                reviewStatus,
-                review == null || review.getOpinion() == null ? null : review.getOpinion().name(),
-                review == null || review.getStatus() != ReviewStatus.SUBMITTED ? null : review.isChecked(),
-                latestReportScore,
-                review != null && isOverdueReview(review, today)
+                latestLegalStatus == null ? null : latestLegalStatus.name()
         );
-    }
-
-    private String reviewStatus(Patent patent, Review review, LocalDate today) {
-        if (patent.getCurrentDepartment() == null) {
-            return "unassigned";
-        }
-        if (review == null) {
-            return "unrequested";
-        }
-        if (review.getStatus() == ReviewStatus.SUBMITTED) {
-            return "done";
-        }
-        if (isOverdueReview(review, today)) {
-            return "overdue";
-        }
-        if (review.getStatus() == ReviewStatus.PENDING) {
-            return "requested";
-        }
-        return null;
-    }
-
-    private boolean isOverdueReview(Review review, LocalDate today) {
-        return review.getStatus() == ReviewStatus.OVERDUE
-                || review.getStatus() == ReviewStatus.PENDING && review.getDueDate().isBefore(today);
     }
 
     private Comparator<PatentListResponse> listSort(String sort) {
@@ -698,20 +571,4 @@ public class PatentService {
         return PatentDetailResponse.of(patent, latestLegalStatus, latestReportScore);
     }
 
-    private Map<Long, BigDecimal> latestReportScoresByPatentId() {
-        Map<Long, BigDecimal> scoresByPatentId = new HashMap<>();
-        Map<Long, Long> reportIdsByPatentId = new HashMap<>();
-        for (Report report : reportRepository.findAllByStatusIn(List.of(
-                com.skipers.skipa.domain.report.domain.ReportStatus.REPORT_COMPLETED,
-                com.skipers.skipa.domain.report.domain.ReportStatus.EMBEDDING_COMPLETED
-        ))) {
-            Long patentId = report.getPatent().getId();
-            Long currentReportId = reportIdsByPatentId.get(patentId);
-            if (currentReportId == null || report.getId() > currentReportId) {
-                reportIdsByPatentId.put(patentId, report.getId());
-                scoresByPatentId.put(patentId, report.getTotalScore());
-            }
-        }
-        return scoresByPatentId;
-    }
 }
