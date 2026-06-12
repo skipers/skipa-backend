@@ -816,7 +816,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
-    void businessUserCanReadOnlyCurrentlyAssignedPatents() throws Exception {
+    void businessUserCanListAllPatentsAndListOnlyCurrentlyAssignedPatentsSeparately() throws Exception {
         Department otherDepartment = departmentRepository.save(Department.builder()
                 .name("제조")
                 .build());
@@ -835,12 +835,18 @@ class AuthApprovalFlowIntegrationTest {
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
 
         mockMvc.perform(get("/patents")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("keyword", "assigned"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
+
+        mockMvc.perform(get("/patents/assigned")
+                        .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
@@ -950,7 +956,6 @@ class AuthApprovalFlowIntegrationTest {
                         .param("checked", "false")
                         .param("status", "REGISTERED")
                         .param("filingCountry", "KR")
-                        .param("techField", "반도체")
                         .param("sort", "expiryDate"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
@@ -1280,7 +1285,6 @@ class AuthApprovalFlowIntegrationTest {
 
     @Test
     void legalUserCanCreateReviewRequestWithReviewCycleDeadline() throws Exception {
-        LocalDate dueDate = LocalDate.of(2026, 6, 20);
         Patent patent = patentRepository.save(Patent.builder()
                 .title("Review Request Due Date Patent")
                 .applicationNumber("APP-REVIEW-DUE-DATE")
@@ -1289,13 +1293,7 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-review-due-date", "legal-review-due-date@example.com", UserRole.LEGAL);
 
         mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
-                        .header("Authorization", "Bearer " + legalToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "dueDate": "%s"
-                                }
-                                """.formatted(dueDate)))
+                        .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getDeadline().toString()));
 
@@ -1368,22 +1366,19 @@ class AuthApprovalFlowIntegrationTest {
                 .reviewCycle(reviewCycle)
                 .build());
         String legalToken = createActiveUserToken("legal-review-bulk", "legal-review-bulk@example.com", UserRole.LEGAL);
-        LocalDate dueDate = LocalDate.of(2026, 6, 20);
 
         mockMvc.perform(post("/reviews/bulk")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "patentIds": [%d, %d, %d, 999999, %d],
-                                  "dueDate": "%s"
+                                  "patentIds": [%d, %d, %d, 999999, %d]
                                 }
                                 """.formatted(
                                 eligiblePatent.getId(),
                                 duplicatePatent.getId(),
                                 unassignedPatent.getId(),
-                                eligiblePatent.getId(),
-                                dueDate
+                                eligiblePatent.getId()
                         )))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.reviewCycleId").value(reviewCycle.getId()))

@@ -17,6 +17,10 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.util.List;
 
 @Entity
 @Getter
@@ -47,18 +51,28 @@ public class ChatMessage extends BaseTimeEntity {
     @Column(name = "content", columnDefinition = "text", nullable = false)
     private String content;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "source_cards", columnDefinition = "jsonb")
+    private List<ChatSourceCard> sourceCards;
+
     @Builder
     private ChatMessage(
             ChatTargetType targetType,
             Long targetId,
             User user,
             ChatRole role,
-            String content
+            String content,
+            List<ChatSourceCard> sourceCards
     ) {
         this.targetType = targetType;
         this.targetId = targetId;
         this.user = user;
         this.role = role;
         this.content = content;
+        this.sourceCards = sourceCards != null ? sourceCards : List.of();
+    }
+
+    public List<ChatSourceCard> getSourceCards() {
+        return sourceCards != null ? sourceCards : List.of();
     }
 }

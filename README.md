@@ -149,17 +149,26 @@ RabbitMQ 메시지 payload는 다음 형식입니다.
 }
 ```
 
-AI Worker는 완료 시 MinIO 전체 URL이 아니라 object key만 백엔드에 전달합니다.
+AI Worker는 보고서 생성 완료 시 MinIO 전체 URL이 아니라 object key만 백엔드에 전달합니다.
 
 ```http
-PATCH /internal/reports/{reportId}/complete
+PATCH /internal/reports/{reportId}/report-complete
 X-Internal-Api-Key: <secret>
 ```
 
 ```json
 {
-  "reportKey": "reports/8001/report.html"
+  "reportKey": "reports/8001/report.html",
+  "totalScore": 82.5,
+  "valueGrade": "A"
 }
+```
+
+보고서 임베딩까지 완료되면 다음 내부 API를 호출합니다.
+
+```http
+PATCH /internal/reports/{reportId}/embedding-complete
+X-Internal-Api-Key: <secret>
 ```
 
 실패 시에는 다음 내부 API를 호출합니다.
@@ -175,7 +184,7 @@ X-Internal-Api-Key: <secret>
 }
 ```
 
-프론트는 `GET /patents/{patentId}/reports/{reportId}/status`를 polling하고, `COMPLETED`가 되면 `GET /patents/{patentId}/reports/{reportId}`로 백엔드가 생성한 MinIO presigned URL을 받습니다. 프론트 응답에는 MinIO object key를 직접 노출하지 않습니다.
+프론트는 `GET /patents/{patentId}/reports/{reportId}/status`를 polling합니다. `REPORT_COMPLETED`가 되면 `GET /patents/{patentId}/reports/{reportId}`로 백엔드가 생성한 MinIO presigned URL을 받을 수 있고, `EMBEDDING_COMPLETED`가 되면 임베딩까지 완료된 상태입니다. 프론트 응답에는 MinIO object key를 직접 노출하지 않습니다.
 
 ### 특허 원문 PDF 추출 흐름
 
@@ -227,7 +236,8 @@ API와 DB에 저장되는 enum 문자열은 영어 대문자로 통일합니다.
 | 권리 상태 | `PUBLISHED`, `REGISTERED`, `REJECTED`, `ABANDONED`, `EXPIRED`, `INVALIDATED`, `WITHDRAWN` |
 | 연차료 납부 상태 | `PAID`, `UNPAID`, `ABANDONED` |
 | 특허 추출 작업 상태 | `UPLOAD_PENDING`, `ANALYZING`, `COMPLETED`, `FAILED` |
-| 보고서 생성 상태 | `GENERATING`, `COMPLETED`, `FAILED` |
+| 보고서 처리 상태 | `GENERATING`, `REPORT_COMPLETED`, `EMBEDDING_COMPLETED`, `FAILED` |
+| 사전 평가 처리 상태 | `PROCESSING`, `REPORT_COMPLETED`, `EMBEDDING_COMPLETED`, `FAILED` |
 | 검토 제출 상태 | `PENDING`, `SUBMITTED` |
 | 사업부 의견 | `MAINTAIN`, `ABANDON` |
 

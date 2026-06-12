@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
 import com.skipers.skipa.domain.chat.domain.ChatRole;
 import com.skipers.skipa.domain.chat.domain.ChatTargetType;
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.preevaluation.application.PreEvaluationChatClient;
 import com.skipers.skipa.domain.preevaluation.application.PreEvaluationGenerationPublisher;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
@@ -203,7 +204,7 @@ class PreEvaluationFlowIntegrationTest {
                 .targetCountries("Korea, United States")
                 .build());
         when(chatClient.send(org.mockito.ArgumentMatchers.any(PreEvaluationChatClientRequest.class)))
-                .thenReturn("Strengthen the claim around the detection algorithm.");
+                .thenReturn(ChatClientResult.answerOnly("Strengthen the claim around the detection algorithm."));
 
         mockMvc.perform(post("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken)
@@ -254,7 +255,7 @@ class PreEvaluationFlowIntegrationTest {
                 .claims(java.util.List.of("A battery safety system comprising a sensor unit."))
                 .build());
         when(chatClient.send(org.mockito.ArgumentMatchers.any(PreEvaluationChatClientRequest.class)))
-                .thenReturn("AI answer");
+                .thenReturn(ChatClientResult.answerOnly("AI answer"));
         mockMvc.perform(post("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)

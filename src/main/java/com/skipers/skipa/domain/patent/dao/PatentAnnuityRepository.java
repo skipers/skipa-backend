@@ -14,6 +14,10 @@ public interface PatentAnnuityRepository extends JpaRepository<PatentAnnuity, Lo
 
     Page<PatentAnnuity> findByPatentId(Long patentId, Pageable pageable);
 
+    Page<PatentAnnuity> findByPatentIdAndStatus(Long patentId, PatentAnnuityStatus status, Pageable pageable);
+
+    Optional<PatentAnnuity> findByIdAndPatentIdAndStatus(Long id, Long patentId, PatentAnnuityStatus status);
+
     List<PatentAnnuity> findByStatusAndDueDateBetween(PatentAnnuityStatus status, LocalDate startDate, LocalDate endDate);
 
     List<PatentAnnuity> findByStatusAndDueDateBefore(PatentAnnuityStatus status, LocalDate date);

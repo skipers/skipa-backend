@@ -3,7 +3,9 @@ package com.skipers.skipa.domain.report.application;
 import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
 import com.skipers.skipa.domain.chat.domain.ChatMessage;
 import com.skipers.skipa.domain.chat.domain.ChatRole;
+import com.skipers.skipa.domain.chat.domain.ChatSourceCard;
 import com.skipers.skipa.domain.chat.domain.ChatTargetType;
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -91,14 +93,14 @@ class ReportChatServiceTest {
     void getMessagesReturnsOrderedReportMessages() {
         when(approvedPatentValidator.getApprovedPatent(100L)).thenReturn(patent);
         when(reportRepository.findByIdAndPatentId(1L, 100L)).thenReturn(Optional.of(report));
-        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, 1L))
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, 100L))
                 .thenReturn(List.of(message(1000L, ChatRole.USER, "question")));
 
         List<ReportChatMessageResponse> responses = chatService.getMessages(user, 100L, 1L);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).id()).isEqualTo(1000L);
-        assertThat(responses.get(0).reportId()).isEqualTo(1L);
+        assertThat(responses.get(0).patentId()).isEqualTo(100L);
         assertThat(responses.get(0).role()).isEqualTo("USER");
         assertThat(responses.get(0).content()).isEqualTo("question");
         verify(businessPatentAccessValidator).validate(user, 100L);
@@ -106,17 +108,31 @@ class ReportChatServiceTest {
 
     @Test
     void sendMessageStoresUserMessageAndAssistantMessage() {
-        ChatMessage previousMessage = message(999L, ChatRole.ASSISTANT, "previous answer");
+        ChatMessage previousQuestion = message(998L, ChatRole.USER, "previous question");
+        ChatMessage previousAnswer = message(999L, ChatRole.ASSISTANT, "previous answer");
         when(approvedPatentValidator.getApprovedPatent(100L)).thenReturn(patent);
         when(reportRepository.findByIdAndPatentId(1L, 100L)).thenReturn(Optional.of(report));
-        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, 1L))
-                .thenReturn(List.of(previousMessage));
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, 100L))
+                .thenReturn(List.of(previousQuestion, previousAnswer));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
             ChatMessage message = invocation.getArgument(0);
             ReflectionTestUtils.setField(message, "id", message.getRole() == ChatRole.USER ? 1000L : 1001L);
             return message;
         });
-        when(chatClient.send(any(ReportChatClientRequest.class))).thenReturn("assistant answer");
+        ChatSourceCard sourceCard = new ChatSourceCard(
+                "S1",
+                "Claim 1",
+                "Claim 1",
+                "report",
+                1,
+                "https://example.com/report",
+                "p.1",
+                "reports/1/report.json",
+                List.of("risk"),
+                "claim risk"
+        );
+        when(chatClient.send(any(ReportChatClientRequest.class)))
+                .thenReturn(new ChatClientResult("assistant answer", List.of(sourceCard)));
 
         ReportChatSendResponse response = chatService.sendMessage(
                 user,
@@ -130,17 +146,44 @@ class ReportChatServiceTest {
         assertThat(response.assistantMessage().id()).isEqualTo(1001L);
         assertThat(response.assistantMessage().role()).isEqualTo("ASSISTANT");
         assertThat(response.assistantMessage().content()).isEqualTo("assistant answer");
+        assertThat(response.assistantMessage().sourceCards()).containsExactly(sourceCard);
 
         ArgumentCaptor<ReportChatClientRequest> requestCaptor = ArgumentCaptor.forClass(ReportChatClientRequest.class);
         verify(chatClient).send(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().reportId()).isEqualTo(1L);
         assertThat(requestCaptor.getValue().patentId()).isEqualTo(100L);
-        assertThat(requestCaptor.getValue().userId()).isEqualTo(10L);
-        assertThat(requestCaptor.getValue().reportKey()).isEqualTo("reports/1/report.json");
-        assertThat(requestCaptor.getValue().message()).isEqualTo("What is the key risk?");
-        assertThat(requestCaptor.getValue().history())
-                .extracting(ReportChatClientRequest.Message::content)
-                .containsExactly("previous answer", "What is the key risk?");
+        assertThat(requestCaptor.getValue().userId()).isEqualTo("10");
+        assertThat(requestCaptor.getValue().question()).isEqualTo("What is the key risk?");
+        assertThat(requestCaptor.getValue().chatHistory())
+                .containsExactly(new ReportChatClientRequest.History("previous question", "previous answer"));
+    }
+
+    @Test
+    void sendMessagePassesOnlyFiveRecentHistoryPairs() {
+        List<ChatMessage> previousMessages = new java.util.ArrayList<>();
+        for (long i = 1; i <= 6; i++) {
+            previousMessages.add(message(i * 2 - 1, ChatRole.USER, "question " + i));
+            previousMessages.add(message(i * 2, ChatRole.ASSISTANT, "answer " + i));
+        }
+        when(approvedPatentValidator.getApprovedPatent(100L)).thenReturn(patent);
+        when(reportRepository.findByIdAndPatentId(1L, 100L)).thenReturn(Optional.of(report));
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, 100L))
+                .thenReturn(previousMessages);
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(chatClient.send(any(ReportChatClientRequest.class)))
+                .thenReturn(ChatClientResult.answerOnly("assistant answer"));
+
+        chatService.sendMessage(user, 100L, 1L, new ReportChatMessageRequest("current question"));
+
+        ArgumentCaptor<ReportChatClientRequest> requestCaptor = ArgumentCaptor.forClass(ReportChatClientRequest.class);
+        verify(chatClient).send(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().chatHistory())
+                .containsExactly(
+                        new ReportChatClientRequest.History("question 2", "answer 2"),
+                        new ReportChatClientRequest.History("question 3", "answer 3"),
+                        new ReportChatClientRequest.History("question 4", "answer 4"),
+                        new ReportChatClientRequest.History("question 5", "answer 5"),
+                        new ReportChatClientRequest.History("question 6", "answer 6")
+                );
     }
 
     @Test
@@ -165,13 +208,13 @@ class ReportChatServiceTest {
 
         chatService.clearMessages(user, 100L, 1L);
 
-        verify(chatMessageRepository).deleteAllByTargetTypeAndTargetId(ChatTargetType.REPORT, 1L);
+        verify(chatMessageRepository).deleteAllByTargetTypeAndTargetId(ChatTargetType.REPORT, 100L);
     }
 
     private ChatMessage message(Long id, ChatRole role, String content) {
         ChatMessage message = ChatMessage.builder()
                 .targetType(ChatTargetType.REPORT)
-                .targetId(report.getId())
+                .targetId(patent.getId())
                 .user(user)
                 .role(role)
                 .content(content)

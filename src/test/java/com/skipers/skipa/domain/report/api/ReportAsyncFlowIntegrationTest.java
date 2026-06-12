@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
 import com.skipers.skipa.domain.chat.domain.ChatRole;
 import com.skipers.skipa.domain.chat.domain.ChatTargetType;
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.report.application.ReportChatClient;
@@ -270,7 +271,7 @@ class ReportAsyncFlowIntegrationTest {
         report.completeReport("reports/%d/report.json".formatted(report.getId()), new BigDecimal("82.50"), "A", null);
         String legalToken = createActiveUserToken("legal-report-chat", "legal-report-chat@example.com");
         when(reportChatClient.send(org.mockito.ArgumentMatchers.any()))
-                .thenReturn("The strongest risk is claim breadth.");
+                .thenReturn(ChatClientResult.answerOnly("The strongest risk is claim breadth."));
 
         mockMvc.perform(post("/patents/{patentId}/reports/{reportId}/chat/messages", patent.getId(), report.getId())
                         .header("Authorization", "Bearer " + legalToken)
@@ -279,16 +280,16 @@ class ReportAsyncFlowIntegrationTest {
                                 {
                                   "message": "What is the key risk?"
                                 }
-                                """))
+                """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.userMessage.reportId").value(report.getId()))
+                .andExpect(jsonPath("$.data.userMessage.patentId").value(patent.getId()))
                 .andExpect(jsonPath("$.data.userMessage.role").value("USER"))
                 .andExpect(jsonPath("$.data.userMessage.content").value("What is the key risk?"))
-                .andExpect(jsonPath("$.data.assistantMessage.reportId").value(report.getId()))
+                .andExpect(jsonPath("$.data.assistantMessage.patentId").value(patent.getId()))
                 .andExpect(jsonPath("$.data.assistantMessage.role").value("ASSISTANT"))
                 .andExpect(jsonPath("$.data.assistantMessage.content").value("The strongest risk is claim breadth."));
 
-        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, report.getId()))
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, patent.getId()))
                 .extracting(message -> message.getRole())
                 .containsExactly(ChatRole.USER, ChatRole.ASSISTANT);
 
@@ -303,7 +304,7 @@ class ReportAsyncFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk());
 
-        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, report.getId()))
+        assertThat(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, patent.getId()))
                 .isEmpty();
     }
 

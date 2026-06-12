@@ -176,9 +176,7 @@ public class PatentService {
                 Sort.by(Sort.Direction.ASC, "applicationNumber").and(Sort.by(Sort.Direction.DESC, "id"))
         );
 
-        Page<Patent> patents = user.getRole() == UserRole.BUSINESS
-                ? findBusinessPatents(user, normalizedKeyword, sortedPageable)
-                : findPatents(normalizedKeyword, sortedPageable);
+        Page<Patent> patents = findPatents(normalizedKeyword, sortedPageable);
 
         List<PatentListResponse> responses = patents.getContent().stream()
                 .filter(patent -> matchesApprovalStatus(patent, PatentApprovalStatus.APPROVED))
@@ -196,7 +194,6 @@ public class PatentService {
             Boolean checked,
             List<String> statuses,
             String filingCountry,
-            String techField,
             String sort,
             Pageable pageable
     ) {
@@ -209,7 +206,31 @@ public class PatentService {
                 checked,
                 statuses,
                 filingCountry,
-                techField,
+                PatentApprovalStatus.APPROVED,
+                sort,
+                pageable
+        );
+    }
+
+    public Page<PatentListResponse> getAssigned(
+            User user,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        if (user.getDepartment() == null) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+
+        return getAllByApprovalStatus(
+                user,
+                keyword,
+                user.getDepartment().getId(),
+                null,
+                null,
+                null,
+                null,
+                null,
                 PatentApprovalStatus.APPROVED,
                 sort,
                 pageable
@@ -225,15 +246,12 @@ public class PatentService {
             Boolean checked,
             List<String> statuses,
             String filingCountry,
-            String techField,
             PatentApprovalStatus approvalStatus,
             String sort,
             Pageable pageable
     ) {
         String normalizedKeyword = normalizeKeyword(keyword);
-        List<Patent> patents = user.getRole() == UserRole.BUSINESS
-                ? findBusinessPatents(user, normalizedKeyword)
-                : findPatents(normalizedKeyword);
+        List<Patent> patents = findPatents(normalizedKeyword);
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
         Optional<ReviewCycle> activeReviewCycle = findActiveReviewCycle();
         Map<Long, Review> reviewsByPatentId = activeReviewCycle
@@ -252,7 +270,6 @@ public class PatentService {
                 .filter(patent -> matchesChecked(reviewsByPatentId.get(patent.getId()), checked))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
-                .filter(patent -> matchesText(patent.getTechField(), techField))
                 .map(patent -> toListResponse(
                         patent,
                         latestStatuses.get(patent.getId()),
@@ -275,7 +292,6 @@ public class PatentService {
         return getAllByApprovalStatus(
                 user,
                 keyword,
-                null,
                 null,
                 null,
                 null,

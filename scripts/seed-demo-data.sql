@@ -273,7 +273,7 @@ where not exists (
 );
 
 with current_cycle as (
-    select id from review_cycles where cycle_year = 2026 and quarter = 2
+    select id, deadline from review_cycles where cycle_year = 2026 and quarter = 2
 ),
 current_reviews as (
     select
