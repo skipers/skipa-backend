@@ -13,7 +13,6 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
-import com.skipers.skipa.domain.review.dto.request.ReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
@@ -123,7 +122,6 @@ class ReviewServiceTest {
 
     @Test
     void createUsesReviewCycleDeadline() {
-        LocalDate dueDate = LocalDate.of(2026, 6, 20);
         when(patentRepository.findById(10L)).thenReturn(Optional.of(patent));
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(reviewCycle));
@@ -134,7 +132,7 @@ class ReviewServiceTest {
             return review;
         });
 
-        ReviewResponse response = reviewService.create(10L, new ReviewCreateRequest(dueDate));
+        ReviewResponse response = reviewService.create(10L);
 
         assertThat(response.dueDate()).isEqualTo(reviewCycle.getDeadline());
     }
@@ -212,7 +210,6 @@ class ReviewServiceTest {
 
     @Test
     void createRequestsScheduledReviewTargetInsteadOfCreatingDuplicate() {
-        LocalDate dueDate = LocalDate.of(2026, 6, 20);
         Review scheduledReview = Review.builder()
                 .patent(patent)
                 .department(department)
@@ -226,7 +223,7 @@ class ReviewServiceTest {
         when(reviewRepository.findByReviewCycleIdAndPatentIdAndDepartmentId(1L, 10L, 1L))
                 .thenReturn(Optional.of(scheduledReview));
 
-        ReviewResponse response = reviewService.create(10L, new ReviewCreateRequest(dueDate));
+        ReviewResponse response = reviewService.create(10L);
 
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.status()).isEqualTo("PENDING");
@@ -237,7 +234,6 @@ class ReviewServiceTest {
 
     @Test
     void createBulkCreatesEligibleReviewsAndReturnsSkippedReasons() {
-        LocalDate dueDate = LocalDate.of(2026, 6, 20);
         Patent unassignedPatent = Patent.builder()
                 .title("Unassigned Patent")
                 .applicationNumber("APP-2")
@@ -273,7 +269,7 @@ class ReviewServiceTest {
         )).thenReturn(List.of(duplicateReview));
 
         BulkReviewCreateResponse response = reviewService.createBulk(
-                new BulkReviewCreateRequest(List.of(10L, 20L, 30L, 40L, 99L, 10L), dueDate)
+                new BulkReviewCreateRequest(List.of(10L, 20L, 30L, 40L, 99L, 10L))
         );
 
         assertThat(response.reviewCycleId()).isEqualTo(1L);

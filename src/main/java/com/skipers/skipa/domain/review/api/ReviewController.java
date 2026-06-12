@@ -2,7 +2,6 @@ package com.skipers.skipa.domain.review.api;
 
 import com.skipers.skipa.domain.review.application.ReviewService;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
-import com.skipers.skipa.domain.review.dto.request.ReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
@@ -40,10 +39,9 @@ public class ReviewController {
     @PreAuthorize("hasRole('LEGAL')")
     @PostMapping("/patents/{patentId}/reviews")
     public ResponseEntity<ApiResponse<ReviewResponse>> create(
-            @PathVariable Long patentId,
-            @Valid @RequestBody(required = false) ReviewCreateRequest request
+            @PathVariable Long patentId
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reviewService.create(patentId, request)));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(reviewService.create(patentId)));
     }
 
     /**

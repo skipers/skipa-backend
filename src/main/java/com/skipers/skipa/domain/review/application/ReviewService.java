@@ -15,7 +15,6 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.dto.request.BulkReviewCreateRequest;
-import com.skipers.skipa.domain.review.dto.request.ReviewCreateRequest;
 import com.skipers.skipa.domain.review.dto.response.BulkReviewCreateResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewConfirmResponse;
 import com.skipers.skipa.domain.review.dto.response.ReviewResponse;
@@ -48,11 +47,6 @@ public class ReviewService {
 
     @Transactional
     public ReviewResponse create(Long patentId) {
-        return create(patentId, null);
-    }
-
-    @Transactional
-    public ReviewResponse create(Long patentId, ReviewCreateRequest request) {
         Patent patent = patentRepository.findById(patentId)
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
         approvedPatentValidator.validateApproved(patent);
