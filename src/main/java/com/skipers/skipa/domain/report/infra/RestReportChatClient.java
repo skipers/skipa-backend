@@ -1,5 +1,7 @@
 package com.skipers.skipa.domain.report.infra;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.report.application.ReportChatClient;
 import com.skipers.skipa.domain.report.dto.request.ReportChatClientRequest;
@@ -19,22 +21,32 @@ public class RestReportChatClient implements ReportChatClient {
 
     private final RestClient restClient;
     private final String chatPath;
+    private final ObjectMapper objectMapper;
 
     public RestReportChatClient(
             @Value("${app.ai-server.base-url}") String baseUrl,
-            @Value("${app.ai-server.report-chat-path}") String chatPath
+            @Value("${app.ai-server.report-chat-path}") String chatPath,
+            ObjectMapper objectMapper
     ) {
         this.restClient = RestClient.builder().baseUrl(baseUrl).build();
         this.chatPath = chatPath;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public ChatClientResult send(ReportChatClientRequest request) {
+        String requestBody;
+        try {
+            requestBody = objectMapper.writeValueAsString(request);
+        } catch (JsonProcessingException e) {
+            throw new ReportException(ErrorCode.AI_SERVER_ERROR, e);
+        }
+
         ReportChatClientResponse response = restClient.post()
                 .uri(chatPath, request.patentId())
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .body(request)
+                .body(requestBody)
                 .retrieve()
                 .body(ReportChatClientResponse.class);
 
