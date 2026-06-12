@@ -5,6 +5,7 @@ import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
+import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDecisionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioDistributionResponse;
 import com.skipers.skipa.domain.portfolio.dto.response.PortfolioTrendsResponse;
@@ -32,6 +33,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PortfolioService {
+
+    private static final int TREND_YEAR_COUNT = 7;
 
     private final PatentRepository patentRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
@@ -78,36 +81,40 @@ public class PortfolioService {
     }
 
     public PortfolioTrendsResponse getTrends() {
+        int currentYear = LocalDate.now().getYear();
+        int startYear = currentYear - TREND_YEAR_COUNT + 1;
         List<Patent> patents = patentRepository.findAll();
         List<PatentAnnuity> annuities = patentAnnuityRepository.findAll();
-        Map<Integer, YearPatentAccumulator> patentTrends = new LinkedHashMap<>();
-        Map<Integer, Long> annuityCosts = new LinkedHashMap<>();
+        Map<Integer, YearPatentAccumulator> patentTrends = patentTrendYears(startYear, currentYear);
+        Map<Integer, Long> annuityCosts = annuityCostYears(startYear, currentYear);
 
         patents.stream()
                 .map(Patent::getApplicationDate)
                 .filter(date -> date != null)
                 .map(LocalDate::getYear)
-                .sorted()
+                .filter(year -> isTrendYear(year, startYear, currentYear))
                 .forEach(year -> patentTrends.computeIfAbsent(year, YearPatentAccumulator::new).applications++);
         patents.stream()
                 .map(Patent::getRegistrationDate)
                 .filter(date -> date != null)
                 .map(LocalDate::getYear)
-                .sorted()
+                .filter(year -> isTrendYear(year, startYear, currentYear))
                 .forEach(year -> patentTrends.computeIfAbsent(year, YearPatentAccumulator::new).registrations++);
         patents.stream()
                 .map(Patent::getExpiryDate)
                 .filter(date -> date != null)
                 .map(LocalDate::getYear)
-                .sorted()
+                .filter(year -> isTrendYear(year, startYear, currentYear))
                 .forEach(year -> patentTrends.computeIfAbsent(year, YearPatentAccumulator::new).expiries++);
 
         annuities.stream()
+                .filter(annuity -> annuity.getStatus() == PatentAnnuityStatus.PAID)
                 .filter(annuity -> annuity.getAmount() != null)
+                .filter(annuity -> annuity.getPaidDate() != null)
                 .forEach(annuity -> {
-                    LocalDate baseDate = annuity.getPaidDate() != null ? annuity.getPaidDate() : annuity.getDueDate();
-                    if (baseDate != null) {
-                        annuityCosts.merge(baseDate.getYear(), annuity.getAmount().longValue(), Long::sum);
+                    int year = annuity.getPaidDate().getYear();
+                    if (isTrendYear(year, startYear, currentYear)) {
+                        annuityCosts.merge(year, annuity.getAmount().longValue(), Long::sum);
                     }
                 });
 
@@ -127,36 +134,58 @@ public class PortfolioService {
         );
     }
 
+    private Map<Integer, YearPatentAccumulator> patentTrendYears(int startYear, int currentYear) {
+        Map<Integer, YearPatentAccumulator> trends = new LinkedHashMap<>();
+        for (int year = startYear; year <= currentYear; year++) {
+            trends.put(year, new YearPatentAccumulator(year));
+        }
+        return trends;
+    }
+
+    private Map<Integer, Long> annuityCostYears(int startYear, int currentYear) {
+        Map<Integer, Long> costs = new LinkedHashMap<>();
+        for (int year = startYear; year <= currentYear; year++) {
+            costs.put(year, 0L);
+        }
+        return costs;
+    }
+
+    private boolean isTrendYear(int year, int startYear, int currentYear) {
+        return year >= startYear && year <= currentYear;
+    }
+
     public PortfolioDecisionResponse getDecisions() {
         List<Review> submittedReviews = reviewRepository.findAll().stream()
                 .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
                 .filter(review -> review.getOpinion() != null)
                 .toList();
-        Map<String, DecisionAccumulator> byQuarter = new LinkedHashMap<>();
-        Map<Long, DepartmentDecisionAccumulator> byDepartment = new HashMap<>();
-        Map<String, DecisionAccumulator> byTechField = new HashMap<>();
+        Map<String, QuarterDecisionAccumulator> byQuarter = new LinkedHashMap<>();
 
         for (Review review : submittedReviews) {
             String quarter = submittedQuarter(review);
-            if (quarter != null) {
-                accumulate(byQuarter.computeIfAbsent(quarter, ignored -> new DecisionAccumulator()), review.getOpinion());
+            if (quarter == null) {
+                continue;
             }
 
-            DepartmentDecisionAccumulator departmentAccumulator = byDepartment.computeIfAbsent(
+            QuarterDecisionAccumulator quarterAccumulator = byQuarter.computeIfAbsent(
+                    quarter,
+                    QuarterDecisionAccumulator::new
+            );
+            accumulate(quarterAccumulator, review.getOpinion());
+
+            DepartmentDecisionAccumulator departmentAccumulator = quarterAccumulator.byDepartment.computeIfAbsent(
                     review.getDepartment().getId(),
                     ignored -> new DepartmentDecisionAccumulator(review.getDepartment().getId(), review.getDepartment().getName())
             );
             accumulate(departmentAccumulator, review.getOpinion());
             accumulate(
-                    byTechField.computeIfAbsent(normalizeGroupName(review.getPatent().getTechField()), ignored -> new DecisionAccumulator()),
+                    quarterAccumulator.byTechField.computeIfAbsent(normalizeGroupName(review.getPatent().getTechField()), ignored -> new DecisionAccumulator()),
                     review.getOpinion()
             );
         }
 
         return new PortfolioDecisionResponse(
-                quarterDecisions(byQuarter),
-                departmentDecisions(byDepartment),
-                techFieldDecisions(byTechField)
+                quarterDecisions(byQuarter)
         );
     }
 
@@ -225,13 +254,17 @@ public class PortfolioService {
         return distributions;
     }
 
-    private List<PortfolioDecisionResponse.QuarterDecision> quarterDecisions(Map<String, DecisionAccumulator> decisions) {
-        return decisions.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new PortfolioDecisionResponse.QuarterDecision(
-                        entry.getKey(),
-                        entry.getValue().maintain,
-                        entry.getValue().abandon
+    private List<PortfolioDecisionResponse.QuarterDecision> quarterDecisions(
+            Map<String, QuarterDecisionAccumulator> decisions
+    ) {
+        return decisions.values().stream()
+                .sorted(Comparator.comparing(QuarterDecisionAccumulator::quarter))
+                .map(accumulator -> new PortfolioDecisionResponse.QuarterDecision(
+                        accumulator.quarter,
+                        accumulator.maintain,
+                        accumulator.abandon,
+                        departmentDecisions(accumulator.byDepartment),
+                        techFieldDecisions(accumulator.byTechField)
                 ))
                 .toList();
     }
@@ -343,6 +376,20 @@ public class PortfolioService {
     private static class DecisionAccumulator {
         protected long maintain;
         protected long abandon;
+    }
+
+    private static class QuarterDecisionAccumulator extends DecisionAccumulator {
+        private final String quarter;
+        private final Map<Long, DepartmentDecisionAccumulator> byDepartment = new HashMap<>();
+        private final Map<String, DecisionAccumulator> byTechField = new HashMap<>();
+
+        private QuarterDecisionAccumulator(String quarter) {
+            this.quarter = quarter;
+        }
+
+        private String quarter() {
+            return quarter;
+        }
     }
 
     private static class DepartmentDecisionAccumulator extends DecisionAccumulator {

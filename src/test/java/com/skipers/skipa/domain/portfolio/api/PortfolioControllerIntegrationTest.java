@@ -149,13 +149,57 @@ class PortfolioControllerIntegrationTest {
                 null,
                 LocalDate.now().plusYears(2)
         );
+        savePatent(
+                "Old Patent",
+                "APP-PORT-OLD",
+                "반도체",
+                "KR",
+                semiconductorDepartment,
+                LocalDate.now().minusYears(7),
+                LocalDate.now().minusYears(7),
+                LocalDate.now().minusYears(7)
+        );
         patentAnnuityRepository.save(PatentAnnuity.builder()
                 .patent(semiconductorPatent)
                 .startYear(3)
                 .endYear(3)
                 .dueDate(LocalDate.of(2026, 5, 1))
+                .paidDate(LocalDate.of(2026, 5, 10))
                 .status(PatentAnnuityStatus.PAID)
                 .amount(100_000)
+                .build());
+        patentAnnuityRepository.save(PatentAnnuity.builder()
+                .patent(batteryPatent)
+                .startYear(4)
+                .endYear(4)
+                .dueDate(LocalDate.of(2025, 5, 1))
+                .paidDate(LocalDate.of(2025, 5, 10))
+                .status(PatentAnnuityStatus.PAID)
+                .amount(200_000)
+                .build());
+        patentAnnuityRepository.save(PatentAnnuity.builder()
+                .patent(batteryPatent)
+                .startYear(5)
+                .dueDate(LocalDate.of(2026, 7, 1))
+                .status(PatentAnnuityStatus.UNPAID)
+                .amount(300_000)
+                .build());
+        patentAnnuityRepository.save(PatentAnnuity.builder()
+                .patent(batteryPatent)
+                .startYear(6)
+                .endYear(6)
+                .dueDate(LocalDate.of(2024, 7, 1))
+                .status(PatentAnnuityStatus.PAID)
+                .amount(400_000)
+                .build());
+        patentAnnuityRepository.save(PatentAnnuity.builder()
+                .patent(batteryPatent)
+                .startYear(7)
+                .endYear(7)
+                .dueDate(LocalDate.now().minusYears(7))
+                .paidDate(LocalDate.now().minusYears(7))
+                .status(PatentAnnuityStatus.PAID)
+                .amount(500_000)
                 .build());
         reviewRepository.save(Review.builder()
                 .patent(semiconductorPatent)
@@ -240,12 +284,24 @@ class PortfolioControllerIntegrationTest {
 
     @Test
     void portfolioTrendsReturnsYearlyPatentAndAnnuityTrends() throws Exception {
+        int currentYear = LocalDate.now().getYear();
+        int startYear = currentYear - 6;
+
         mockMvc.perform(get("/portfolio/trends")
                 .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.yearlyPatentTrends.length()").value(5))
-                .andExpect(jsonPath("$.data.yearlyAnnuityCosts[0].year").value(2026))
-                .andExpect(jsonPath("$.data.yearlyAnnuityCosts[0].amount").value(100000));
+                .andExpect(jsonPath("$.data.yearlyPatentTrends.length()").value(7))
+                .andExpect(jsonPath("$.data.yearlyPatentTrends[0].year").value(startYear))
+                .andExpect(jsonPath("$.data.yearlyPatentTrends[3].applications").value(1))
+                .andExpect(jsonPath("$.data.yearlyPatentTrends[4].applications").value(1))
+                .andExpect(jsonPath("$.data.yearlyPatentTrends[5].registrations").value(1))
+                .andExpect(jsonPath("$.data.yearlyPatentTrends[6].year").value(currentYear))
+                .andExpect(jsonPath("$.data.yearlyPatentTrends[6].expiries").value(1))
+                .andExpect(jsonPath("$.data.yearlyAnnuityCosts.length()").value(7))
+                .andExpect(jsonPath("$.data.yearlyAnnuityCosts[0].year").value(startYear))
+                .andExpect(jsonPath("$.data.yearlyAnnuityCosts[5].amount").value(200000))
+                .andExpect(jsonPath("$.data.yearlyAnnuityCosts[6].year").value(currentYear))
+                .andExpect(jsonPath("$.data.yearlyAnnuityCosts[6].amount").value(100000));
     }
 
     @Test
@@ -256,8 +312,22 @@ class PortfolioControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.byQuarter.length()").value(1))
                 .andExpect(jsonPath("$.data.byQuarter[0].maintain").value(1))
                 .andExpect(jsonPath("$.data.byQuarter[0].abandon").value(1))
-                .andExpect(jsonPath("$.data.byDepartment.length()").value(2))
-                .andExpect(jsonPath("$.data.byTechField.length()").value(2));
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment.length()").value(2))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[0].departmentName").value("반도체 사업부"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[0].maintain").value(1))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[0].abandon").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[1].departmentName").value("배터리 사업부"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[1].maintain").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[1].abandon").value(1))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField.length()").value(2))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[0].name").value("반도체"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[0].maintain").value(1))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[0].abandon").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[1].name").value("배터리"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[1].maintain").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[1].abandon").value(1))
+                .andExpect(jsonPath("$.data.byDepartment").doesNotExist())
+                .andExpect(jsonPath("$.data.byTechField").doesNotExist());
     }
 
     @Test
