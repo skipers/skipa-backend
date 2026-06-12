@@ -159,31 +159,33 @@ public class PortfolioService {
                 .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
                 .filter(review -> review.getOpinion() != null)
                 .toList();
-        Map<String, DecisionAccumulator> byQuarter = new LinkedHashMap<>();
-        Map<Long, DepartmentDecisionAccumulator> byDepartment = new HashMap<>();
-        Map<String, DecisionAccumulator> byTechField = new HashMap<>();
+        Map<String, QuarterDecisionAccumulator> byQuarter = new LinkedHashMap<>();
 
         for (Review review : submittedReviews) {
             String quarter = submittedQuarter(review);
-            if (quarter != null) {
-                accumulate(byQuarter.computeIfAbsent(quarter, ignored -> new DecisionAccumulator()), review.getOpinion());
+            if (quarter == null) {
+                continue;
             }
 
-            DepartmentDecisionAccumulator departmentAccumulator = byDepartment.computeIfAbsent(
+            QuarterDecisionAccumulator quarterAccumulator = byQuarter.computeIfAbsent(
+                    quarter,
+                    QuarterDecisionAccumulator::new
+            );
+            accumulate(quarterAccumulator, review.getOpinion());
+
+            DepartmentDecisionAccumulator departmentAccumulator = quarterAccumulator.byDepartment.computeIfAbsent(
                     review.getDepartment().getId(),
                     ignored -> new DepartmentDecisionAccumulator(review.getDepartment().getId(), review.getDepartment().getName())
             );
             accumulate(departmentAccumulator, review.getOpinion());
             accumulate(
-                    byTechField.computeIfAbsent(normalizeGroupName(review.getPatent().getTechField()), ignored -> new DecisionAccumulator()),
+                    quarterAccumulator.byTechField.computeIfAbsent(normalizeGroupName(review.getPatent().getTechField()), ignored -> new DecisionAccumulator()),
                     review.getOpinion()
             );
         }
 
         return new PortfolioDecisionResponse(
-                quarterDecisions(byQuarter),
-                departmentDecisions(byDepartment),
-                techFieldDecisions(byTechField)
+                quarterDecisions(byQuarter)
         );
     }
 
@@ -252,13 +254,17 @@ public class PortfolioService {
         return distributions;
     }
 
-    private List<PortfolioDecisionResponse.QuarterDecision> quarterDecisions(Map<String, DecisionAccumulator> decisions) {
-        return decisions.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new PortfolioDecisionResponse.QuarterDecision(
-                        entry.getKey(),
-                        entry.getValue().maintain,
-                        entry.getValue().abandon
+    private List<PortfolioDecisionResponse.QuarterDecision> quarterDecisions(
+            Map<String, QuarterDecisionAccumulator> decisions
+    ) {
+        return decisions.values().stream()
+                .sorted(Comparator.comparing(QuarterDecisionAccumulator::quarter))
+                .map(accumulator -> new PortfolioDecisionResponse.QuarterDecision(
+                        accumulator.quarter,
+                        accumulator.maintain,
+                        accumulator.abandon,
+                        departmentDecisions(accumulator.byDepartment),
+                        techFieldDecisions(accumulator.byTechField)
                 ))
                 .toList();
     }
@@ -370,6 +376,20 @@ public class PortfolioService {
     private static class DecisionAccumulator {
         protected long maintain;
         protected long abandon;
+    }
+
+    private static class QuarterDecisionAccumulator extends DecisionAccumulator {
+        private final String quarter;
+        private final Map<Long, DepartmentDecisionAccumulator> byDepartment = new HashMap<>();
+        private final Map<String, DecisionAccumulator> byTechField = new HashMap<>();
+
+        private QuarterDecisionAccumulator(String quarter) {
+            this.quarter = quarter;
+        }
+
+        private String quarter() {
+            return quarter;
+        }
     }
 
     private static class DepartmentDecisionAccumulator extends DecisionAccumulator {

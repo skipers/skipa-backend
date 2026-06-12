@@ -312,8 +312,22 @@ class PortfolioControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.byQuarter.length()").value(1))
                 .andExpect(jsonPath("$.data.byQuarter[0].maintain").value(1))
                 .andExpect(jsonPath("$.data.byQuarter[0].abandon").value(1))
-                .andExpect(jsonPath("$.data.byDepartment.length()").value(2))
-                .andExpect(jsonPath("$.data.byTechField.length()").value(2));
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment.length()").value(2))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[0].departmentName").value("반도체 사업부"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[0].maintain").value(1))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[0].abandon").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[1].departmentName").value("배터리 사업부"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[1].maintain").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byDepartment[1].abandon").value(1))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField.length()").value(2))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[0].name").value("반도체"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[0].maintain").value(1))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[0].abandon").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[1].name").value("배터리"))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[1].maintain").value(0))
+                .andExpect(jsonPath("$.data.byQuarter[0].byTechField[1].abandon").value(1))
+                .andExpect(jsonPath("$.data.byDepartment").doesNotExist())
+                .andExpect(jsonPath("$.data.byTechField").doesNotExist());
     }
 
     @Test
