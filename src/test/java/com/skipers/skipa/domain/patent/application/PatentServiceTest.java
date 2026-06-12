@@ -426,7 +426,6 @@ class PatentServiceTest {
                 false,
                 List.of("REGISTERED"),
                 "KR",
-                "반도체",
                 "expiryDate",
                 PageRequest.of(0, 20)
         );
@@ -483,7 +482,6 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
                 "title,desc",
                 PageRequest.of(0, 20)
         );
@@ -521,7 +519,6 @@ class PatentServiceTest {
 
         Page<?> result = patentService.getAll(
                 legalUser(),
-                null,
                 null,
                 null,
                 null,
@@ -611,7 +608,6 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
                 PageRequest.of(0, 20)
         );
 
@@ -660,7 +656,6 @@ class PatentServiceTest {
                 null,
                 null,
                 "unrequested",
-                null,
                 null,
                 null,
                 null,

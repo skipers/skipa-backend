@@ -196,7 +196,6 @@ public class PatentService {
             Boolean checked,
             List<String> statuses,
             String filingCountry,
-            String techField,
             String sort,
             Pageable pageable
     ) {
@@ -209,7 +208,6 @@ public class PatentService {
                 checked,
                 statuses,
                 filingCountry,
-                techField,
                 PatentApprovalStatus.APPROVED,
                 sort,
                 pageable
@@ -225,7 +223,6 @@ public class PatentService {
             Boolean checked,
             List<String> statuses,
             String filingCountry,
-            String techField,
             PatentApprovalStatus approvalStatus,
             String sort,
             Pageable pageable
@@ -252,7 +249,6 @@ public class PatentService {
                 .filter(patent -> matchesChecked(reviewsByPatentId.get(patent.getId()), checked))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
-                .filter(patent -> matchesText(patent.getTechField(), techField))
                 .map(patent -> toListResponse(
                         patent,
                         latestStatuses.get(patent.getId()),
@@ -275,7 +271,6 @@ public class PatentService {
         return getAllByApprovalStatus(
                 user,
                 keyword,
-                null,
                 null,
                 null,
                 null,

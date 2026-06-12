@@ -359,7 +359,7 @@ class ReviewServiceTest {
         PageRequest sortedPageable = PageRequest.of(
                 0,
                 20,
-                Sort.by(Sort.Direction.ASC, "patent.applicationDate")
+                Sort.by(Sort.Direction.ASC, "patent.title")
                         .and(Sort.by(Sort.Direction.DESC, "id"))
         );
         Review review = review();
@@ -368,7 +368,7 @@ class ReviewServiceTest {
         when(reviewRepository.findAllByFilters(1L, null, null, null, null, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll(null, null, null, null, "applicationDate,asc", pageable).getContent())
+        assertThat(reviewService.getAll(null, null, null, null, "title,asc", pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
         verify(reviewRepository).findAllByFilters(1L, null, null, null, null, sortedPageable);

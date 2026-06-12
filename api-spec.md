@@ -336,11 +336,10 @@
 | query | string | N | 특허명 키워드 검색 |
 | status | string (복수) | N | 권리 상태 필터. `PUBLISHED` / `REGISTERED` / `REJECTED` / `ABANDONED` / `EXPIRED` / `INVALIDATED` / `WITHDRAWN`. 복수 지정 가능 (`?status=EXPIRED&status=ABANDONED`) |
 | filingCountry | string | N | 출원국 코드. `KR` / `US` / `EP` / `JP` / `CN` |
-| techField | string | N | 기술 분야 필터 |
 | departmentId | long | N | 현재 담당 사업부 ID. `-1` 지정 시 미배정 특허만 조회 |
 | reviewStatus | string | N | 재평가 관리 탭 필터. `unread` / `unassigned` / `requested` / `overdue` / `done`. 생략 시 전체 (현재 활성 QUARTERLY 주기 기준 자동 적용) |
 | decision | string | N | 결정 필터. `MAINTAIN` / `ABANDON` |
-| sort | string | N | 정렬 기준. `expiryDate` / `applicationDate` / `citationCount` |
+| sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 20) |
 

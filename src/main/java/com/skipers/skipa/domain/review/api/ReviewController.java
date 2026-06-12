@@ -74,7 +74,7 @@ public class ReviewController {
             summary = "[Legal] 이번 분기 검토 대상 특허 목록 조회",
             description = "관리자와 Legal 팀이 현재 활성 검토 주기에 포함된 검토 대상 특허 목록을 조회합니다. "
                     + "필터: status(SCHEDULED, PENDING, OVERDUE, SUBMITTED), departmentId, patentId, checked(true/false). "
-                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc, citationCount,asc|desc. "
                     + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")

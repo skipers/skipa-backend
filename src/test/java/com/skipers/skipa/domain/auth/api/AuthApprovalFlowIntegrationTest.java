@@ -950,7 +950,6 @@ class AuthApprovalFlowIntegrationTest {
                         .param("checked", "false")
                         .param("status", "REGISTERED")
                         .param("filingCountry", "KR")
-                        .param("techField", "반도체")
                         .param("sort", "expiryDate"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
