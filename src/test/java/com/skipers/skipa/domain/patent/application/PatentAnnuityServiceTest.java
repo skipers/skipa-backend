@@ -6,6 +6,7 @@ import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
 import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.portfolio.application.PortfolioInsightCacheInvalidator;
@@ -127,24 +128,24 @@ class PatentAnnuityServiceTest {
     }
 
     @Test
-    void getAllValidatesAccessAndUsesDescendingIdSort() {
+    void getAllReturnsOnlyPaidAnnuityHistoriesWithDescendingIdSort() {
         User user = legalUser();
         PatentAnnuity annuity = PatentAnnuity.builder()
                 .patent(patent())
                 .startYear(3)
-                .status(PatentAnnuityStatus.UNPAID)
+                .status(PatentAnnuityStatus.PAID)
                 .build();
         ReflectionTestUtils.setField(annuity, "id", 10L);
         PageRequest pageable = PageRequest.of(0, 20);
         PageRequest sortedPageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "id"));
-        when(patentAnnuityRepository.findByPatentId(1L, sortedPageable))
+        when(patentAnnuityRepository.findByPatentIdAndStatus(1L, PatentAnnuityStatus.PAID, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(annuity), sortedPageable, 1));
 
         assertThat(patentAnnuityService.getAll(user, 1L, pageable).getContent())
                 .extracting(PatentAnnuityResponse::id)
                 .containsExactly(10L);
         verify(businessPatentAccessValidator).validate(user, 1L);
-        verify(patentAnnuityRepository).findByPatentId(1L, sortedPageable);
+        verify(patentAnnuityRepository).findByPatentIdAndStatus(1L, PatentAnnuityStatus.PAID, sortedPageable);
     }
 
     @Test
@@ -159,7 +160,80 @@ class PatentAnnuityServiceTest {
         );
 
         verify(businessPatentAccessValidator).validate(user, 1L);
-        verify(patentAnnuityRepository, never()).findByPatentId(any(), any());
+        verify(patentAnnuityRepository, never()).findByPatentIdAndStatus(any(), any(), any());
+    }
+
+    @Test
+    void updateModifiesPaidAnnuityHistory() {
+        PatentAnnuity annuity = PatentAnnuity.builder()
+                .patent(patent())
+                .startYear(3)
+                .endYear(4)
+                .paidDate(LocalDate.of(2026, 6, 1))
+                .status(PatentAnnuityStatus.PAID)
+                .amount(100_000)
+                .build();
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent()));
+        when(patentAnnuityRepository.findByIdAndPatentIdAndStatus(10L, 1L, PatentAnnuityStatus.PAID))
+                .thenReturn(Optional.of(annuity));
+
+        PatentAnnuityResponse response = patentAnnuityService.update(
+                1L,
+                10L,
+                new PatentAnnuityUpdateRequest(3, 150_000, LocalDate.of(2026, 6, 12))
+        );
+
+        assertThat(response.endYear()).isEqualTo(5);
+        assertThat(response.amount()).isEqualTo(150_000);
+        assertThat(response.paidDate()).isEqualTo(LocalDate.of(2026, 6, 12));
+        verify(portfolioInsightCacheInvalidator).evict();
+    }
+
+    @Test
+    void updateRejectsMissingPaidAnnuityHistory() {
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent()));
+        when(patentAnnuityRepository.findByIdAndPatentIdAndStatus(10L, 1L, PatentAnnuityStatus.PAID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> patentAnnuityService.update(
+                1L,
+                10L,
+                new PatentAnnuityUpdateRequest(3, 150_000, LocalDate.of(2026, 6, 12))
+        )).isInstanceOfSatisfying(BusinessException.class,
+                exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PATENT_ANNUITY_NOT_FOUND));
+
+        verify(portfolioInsightCacheInvalidator, never()).evict();
+    }
+
+    @Test
+    void deleteRemovesPaidAnnuityHistory() {
+        PatentAnnuity annuity = PatentAnnuity.builder()
+                .patent(patent())
+                .startYear(3)
+                .status(PatentAnnuityStatus.PAID)
+                .build();
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent()));
+        when(patentAnnuityRepository.findByIdAndPatentIdAndStatus(10L, 1L, PatentAnnuityStatus.PAID))
+                .thenReturn(Optional.of(annuity));
+
+        patentAnnuityService.delete(1L, 10L);
+
+        verify(patentAnnuityRepository).delete(annuity);
+        verify(portfolioInsightCacheInvalidator).evict();
+    }
+
+    @Test
+    void deleteRejectsMissingPaidAnnuityHistory() {
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent()));
+        when(patentAnnuityRepository.findByIdAndPatentIdAndStatus(10L, 1L, PatentAnnuityStatus.PAID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> patentAnnuityService.delete(1L, 10L))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.PATENT_ANNUITY_NOT_FOUND));
+
+        verify(patentAnnuityRepository, never()).delete(any());
+        verify(portfolioInsightCacheInvalidator, never()).evict();
     }
 
     private Patent patent() {

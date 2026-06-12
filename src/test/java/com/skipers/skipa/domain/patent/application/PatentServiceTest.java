@@ -303,7 +303,7 @@ class PatentServiceTest {
     }
 
     @Test
-    void getAllForBusinessUserFiltersByDepartment() {
+    void getAllForBusinessUserSearchesAllPatents() {
         Department department = Department.builder().name("Telecom").build();
         ReflectionTestUtils.setField(department, "id", 1L);
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
@@ -314,20 +314,67 @@ class PatentServiceTest {
                 Sort.by(Sort.Direction.ASC, "applicationNumber")
                         .and(Sort.by(Sort.Direction.DESC, "id"))
         );
-        when(patentRepository.searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable))
+        when(patentRepository.searchByKeyword("patent", sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(patent), sortedPageable, 1));
 
         Page<?> result = patentService.getAll(businessUser(department), " patent ", pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(patentRepository).searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable);
-        verify(patentRepository, never()).searchByKeyword("patent", sortedPageable);
+        verify(patentRepository).searchByKeyword("patent", sortedPageable);
+        verify(patentRepository, never()).searchByCurrentDepartmentIdAndKeyword(1L, "patent", sortedPageable);
     }
 
     @Test
-    void getAllRejectsBusinessUserWithoutDepartment() {
+    void getAllAllowsBusinessUserWithoutDepartment() {
+        Pageable pageable = PageRequest.of(0, 20);
+        Pageable sortedPageable = PageRequest.of(
+                0,
+                20,
+                Sort.by(Sort.Direction.ASC, "applicationNumber")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+        when(patentRepository.findAll(sortedPageable)).thenReturn(new PageImpl<>(List.of(), sortedPageable, 0));
+
+        Page<?> result = patentService.getAll(businessUser(null), null, pageable);
+
+        assertThat(result.getContent()).isEmpty();
+        verify(patentRepository).findAll(sortedPageable);
+    }
+
+    @Test
+    void getAssignedFiltersBusinessUserDepartment() {
+        Department department = department("Telecom", 1L);
+        Patent assignedPatent = patent(
+                1L,
+                "Assigned Patent",
+                "APP-ASSIGNED",
+                "반도체",
+                "KR",
+                LocalDate.now().plusYears(1),
+                department
+        );
+        when(patentRepository.findAll()).thenReturn(List.of(assignedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+        when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
+                .thenReturn(Optional.empty());
+
+        Page<?> result = patentService.getAssigned(
+                businessUser(department),
+                null,
+                "title,asc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0))
+                .extracting("id", "currentDepartmentId")
+                .containsExactly(1L, 1L);
+    }
+
+    @Test
+    void getAssignedRejectsBusinessUserWithoutDepartment() {
         assertPatentError(
-                () -> patentService.getAll(businessUser(null), null, PageRequest.of(0, 20)),
+                () -> patentService.getAssigned(businessUser(null), null, null, PageRequest.of(0, 20)),
                 ErrorCode.FORBIDDEN
         );
     }
@@ -426,7 +473,6 @@ class PatentServiceTest {
                 false,
                 List.of("REGISTERED"),
                 "KR",
-                "반도체",
                 "expiryDate",
                 PageRequest.of(0, 20)
         );
@@ -483,7 +529,6 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
                 "title,desc",
                 PageRequest.of(0, 20)
         );
@@ -521,7 +566,6 @@ class PatentServiceTest {
 
         Page<?> result = patentService.getAll(
                 legalUser(),
-                null,
                 null,
                 null,
                 null,
@@ -611,7 +655,6 @@ class PatentServiceTest {
                 null,
                 null,
                 null,
-                null,
                 PageRequest.of(0, 20)
         );
 
@@ -660,7 +703,6 @@ class PatentServiceTest {
                 null,
                 null,
                 "unrequested",
-                null,
                 null,
                 null,
                 null,

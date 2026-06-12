@@ -3,7 +3,9 @@ package com.skipers.skipa.domain.preevaluation.application;
 import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
 import com.skipers.skipa.domain.chat.domain.ChatMessage;
 import com.skipers.skipa.domain.chat.domain.ChatRole;
+import com.skipers.skipa.domain.chat.domain.ChatSourceCard;
 import com.skipers.skipa.domain.chat.domain.ChatTargetType;
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.preevaluation.dao.PreEvaluationRepository;
 import com.skipers.skipa.domain.preevaluation.domain.PreEvaluation;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
@@ -90,17 +92,31 @@ class PreEvaluationChatServiceTest {
 
     @Test
     void sendMessageStoresUserMessageAndAssistantMessage() {
-        ChatMessage previousMessage = message(99L, ChatRole.ASSISTANT, "previous answer");
+        ChatMessage previousQuestion = message(98L, ChatRole.USER, "previous question");
+        ChatMessage previousAnswer = message(99L, ChatRole.ASSISTANT, "previous answer");
         when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
         when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.PRE_EVALUATION, 1L))
-                .thenReturn(List.of(previousMessage));
+                .thenReturn(List.of(previousQuestion, previousAnswer));
         when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> {
             ChatMessage message = invocation.getArgument(0);
             ReflectionTestUtils.setField(message, "id",
                     message.getRole() == ChatRole.USER ? 100L : 101L);
             return message;
         });
-        when(chatClient.send(any(PreEvaluationChatClientRequest.class))).thenReturn("assistant answer");
+        ChatSourceCard sourceCard = new ChatSourceCard(
+                "S1",
+                "Pre-evaluation report",
+                "Pre-evaluation report",
+                "pre_evaluation",
+                1,
+                "https://example.com/pre-evaluation",
+                "section 1",
+                "pre-evaluations/1/report.json",
+                List.of("claim"),
+                "claim suggestion"
+        );
+        when(chatClient.send(any(PreEvaluationChatClientRequest.class)))
+                .thenReturn(new ChatClientResult("assistant answer", List.of(sourceCard)));
 
         PreEvaluationChatSendResponse response = chatService.sendMessage(
                 user,
@@ -115,15 +131,45 @@ class PreEvaluationChatServiceTest {
         assertThat(response.assistantMessage().preEvaluationId()).isEqualTo(1L);
         assertThat(response.assistantMessage().role()).isEqualTo("ASSISTANT");
         assertThat(response.assistantMessage().content()).isEqualTo("assistant answer");
+        assertThat(response.assistantMessage().sourceCards()).containsExactly(sourceCard);
 
         ArgumentCaptor<PreEvaluationChatClientRequest> requestCaptor =
                 ArgumentCaptor.forClass(PreEvaluationChatClientRequest.class);
         verify(chatClient).send(requestCaptor.capture());
-        assertThat(requestCaptor.getValue().preEvaluationId()).isEqualTo(1L);
-        assertThat(requestCaptor.getValue().message()).isEqualTo("How can I improve this patent?");
-        assertThat(requestCaptor.getValue().history())
-                .extracting(PreEvaluationChatClientRequest.Message::content)
-                .containsExactly("previous answer", "How can I improve this patent?");
+        assertThat(requestCaptor.getValue().caseId()).isEqualTo(1L);
+        assertThat(requestCaptor.getValue().userId()).isEqualTo("10");
+        assertThat(requestCaptor.getValue().question()).isEqualTo("How can I improve this patent?");
+        assertThat(requestCaptor.getValue().chatHistory())
+                .containsExactly(new PreEvaluationChatClientRequest.History("previous question", "previous answer"));
+    }
+
+    @Test
+    void sendMessagePassesOnlyFiveRecentHistoryPairs() {
+        List<ChatMessage> previousMessages = new java.util.ArrayList<>();
+        for (long i = 1; i <= 6; i++) {
+            previousMessages.add(message(i * 2 - 1, ChatRole.USER, "question " + i));
+            previousMessages.add(message(i * 2, ChatRole.ASSISTANT, "answer " + i));
+        }
+        when(preEvaluationRepository.findByIdAndUserId(1L, 10L)).thenReturn(Optional.of(preEvaluation));
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.PRE_EVALUATION, 1L))
+                .thenReturn(previousMessages);
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(chatClient.send(any(PreEvaluationChatClientRequest.class)))
+                .thenReturn(ChatClientResult.answerOnly("assistant answer"));
+
+        chatService.sendMessage(user, 1L, new PreEvaluationChatMessageRequest("current question"));
+
+        ArgumentCaptor<PreEvaluationChatClientRequest> requestCaptor =
+                ArgumentCaptor.forClass(PreEvaluationChatClientRequest.class);
+        verify(chatClient).send(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().chatHistory())
+                .containsExactly(
+                        new PreEvaluationChatClientRequest.History("question 2", "answer 2"),
+                        new PreEvaluationChatClientRequest.History("question 3", "answer 3"),
+                        new PreEvaluationChatClientRequest.History("question 4", "answer 4"),
+                        new PreEvaluationChatClientRequest.History("question 5", "answer 5"),
+                        new PreEvaluationChatClientRequest.History("question 6", "answer 6")
+                );
     }
 
     @Test

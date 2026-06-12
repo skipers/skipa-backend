@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.preevaluation.infra;
 
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.preevaluation.application.PreEvaluationChatClient;
 import com.skipers.skipa.domain.preevaluation.dto.request.PreEvaluationChatClientRequest;
 import com.skipers.skipa.domain.preevaluation.dto.response.PreEvaluationChatClientResponse;
@@ -27,17 +28,17 @@ public class RestPreEvaluationChatClient implements PreEvaluationChatClient {
     }
 
     @Override
-    public String send(PreEvaluationChatClientRequest request) {
+    public ChatClientResult send(PreEvaluationChatClientRequest request) {
         PreEvaluationChatClientResponse response = restClient.post()
-                .uri(chatPath)
+                .uri(chatPath, request.caseId())
                 .body(request)
                 .retrieve()
                 .body(PreEvaluationChatClientResponse.class);
 
-        if (response == null || !StringUtils.hasText(response.message())) {
+        if (response == null || !StringUtils.hasText(response.answer())) {
             throw new PreEvaluationException(ErrorCode.AI_SERVER_ERROR);
         }
 
-        return response.message();
+        return response.toResult();
     }
 }

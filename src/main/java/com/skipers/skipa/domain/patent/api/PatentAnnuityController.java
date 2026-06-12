@@ -2,6 +2,7 @@ package com.skipers.skipa.domain.patent.api;
 
 import com.skipers.skipa.domain.patent.application.PatentAnnuityService;
 import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityCreateRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentAnnuityUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentAnnuityResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
@@ -16,8 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,5 +71,27 @@ public class PatentAnnuityController {
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
         return ApiResponse.ok(PageResponse.from(patentAnnuityService.getAll(userDetails.getUser(), patentId, pageable)));
+    }
+
+    @Operation(summary = "[Legal] 연차료 납부 이력 수정", description = "납부 완료된 연차료 이력의 납부 연수, 금액, 납부일자를 수정합니다.")
+    @PreAuthorize("hasRole('LEGAL')")
+    @PutMapping("/{annuityId}")
+    public ApiResponse<PatentAnnuityResponse> update(
+            @PathVariable Long patentId,
+            @PathVariable Long annuityId,
+            @Valid @RequestBody PatentAnnuityUpdateRequest request
+    ) {
+        return ApiResponse.ok(patentAnnuityService.update(patentId, annuityId, request));
+    }
+
+    @Operation(summary = "[Legal] 연차료 납부 이력 삭제", description = "납부 완료된 연차료 이력을 삭제합니다.")
+    @PreAuthorize("hasRole('LEGAL')")
+    @DeleteMapping("/{annuityId}")
+    public ApiResponse<Void> delete(
+            @PathVariable Long patentId,
+            @PathVariable Long annuityId
+    ) {
+        patentAnnuityService.delete(patentId, annuityId);
+        return ApiResponse.ok(null);
     }
 }

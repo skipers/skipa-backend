@@ -42,8 +42,8 @@ app:
     api-key: ${INTERNAL_API_KEY:}
   ai-server:
     base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
-    report-chat-path: ${AI_REPORT_CHAT_PATH:/reports/chat}
-    pre-evaluation-chat-path: ${AI_PRE_EVALUATION_CHAT_PATH:/pre-evaluations/chat}
+    report-chat-path: ${AI_REPORT_CHAT_PATH:/api/v1/patents/{patent_id}/chat}
+    pre-evaluation-chat-path: ${AI_PRE_EVALUATION_CHAT_PATH:/api/v1/pre-eval/cases/{case_id}/chat}
     portfolio-insights-path: ${AI_PORTFOLIO_INSIGHTS_PATH:/portfolio/insights}
     portfolio-insights-connect-timeout-ms: ${AI_PORTFOLIO_INSIGHTS_CONNECT_TIMEOUT_MS:3000}
     portfolio-insights-read-timeout-ms: ${AI_PORTFOLIO_INSIGHTS_READ_TIMEOUT_MS:30000}

@@ -1,18 +1,24 @@
 package com.skipers.skipa.domain.review.application;
 
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.domain.Patent;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuity;
 import com.skipers.skipa.domain.patent.domain.PatentAnnuityStatus;
+import com.skipers.skipa.domain.report.application.ReportGenerationPublisher;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
 import com.skipers.skipa.domain.report.domain.Report;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
+import com.skipers.skipa.domain.report.exception.ReportException;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
 import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
+import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +36,8 @@ public class ReviewTargetSchedulingService {
     private final ReviewRepository reviewRepository;
     private final ReportRepository reportRepository;
     private final ApprovedPatentValidator approvedPatentValidator;
+    private final ReportGenerationPublisher reportGenerationPublisher;
+    private final ChatMessageRepository chatMessageRepository;
 
     @Transactional
     public int scheduleNextQuarterReviewTargets() {
@@ -66,11 +74,12 @@ public class ReviewTargetSchedulingService {
                 continue;
             }
 
+            Report report = createReportGenerationRequest(patent);
             reviewRepository.save(Review.builder()
                     .patent(patent)
                     .department(department)
                     .reviewCycle(reviewCycle)
-                    .report(findLatestReport(patent.getId()))
+                    .report(report)
                     .patentAnnuity(annuity)
                     .status(ReviewStatus.SCHEDULED)
                     .build());
@@ -80,8 +89,20 @@ public class ReviewTargetSchedulingService {
         return created;
     }
 
-    private Report findLatestReport(Long patentId) {
-        return reportRepository.findFirstByPatentIdOrderByIdDesc(patentId).orElse(null);
+    private Report createReportGenerationRequest(Patent patent) {
+        Report report = reportRepository.save(Report.builder()
+                .patent(patent)
+                .status(ReportStatus.GENERATING)
+                .build());
+
+        chatMessageRepository.deleteAllByTargetTypeAndTargetId(ChatTargetType.REPORT, patent.getId());
+        try {
+            reportGenerationPublisher.publish(report.getId(), patent.getId());
+        } catch (RuntimeException e) {
+            throw new ReportException(ErrorCode.EXTERNAL_SERVICE_ERROR, e);
+        }
+
+        return report;
     }
 
     private boolean isApprovedPatent(Patent patent) {

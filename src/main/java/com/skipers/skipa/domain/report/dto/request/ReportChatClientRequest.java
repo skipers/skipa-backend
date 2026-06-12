@@ -1,47 +1,38 @@
 package com.skipers.skipa.domain.report.dto.request;
 
-import com.skipers.skipa.domain.chat.domain.ChatMessage;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.skipers.skipa.domain.report.domain.Report;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 public record ReportChatClientRequest(
-        Long reportId,
+        @JsonIgnore
         Long patentId,
-        Long userId,
-        String reportKey,
-        BigDecimal totalScore,
-        String valueGrade,
-        String message,
-        List<Message> history
+        @JsonProperty("user_id")
+        String userId,
+        String question,
+        @JsonProperty("chat_history")
+        List<History> chatHistory
 ) {
 
     public static ReportChatClientRequest of(
             Report report,
             Long userId,
-            String message,
-            List<Message> history
+            String question,
+            List<History> chatHistory
     ) {
         return new ReportChatClientRequest(
-                report.getId(),
                 report.getPatent().getId(),
-                userId,
-                report.getReportKey(),
-                report.getTotalScore(),
-                report.getValueGrade(),
-                message,
-                history
+                String.valueOf(userId),
+                question,
+                chatHistory
         );
     }
 
-    public record Message(
-            String role,
-            String content
+    public record History(
+            String question,
+            String answer
     ) {
-
-        public static Message from(ChatMessage message) {
-            return new Message(message.getRole().name(), message.getContent());
-        }
     }
 }

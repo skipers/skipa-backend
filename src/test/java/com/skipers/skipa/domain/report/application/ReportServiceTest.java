@@ -1,5 +1,7 @@
 package com.skipers.skipa.domain.report.application;
 
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
@@ -71,6 +73,9 @@ class ReportServiceTest {
     @Mock
     private PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
 
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
+
     @InjectMocks
     private ReportService reportService;
 
@@ -107,6 +112,7 @@ class ReportServiceTest {
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.patentId()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo("GENERATING");
+        verify(chatMessageRepository).deleteAllByTargetTypeAndTargetId(ChatTargetType.REPORT, 10L);
         verify(reportGenerationPublisher).publish(1L, 10L);
     }
 
@@ -119,6 +125,7 @@ class ReportServiceTest {
                 .isInstanceOf(com.skipers.skipa.domain.patent.exception.PatentException.class);
 
         verify(reportRepository, never()).save(any());
+        verify(chatMessageRepository, never()).deleteAllByTargetTypeAndTargetId(any(), any());
         verify(reportGenerationPublisher, never()).publish(any(), any());
     }
 

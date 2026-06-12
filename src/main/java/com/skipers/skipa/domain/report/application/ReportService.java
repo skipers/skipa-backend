@@ -1,5 +1,7 @@
 package com.skipers.skipa.domain.report.application;
 
+import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
+import com.skipers.skipa.domain.chat.domain.ChatTargetType;
 import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
 import com.skipers.skipa.domain.patent.domain.Patent;
@@ -46,6 +48,7 @@ public class ReportService {
     private final ReportStorageService reportStorageService;
     private final ReviewRepository reviewRepository;
     private final PortfolioInsightCacheInvalidator portfolioInsightCacheInvalidator;
+    private final ChatMessageRepository chatMessageRepository;
 
     private static final List<ReportStatus> REPORT_GENERATED_STATUSES = List.of(
             ReportStatus.REPORT_COMPLETED,
@@ -61,6 +64,7 @@ public class ReportService {
                 .status(ReportStatus.GENERATING)
                 .build());
 
+        chatMessageRepository.deleteAllByTargetTypeAndTargetId(ChatTargetType.REPORT, patent.getId());
         publishReportGenerationMessage(report);
 
         return ReportCreateResponse.from(report);

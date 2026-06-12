@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.report.infra;
 
+import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.report.application.ReportChatClient;
 import com.skipers.skipa.domain.report.dto.request.ReportChatClientRequest;
 import com.skipers.skipa.domain.report.dto.response.ReportChatClientResponse;
@@ -27,17 +28,17 @@ public class RestReportChatClient implements ReportChatClient {
     }
 
     @Override
-    public String send(ReportChatClientRequest request) {
+    public ChatClientResult send(ReportChatClientRequest request) {
         ReportChatClientResponse response = restClient.post()
-                .uri(chatPath)
+                .uri(chatPath, request.patentId())
                 .body(request)
                 .retrieve()
                 .body(ReportChatClientResponse.class);
 
-        if (response == null || !StringUtils.hasText(response.message())) {
+        if (response == null || !StringUtils.hasText(response.answer())) {
             throw new ReportException(ErrorCode.AI_SERVER_ERROR);
         }
 
-        return response.message();
+        return response.toResult();
     }
 }

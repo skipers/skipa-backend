@@ -92,11 +92,36 @@ public class PatentController {
     }
 
     @Operation(
+            summary = "[Business] 담당 특허 목록 조회",
+            description = "사업부 사용자가 현재 담당 부서가 본인 소속 부서와 일치하는 승인 완료 특허 목록을 조회합니다. "
+                    + "필터: keyword(특허명, 출원번호, 발명자, 출원인). "
+                    + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
+                    + "applicationDate,asc|desc, expiryDate,asc|desc, citationCount,asc|desc. "
+                    + "기존 sort=id도 지원합니다. "
+                    + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
+    )
+    @PreAuthorize("hasRole('BUSINESS')")
+    @GetMapping("/assigned")
+    public ApiResponse<PageResponse<PatentListResponse>> getAssignedPatents(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sort,
+            @PageableDefault(page = 0, size = 50) Pageable pageable
+    ) {
+        return ApiResponse.ok(PageResponse.from(patentService.getAssigned(
+                userDetails.getUser(),
+                keyword,
+                sort,
+                pageable
+        )));
+    }
+
+    @Operation(
             summary = "[Legal] 승인 대기 특허 목록 조회",
             description = "관리자와 Legal 팀이 사업부에서 등록 요청한 승인 대기 특허 목록을 조회합니다. "
                     + "필터: keyword(특허명, 출원번호, 발명자, 출원인). "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
-                    + "applicationDate,asc|desc, expiryDate,asc|desc. "
+                    + "applicationDate,asc|desc, expiryDate,asc|desc, citationCount,asc|desc. "
                     + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
@@ -125,7 +150,6 @@ public class PatentController {
      * @param checked 회신 확인 여부(선택)
      * @param status 권리 상태(선택, 복수 가능)
      * @param filingCountry 출원국(선택)
-     * @param techField 기술 분야(선택)
      * @param sort 정렬 기준(선택)
      * @param pageable page/size 정보
      * @return 특허 목록 페이지
@@ -138,12 +162,12 @@ public class PatentController {
                     + "reviewStatus(unassigned, unrequested, requested, overdue, done), "
                     + "opinion(MAINTAIN, ABANDON), checked(true/false), "
                     + "status(APPLIED, PUBLISHED, REGISTERED, REJECTED, ABANDONED, EXPIRED, INVALIDATED, WITHDRAWN, 복수 가능), "
-                    + "filingCountry, techField. "
+                    + "filingCountry. "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, "
-                    + "applicationDate,asc|desc, expiryDate,asc|desc. "
-                    + "기존 sort=id, expiryDate, applicationDate, citationCount도 지원합니다. "
+                    + "applicationDate,asc|desc, expiryDate,asc|desc, citationCount,asc|desc. "
+                    + "기존 sort=id도 지원합니다. "
                     + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다. "
-                    + "BUSINESS 사용자는 본인 소속 부서 특허만 조회합니다."
+                    + "BUSINESS 사용자도 승인 완료된 전체 특허를 조회합니다."
     )
     @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
     @GetMapping
@@ -156,7 +180,6 @@ public class PatentController {
             @RequestParam(required = false) Boolean checked,
             @RequestParam(required = false) List<String> status,
             @RequestParam(required = false) String filingCountry,
-            @RequestParam(required = false) String techField,
             @RequestParam(required = false) String sort,
             @PageableDefault(page = 0, size = 50) Pageable pageable
     ) {
@@ -169,7 +192,6 @@ public class PatentController {
                 checked,
                 status,
                 filingCountry,
-                techField,
                 sort,
                 pageable
         )));

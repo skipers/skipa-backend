@@ -313,7 +313,8 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 특허 목록 조회 | `GET` | `/patents` | 키워드·상태·국가·기술분야·사업부·검토상태·정렬 필터 포함 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 목록 조회 | `GET` | `/patents` | 키워드·상태·국가·사업부·검토상태·정렬 필터 포함 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 담당 특허 목록 조회 | `GET` | `/patents/assigned` | 현재 담당 부서가 본인 소속 부서와 일치하는 특허 목록 조회 | `BUSINESS` |
 | 특허 통계 조회 | `GET` | `/patents/stats` | 권리 상태별·기술분야별·국가별·사업부별 집계 | `ADMIN`, `LEGAL` |
 | 특허 단일 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 특허 등록 | `POST` | `/patents` | 특허 정보 수동 등록 | `ADMIN`, `LEGAL` |
@@ -321,7 +322,8 @@
 | 담당 부서 변경 | `PATCH` | `/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
 | 특허 삭제 | `DELETE` | `/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
 
-`BUSINESS` 사용자는 현재 담당 부서가 본인 소속 부서와 같은 특허만 조회할 수 있습니다.
+`GET /patents`는 `BUSINESS` 사용자도 승인 완료된 전체 특허를 조회할 수 있습니다.
+담당 특허만 필요한 경우 `GET /patents/assigned`를 사용합니다.
 
 ---
 
@@ -333,14 +335,13 @@
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| query | string | N | 특허명 키워드 검색 |
+| keyword | string | N | 특허명 키워드 검색 |
 | status | string (복수) | N | 권리 상태 필터. `PUBLISHED` / `REGISTERED` / `REJECTED` / `ABANDONED` / `EXPIRED` / `INVALIDATED` / `WITHDRAWN`. 복수 지정 가능 (`?status=EXPIRED&status=ABANDONED`) |
 | filingCountry | string | N | 출원국 코드. `KR` / `US` / `EP` / `JP` / `CN` |
-| techField | string | N | 기술 분야 필터 |
 | departmentId | long | N | 현재 담당 사업부 ID. `-1` 지정 시 미배정 특허만 조회 |
 | reviewStatus | string | N | 재평가 관리 탭 필터. `unread` / `unassigned` / `requested` / `overdue` / `done`. 생략 시 전체 (현재 활성 QUARTERLY 주기 기준 자동 적용) |
 | decision | string | N | 결정 필터. `MAINTAIN` / `ABANDON` |
-| sort | string | N | 정렬 기준. `expiryDate` / `applicationDate` / `citationCount` |
+| sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 20) |
 
@@ -415,6 +416,29 @@
 ```
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404 — 활성 QUARTERLY 주기 없음, `reviewStatus` 사용 시)
+
+---
+
+#### `GET /patents/assigned`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**권한**: `BUSINESS`
+
+현재 담당 부서가 로그인한 사업부 사용자의 소속 부서와 일치하는 승인 완료 특허만 조회합니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| keyword | string | N | 특허명 키워드 검색 |
+| sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 20) |
+
+**응답 items[] 필드**: `GET /patents`와 동일
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 사업부 사용자의 소속 부서 없음)
 
 ---
 
@@ -882,10 +906,32 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 납부 완료(`PAID`) 이력 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 연차료 납부 이력 추가 | `POST` | `/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
+| 연차료 납부 이력 수정 | `PUT` | `/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력의 납부 연수, 금액, 납부일자 수정 | `LEGAL` |
+| 연차료 납부 이력 삭제 | `DELETE` | `/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력 삭제 | `LEGAL` |
 
-`BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다.
+`BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다. 조회 결과에는 `PAID` 상태의 납부 완료 이력만 포함됩니다.
+수정/삭제 대상도 `PAID` 상태의 납부 완료 이력으로 제한됩니다.
+
+**추가 요청 예시**
+
+```json
+{
+  "paymentYears": 2,
+  "amount": 1000000
+}
+```
+
+**수정 요청 예시**
+
+```json
+{
+  "paymentYears": 2,
+  "amount": 1000000,
+  "paidDate": "2026-06-12"
+}
+```
 
 ---
 
@@ -910,7 +956,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성. 최신 평가 보고서가 있으면 `reportId`로 함께 연결 | `LEGAL` |
 | 검토 일괄 요청 전송 | `POST` | `/reviews/bulk` | 여러 특허에 검토 요청 생성. 생성 불가 특허는 사유와 함께 건너뜀 | `LEGAL` |
 
-검토 요청의 회신 기한은 검토 주기 종료일입니다.
+검토 요청의 회신 기한은 현재 활성 검토 주기의 `deadline`으로 서버에서 자동 설정합니다.
 동일한 검토 주기, 특허, 부서 조합은 중복 요청할 수 없습니다.
 일괄 요청은 최대 100건까지 처리하며, 특허별 결과를 `CREATED` 또는 `SKIPPED`로 반환합니다.
 
@@ -1706,6 +1752,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | preEvaluationId | long | 사전 평가 ID |
 | role | string | `USER` / `ASSISTANT` |
 | content | string | 메시지 내용 |
+| sourceCards | array | AI 응답 근거 카드. 사용자 메시지는 빈 배열 |
 | createdAt | datetime | 생성 시각 |
 
 **응답 예시**
@@ -1719,6 +1766,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "USER",
       "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+      "sourceCards": [],
       "createdAt": "2026-06-10T09:10:00Z"
     },
     {
@@ -1726,6 +1774,20 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "ASSISTANT",
       "content": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+      "sourceCards": [
+        {
+          "label": "S1",
+          "title": "사전평가 보고서",
+          "display_title": "사전평가 보고서",
+          "source_type": "pre_evaluation",
+          "page_no": 1,
+          "url": "https://example.com/pre-evaluations/1/report.html",
+          "location_label": "section 1",
+          "source_path": "pre-evaluations/1/report.html",
+          "match_terms": ["청구항"],
+          "snippet": "청구항에서 센서 데이터 처리 알고리즘의 차별성을..."
+        }
+      ],
       "createdAt": "2026-06-10T09:10:02Z"
     }
   ]
@@ -1757,29 +1819,23 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 **처리**
 
 - 사용자 메시지를 `USER` 역할로 저장
-- 이전 대화 이력과 현재 메시지를 포함해 AI 서버 채팅 API를 직접 호출
-- AI 응답을 `ASSISTANT` 역할로 저장
+- 최근 질문/답변 5쌍을 `chat_history`로 구성해 AI 서버 채팅 API를 직접 호출
+- AI 응답의 `answer`를 `ASSISTANT` 메시지로 저장하고, `source_cards`는 `metadata`를 제외해 함께 저장
 
 **AI 서버 채팅 요청 예시**
 
+`POST /api/v1/pre-eval/cases/{case_id}/chat`
+
 ```json
 {
-  "preEvaluationId": 1,
-  "userId": 10,
-  "title": "배터리 열폭주 감지 시스템",
-  "technicalDescription": "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술",
-  "claims": [
-    "센서부를 포함하는 배터리 열폭주 감지 시스템"
-  ],
-  "relatedBusiness": "전기차 배터리 안전 관리",
-  "targetCountries": "한국, 미국",
-  "message": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
-  "history": [
+  "chat_history": [
     {
-      "role": "USER",
-      "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?"
+      "question": "이 사전평가 보고서의 주요 리스크를 알려줘",
+      "answer": "주요 리스크는 청구항의 구체성 부족입니다."
     }
-  ]
+  ],
+  "question": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+  "user_id": "10"
 }
 ```
 
@@ -1787,7 +1843,25 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ```json
 {
-  "message": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다."
+  "query": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+  "patent_id": "1",
+  "answer": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+  "source_cards": [
+    {
+      "label": "S1",
+      "title": "사전평가 보고서",
+      "display_title": "사전평가 보고서",
+      "source_type": "pre_evaluation",
+      "page_no": 1,
+      "url": "https://example.com/pre-evaluations/1/report.html",
+      "location_label": "section 1",
+      "source_path": "pre-evaluations/1/report.html",
+      "match_terms": ["청구항"],
+      "snippet": "청구항에서 센서 데이터 처리 알고리즘의 차별성을...",
+      "metadata": {}
+    }
+  ],
+  "metrics": {}
 }
 ```
 
@@ -1802,6 +1876,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "USER",
       "content": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?",
+      "sourceCards": [],
       "createdAt": "2026-06-10T09:10:00Z"
     },
     "assistantMessage": {
@@ -1809,6 +1884,20 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
       "preEvaluationId": 1,
       "role": "ASSISTANT",
       "content": "청구항에서 센서 데이터 처리 알고리즘의 차별성을 더 구체화하는 것이 좋습니다.",
+      "sourceCards": [
+        {
+          "label": "S1",
+          "title": "사전평가 보고서",
+          "display_title": "사전평가 보고서",
+          "source_type": "pre_evaluation",
+          "page_no": 1,
+          "url": "https://example.com/pre-evaluations/1/report.html",
+          "location_label": "section 1",
+          "source_path": "pre-evaluations/1/report.html",
+          "match_terms": ["청구항"],
+          "snippet": "청구항에서 센서 데이터 처리 알고리즘의 차별성을..."
+        }
+      ],
       "createdAt": "2026-06-10T09:10:02Z"
     }
   }
