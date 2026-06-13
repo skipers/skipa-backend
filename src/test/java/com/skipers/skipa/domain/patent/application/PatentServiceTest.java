@@ -617,6 +617,90 @@ class PatentServiceTest {
     }
 
     @Test
+    void getApplicationsReturnsAllApplicationStatusesForLegalUser() {
+        Patent pendingPatent = patent(1L, "Pending Patent", "APP-PENDING", null, null, null, null,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        Patent approvedPatent = patent(2L, "Approved Patent", "APP-APPROVED", null, null, null, null);
+        Patent rejectedPatent = patent(3L, "Rejected Patent", "APP-REJECTED", null, null, null, null,
+                PatentApprovalStatus.REJECTED);
+        Patent withdrawnPatent = patent(4L, "Withdrawn Patent", "APP-WITHDRAWN", null, null, null, null,
+                PatentApprovalStatus.WITHDRAWN);
+        when(patentRepository.findAll()).thenReturn(List.of(pendingPatent, approvedPatent, rejectedPatent, withdrawnPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                legalUser(),
+                null,
+                null,
+                "id,asc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "approvalStatus")
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(1L, "PENDING_APPROVAL"),
+                        org.assertj.core.groups.Tuple.tuple(2L, "APPROVED"),
+                        org.assertj.core.groups.Tuple.tuple(3L, "REJECTED"),
+                        org.assertj.core.groups.Tuple.tuple(4L, "WITHDRAWN")
+                );
+    }
+
+    @Test
+    void getApplicationsFiltersByApprovalStatusAlias() {
+        Patent pendingPatent = patent(1L, "Pending Patent", "APP-PENDING", null, null, null, null,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        Patent rejectedPatent = patent(2L, "Rejected Patent", "APP-REJECTED", null, null, null, null,
+                PatentApprovalStatus.REJECTED);
+        when(patentRepository.findAll()).thenReturn(List.of(pendingPatent, rejectedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                legalUser(),
+                "PENDING",
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "approvalStatus")
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(1L, "PENDING_APPROVAL"));
+    }
+
+    @Test
+    void getApplicationsLimitsBusinessUserToOwnDepartment() {
+        Department userDepartment = department("Telecom", 1L);
+        Department otherDepartment = department("Battery", 2L);
+        Patent ownPatent = patent(1L, "Own Pending Patent", "APP-OWN", null, null, null, userDepartment,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        Patent otherPatent = patent(2L, "Other Pending Patent", "APP-OTHER", null, null, null, otherDepartment,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        when(patentRepository.findAll()).thenReturn(List.of(otherPatent, ownPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                businessUser(userDepartment),
+                "PENDING_APPROVAL",
+                null,
+                "id,asc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "currentDepartmentId")
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(1L, 1L));
+    }
+
+    @Test
+    void getApplicationsRejectsBusinessUserWithoutDepartment() {
+        assertPatentError(
+                () -> patentService.getApplications(businessUser(null), null, null, null, PageRequest.of(0, 20)),
+                ErrorCode.FORBIDDEN
+        );
+    }
+
+    @Test
     void getAllFiltersUnassignedPatentsByDepartmentSentinel() {
         Patent assignedPatent = patent(
                 1L,

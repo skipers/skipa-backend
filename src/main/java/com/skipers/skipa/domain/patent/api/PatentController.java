@@ -141,6 +141,29 @@ public class PatentController {
         )));
     }
 
+    @Operation(
+            summary = "[Common] 특허 등록 신청 목록 조회",
+            description = "LEGAL/ADMIN은 전체 특허 등록 신청 목록을 조회하고, BUSINESS는 본인 부서의 신청 목록만 조회합니다. "
+                    + "approvalStatus는 PENDING_APPROVAL, APPROVED, REJECTED, WITHDRAWN 값을 지원하며 PENDING은 PENDING_APPROVAL로 처리합니다."
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/applications")
+    public ApiResponse<PageResponse<PatentListResponse>> getApplications(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sort,
+            @PageableDefault(page = 0, size = 50) Pageable pageable
+    ) {
+        return ApiResponse.ok(PageResponse.from(patentService.getApplications(
+                userDetails.getUser(),
+                approvalStatus,
+                keyword,
+                sort,
+                pageable
+        )));
+    }
+
     /**
      * 특허 목록을 조회한다(page/size 기반).
      *

@@ -41,6 +41,7 @@ import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -262,13 +263,35 @@ public class PatentService {
             String sort,
             Pageable pageable
     ) {
+        return getAllByApprovalStatuses(
+                user,
+                keyword,
+                departmentId,
+                statuses,
+                filingCountry,
+                Set.of(approvalStatus),
+                sort,
+                pageable
+        );
+    }
+
+    private Page<PatentListResponse> getAllByApprovalStatuses(
+            User user,
+            String keyword,
+            Long departmentId,
+            List<String> statuses,
+            String filingCountry,
+            Set<PatentApprovalStatus> approvalStatuses,
+            String sort,
+            Pageable pageable
+    ) {
         String normalizedKeyword = normalizeKeyword(keyword);
         List<Patent> patents = findPatents(normalizedKeyword);
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
         Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
 
         List<PatentListResponse> responses = patents.stream()
-                .filter(patent -> matchesApprovalStatus(patent, approvalStatus))
+                .filter(patent -> matchesAnyApprovalStatus(patent, approvalStatuses))
                 .filter(patent -> matchesDepartment(patent, departmentId))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
@@ -295,6 +318,33 @@ public class PatentService {
                 null,
                 null,
                 PatentApprovalStatus.PENDING_APPROVAL,
+                sort,
+                pageable
+        );
+    }
+
+    public Page<PatentListResponse> getApplications(
+            User user,
+            String approvalStatus,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        Long departmentId = null;
+        if (user.getRole() == UserRole.BUSINESS) {
+            if (user.getDepartment() == null) {
+                throw new PatentException(ErrorCode.FORBIDDEN);
+            }
+            departmentId = user.getDepartment().getId();
+        }
+
+        return getAllByApprovalStatuses(
+                user,
+                keyword,
+                departmentId,
+                null,
+                null,
+                parseApprovalStatuses(approvalStatus),
                 sort,
                 pageable
         );
@@ -458,6 +508,27 @@ public class PatentService {
 
     private boolean matchesApprovalStatus(Patent patent, PatentApprovalStatus approvalStatus) {
         return patent.getApprovalStatus() == approvalStatus;
+    }
+
+    private boolean matchesAnyApprovalStatus(Patent patent, Set<PatentApprovalStatus> approvalStatuses) {
+        return approvalStatuses.contains(patent.getApprovalStatus());
+    }
+
+    private Set<PatentApprovalStatus> parseApprovalStatuses(String approvalStatus) {
+        if (approvalStatus == null || approvalStatus.isBlank()) {
+            return EnumSet.allOf(PatentApprovalStatus.class);
+        }
+
+        String normalized = approvalStatus.trim();
+        if ("PENDING".equals(normalized)) {
+            normalized = PatentApprovalStatus.PENDING_APPROVAL.name();
+        }
+
+        try {
+            return Set.of(PatentApprovalStatus.valueOf(normalized));
+        } catch (IllegalArgumentException e) {
+            throw new PatentException(ErrorCode.INVALID_REQUEST);
+        }
     }
 
     private void validateReadablePatent(User user, Patent patent) {
