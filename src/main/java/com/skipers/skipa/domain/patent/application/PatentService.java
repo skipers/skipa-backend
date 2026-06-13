@@ -12,6 +12,7 @@ import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
@@ -126,6 +127,38 @@ public class PatentService {
 
         portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
+    }
+
+    @Transactional
+    public PatentDetailResponse reject(Long patentId, PatentRejectRequest request) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+
+        if (patent.getApprovalStatus() != PatentApprovalStatus.PENDING_APPROVAL) {
+            throw new PatentException(ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+        }
+
+        patent.reject(request.reason());
+
+        portfolioInsightCacheInvalidator.evict();
+        return toDetailResponse(patent);
+    }
+
+    @Transactional
+    public PatentDetailResponse withdraw(User user, Long patentId) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+
+        validateBusinessDepartmentPatent(user, patent);
+
+        if (patent.getApprovalStatus() != PatentApprovalStatus.PENDING_APPROVAL) {
+            throw new PatentException(ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+        }
+
+        patent.withdraw();
+
+        portfolioInsightCacheInvalidator.evict();
+        return toDetailResponse(user, patent);
     }
 
     @Transactional
@@ -435,6 +468,15 @@ public class PatentService {
             return;
         }
         throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+    }
+
+    private void validateBusinessDepartmentPatent(User user, Patent patent) {
+        if (user.getDepartment() == null || patent.getCurrentDepartment() == null) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+        if (!patent.getCurrentDepartment().getId().equals(user.getDepartment().getId())) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
     }
 
     private boolean matchesDepartment(Patent patent, Long departmentId) {
