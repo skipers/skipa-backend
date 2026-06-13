@@ -12,6 +12,7 @@ import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
@@ -40,6 +41,7 @@ import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -126,6 +128,38 @@ public class PatentService {
 
         portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
+    }
+
+    @Transactional
+    public PatentDetailResponse reject(Long patentId, PatentRejectRequest request) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+
+        if (patent.getApprovalStatus() != PatentApprovalStatus.PENDING_APPROVAL) {
+            throw new PatentException(ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+        }
+
+        patent.reject(request.reason());
+
+        portfolioInsightCacheInvalidator.evict();
+        return toDetailResponse(patent);
+    }
+
+    @Transactional
+    public PatentDetailResponse withdraw(User user, Long patentId) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+
+        validateBusinessDepartmentPatent(user, patent);
+
+        if (patent.getApprovalStatus() != PatentApprovalStatus.PENDING_APPROVAL) {
+            throw new PatentException(ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+        }
+
+        patent.withdraw();
+
+        portfolioInsightCacheInvalidator.evict();
+        return toDetailResponse(user, patent);
     }
 
     @Transactional
@@ -229,13 +263,35 @@ public class PatentService {
             String sort,
             Pageable pageable
     ) {
+        return getAllByApprovalStatuses(
+                user,
+                keyword,
+                departmentId,
+                statuses,
+                filingCountry,
+                Set.of(approvalStatus),
+                sort,
+                pageable
+        );
+    }
+
+    private Page<PatentListResponse> getAllByApprovalStatuses(
+            User user,
+            String keyword,
+            Long departmentId,
+            List<String> statuses,
+            String filingCountry,
+            Set<PatentApprovalStatus> approvalStatuses,
+            String sort,
+            Pageable pageable
+    ) {
         String normalizedKeyword = normalizeKeyword(keyword);
         List<Patent> patents = findPatents(normalizedKeyword);
         Map<Long, PatentLegalStatusType> latestStatuses = latestLegalStatuses(patentLegalStatusRepository.findAll());
         Set<PatentLegalStatusType> parsedStatuses = parseLegalStatuses(statuses);
 
         List<PatentListResponse> responses = patents.stream()
-                .filter(patent -> matchesApprovalStatus(patent, approvalStatus))
+                .filter(patent -> matchesAnyApprovalStatus(patent, approvalStatuses))
                 .filter(patent -> matchesDepartment(patent, departmentId))
                 .filter(patent -> matchesLegalStatus(latestStatuses.get(patent.getId()), parsedStatuses))
                 .filter(patent -> matchesText(patent.getFilingCountry(), filingCountry))
@@ -262,6 +318,33 @@ public class PatentService {
                 null,
                 null,
                 PatentApprovalStatus.PENDING_APPROVAL,
+                sort,
+                pageable
+        );
+    }
+
+    public Page<PatentListResponse> getApplications(
+            User user,
+            String approvalStatus,
+            String keyword,
+            String sort,
+            Pageable pageable
+    ) {
+        Long departmentId = null;
+        if (user.getRole() == UserRole.BUSINESS) {
+            if (user.getDepartment() == null) {
+                throw new PatentException(ErrorCode.FORBIDDEN);
+            }
+            departmentId = user.getDepartment().getId();
+        }
+
+        return getAllByApprovalStatuses(
+                user,
+                keyword,
+                departmentId,
+                null,
+                null,
+                parseApprovalStatuses(approvalStatus),
                 sort,
                 pageable
         );
@@ -427,6 +510,27 @@ public class PatentService {
         return patent.getApprovalStatus() == approvalStatus;
     }
 
+    private boolean matchesAnyApprovalStatus(Patent patent, Set<PatentApprovalStatus> approvalStatuses) {
+        return approvalStatuses.contains(patent.getApprovalStatus());
+    }
+
+    private Set<PatentApprovalStatus> parseApprovalStatuses(String approvalStatus) {
+        if (approvalStatus == null || approvalStatus.isBlank()) {
+            return EnumSet.allOf(PatentApprovalStatus.class);
+        }
+
+        String normalized = approvalStatus.trim();
+        if ("PENDING".equals(normalized)) {
+            normalized = PatentApprovalStatus.PENDING_APPROVAL.name();
+        }
+
+        try {
+            return Set.of(PatentApprovalStatus.valueOf(normalized));
+        } catch (IllegalArgumentException e) {
+            throw new PatentException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
     private void validateReadablePatent(User user, Patent patent) {
         if (patent.getApprovalStatus() == PatentApprovalStatus.APPROVED) {
             return;
@@ -435,6 +539,15 @@ public class PatentService {
             return;
         }
         throw new PatentException(ErrorCode.PATENT_NOT_FOUND);
+    }
+
+    private void validateBusinessDepartmentPatent(User user, Patent patent) {
+        if (user.getDepartment() == null || patent.getCurrentDepartment() == null) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+        if (!patent.getCurrentDepartment().getId().equals(user.getDepartment().getId())) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
     }
 
     private boolean matchesDepartment(Patent patent, Long departmentId) {

@@ -13,6 +13,7 @@ import com.skipers.skipa.domain.patent.domain.PatentLegalStatus;
 import com.skipers.skipa.domain.patent.domain.PatentLegalStatusType;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
@@ -616,6 +617,111 @@ class PatentServiceTest {
     }
 
     @Test
+    void getApplicationsReturnsAllApplicationStatusesForLegalUser() {
+        Patent pendingPatent = patent(1L, "Pending Patent", "APP-PENDING", null, null, null, null,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        Patent approvedPatent = patent(2L, "Approved Patent", "APP-APPROVED", null, null, null, null);
+        Patent rejectedPatent = patent(3L, "Rejected Patent", "APP-REJECTED", null, null, null, null,
+                PatentApprovalStatus.REJECTED);
+        Patent withdrawnPatent = patent(4L, "Withdrawn Patent", "APP-WITHDRAWN", null, null, null, null,
+                PatentApprovalStatus.WITHDRAWN);
+        when(patentRepository.findAll()).thenReturn(List.of(pendingPatent, approvedPatent, rejectedPatent, withdrawnPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                legalUser(),
+                null,
+                null,
+                "id,asc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "approvalStatus")
+                .containsExactly(
+                        org.assertj.core.groups.Tuple.tuple(1L, "PENDING_APPROVAL"),
+                        org.assertj.core.groups.Tuple.tuple(2L, "APPROVED"),
+                        org.assertj.core.groups.Tuple.tuple(3L, "REJECTED"),
+                        org.assertj.core.groups.Tuple.tuple(4L, "WITHDRAWN")
+                );
+    }
+
+    @Test
+    void getApplicationsFiltersByApprovalStatusAlias() {
+        Patent pendingPatent = patent(1L, "Pending Patent", "APP-PENDING", null, null, null, null,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        Patent rejectedPatent = patent(2L, "Rejected Patent", "APP-REJECTED", null, null, null, null,
+                PatentApprovalStatus.REJECTED);
+        when(patentRepository.findAll()).thenReturn(List.of(pendingPatent, rejectedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                legalUser(),
+                "PENDING",
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "approvalStatus")
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(1L, "PENDING_APPROVAL"));
+    }
+
+    @Test
+    void getApplicationsIncludesRejectionReason() {
+        Patent rejectedPatent = patent(1L, "Rejected Patent", "APP-REJECTED", null, null, null, null,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        rejectedPatent.reject("Insufficient novelty");
+        when(patentRepository.findAll()).thenReturn(List.of(rejectedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                legalUser(),
+                "REJECTED",
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent().get(0))
+                .extracting("approvalStatus", "rejectionReason")
+                .containsExactly("REJECTED", "Insufficient novelty");
+    }
+
+    @Test
+    void getApplicationsLimitsBusinessUserToOwnDepartment() {
+        Department userDepartment = department("Telecom", 1L);
+        Department otherDepartment = department("Battery", 2L);
+        Patent ownPatent = patent(1L, "Own Pending Patent", "APP-OWN", null, null, null, userDepartment,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        Patent otherPatent = patent(2L, "Other Pending Patent", "APP-OTHER", null, null, null, otherDepartment,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        when(patentRepository.findAll()).thenReturn(List.of(otherPatent, ownPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                businessUser(userDepartment),
+                "PENDING_APPROVAL",
+                null,
+                "id,asc",
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent())
+                .extracting("id", "currentDepartmentId")
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(1L, 1L));
+    }
+
+    @Test
+    void getApplicationsRejectsBusinessUserWithoutDepartment() {
+        assertPatentError(
+                () -> patentService.getApplications(businessUser(null), null, null, null, PageRequest.of(0, 20)),
+                ErrorCode.FORBIDDEN
+        );
+    }
+
+    @Test
     void getAllFiltersUnassignedPatentsByDepartmentSentinel() {
         Patent assignedPatent = patent(
                 1L,
@@ -745,6 +851,90 @@ class PatentServiceTest {
         when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
 
         assertPatentError(() -> patentService.approve(1L), ErrorCode.PATENT_APPROVAL_NOT_PENDING);
+    }
+
+    @Test
+    void rejectChangesPendingApprovalPatentToRejected() {
+        Patent patent = patent(
+                1L,
+                "Pending Patent",
+                "APP-PENDING",
+                null,
+                null,
+                null,
+                null,
+                PatentApprovalStatus.PENDING_APPROVAL
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        PatentDetailResponse response = patentService.reject(1L, new PatentRejectRequest("Insufficient novelty"));
+
+        assertThat(response.approvalStatus()).isEqualTo("REJECTED");
+        assertThat(response.rejectionReason()).isEqualTo("Insufficient novelty");
+        assertThat(patent.getApprovalStatus()).isEqualTo(PatentApprovalStatus.REJECTED);
+        assertThat(patent.getRejectionReason()).isEqualTo("Insufficient novelty");
+    }
+
+    @Test
+    void rejectRejectsAlreadyApprovedPatent() {
+        Patent patent = patent(
+                1L,
+                "Approved Patent",
+                "APP-APPROVED",
+                null,
+                null,
+                null,
+                null
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        assertPatentError(
+                () -> patentService.reject(1L, new PatentRejectRequest("Insufficient novelty")),
+                ErrorCode.PATENT_APPROVAL_NOT_PENDING
+        );
+    }
+
+    @Test
+    void withdrawChangesOwnDepartmentPendingApprovalPatentToWithdrawn() {
+        Department department = department("Telecom", 1L);
+        Patent patent = patent(
+                1L,
+                "Pending Patent",
+                "APP-PENDING",
+                null,
+                null,
+                null,
+                department,
+                PatentApprovalStatus.PENDING_APPROVAL
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        PatentDetailResponse response = patentService.withdraw(businessUser(department), 1L);
+
+        assertThat(response.approvalStatus()).isEqualTo("WITHDRAWN");
+        assertThat(patent.getApprovalStatus()).isEqualTo(PatentApprovalStatus.WITHDRAWN);
+    }
+
+    @Test
+    void withdrawRejectsOtherDepartmentPatent() {
+        Department userDepartment = department("Telecom", 1L);
+        Department otherDepartment = department("Battery", 2L);
+        Patent patent = patent(
+                1L,
+                "Pending Patent",
+                "APP-PENDING",
+                null,
+                null,
+                null,
+                otherDepartment,
+                PatentApprovalStatus.PENDING_APPROVAL
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        assertPatentError(
+                () -> patentService.withdraw(businessUser(userDepartment), 1L),
+                ErrorCode.FORBIDDEN
+        );
     }
 
     @Test
