@@ -89,6 +89,9 @@ public class Patent extends BaseTimeEntity {
     @Column(name = "approval_status", nullable = false, length = 30) // 승인 상태
     private PatentApprovalStatus approvalStatus;
 
+    @Column(name = "rejection_reason", columnDefinition = "text")
+    private String rejectionReason;
+
     @Column(name = "management_number", length = 50) // 관리번호
     private String managementNumber;
 
@@ -146,6 +149,7 @@ public class Patent extends BaseTimeEntity {
             String originalPdfKey,
             String parsedJsonKey,
             PatentApprovalStatus approvalStatus,
+            String rejectionReason,
             String managementNumber,
             String businessField,
             String techField,
@@ -177,6 +181,7 @@ public class Patent extends BaseTimeEntity {
         this.originalPdfKey = originalPdfKey;
         this.parsedJsonKey = parsedJsonKey;
         this.approvalStatus = approvalStatus != null ? approvalStatus : PatentApprovalStatus.APPROVED;
+        this.rejectionReason = rejectionReason;
         this.managementNumber = managementNumber;
         this.businessField = businessField;
         this.techField = techField;
@@ -197,10 +202,16 @@ public class Patent extends BaseTimeEntity {
 
     public void approve() {
         this.approvalStatus = PatentApprovalStatus.APPROVED;
+        this.rejectionReason = null;
     }
 
-    public void reject() {
+    public void reject(String reason) {
         this.approvalStatus = PatentApprovalStatus.REJECTED;
+        this.rejectionReason = reason;
+    }
+
+    public void withdraw() {
+        this.approvalStatus = PatentApprovalStatus.WITHDRAWN;
     }
 
     public void update(

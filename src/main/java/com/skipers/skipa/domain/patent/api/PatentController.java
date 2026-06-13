@@ -3,6 +3,7 @@ package com.skipers.skipa.domain.patent.api;
 import com.skipers.skipa.domain.patent.application.PatentService;
 import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentCreateRequest;
+import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
@@ -140,6 +141,29 @@ public class PatentController {
         )));
     }
 
+    @Operation(
+            summary = "[Common] 특허 등록 신청 목록 조회",
+            description = "LEGAL/ADMIN은 전체 특허 등록 신청 목록을 조회하고, BUSINESS는 본인 부서의 신청 목록만 조회합니다. "
+                    + "approvalStatus는 PENDING_APPROVAL, APPROVED, REJECTED, WITHDRAWN 값을 지원하며 PENDING은 PENDING_APPROVAL로 처리합니다."
+    )
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/applications")
+    public ApiResponse<PageResponse<PatentListResponse>> getApplications(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(required = false) String approvalStatus,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sort,
+            @PageableDefault(page = 0, size = 50) Pageable pageable
+    ) {
+        return ApiResponse.ok(PageResponse.from(patentService.getApplications(
+                userDetails.getUser(),
+                approvalStatus,
+                keyword,
+                sort,
+                pageable
+        )));
+    }
+
     /**
      * 특허 목록을 조회한다(page/size 기반).
      *
@@ -225,6 +249,26 @@ public class PatentController {
     @PatchMapping("/{patentId}/approve")
     public ApiResponse<PatentDetailResponse> approve(@PathVariable Long patentId) {
         return ApiResponse.ok(patentService.approve(patentId));
+    }
+
+    @Operation(summary = "[Legal] 특허 등록 신청 거절", description = "승인 대기 상태의 특허 등록 신청을 거절하고 거절 사유를 저장합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
+    @PatchMapping("/{patentId}/reject")
+    public ApiResponse<PatentDetailResponse> reject(
+            @PathVariable Long patentId,
+            @Valid @RequestBody PatentRejectRequest request
+    ) {
+        return ApiResponse.ok(patentService.reject(patentId, request));
+    }
+
+    @Operation(summary = "[Business] 특허 등록 신청 철회", description = "사업부 사용자가 본인 부서의 승인 대기 특허 등록 신청을 철회합니다.")
+    @PreAuthorize("hasRole('BUSINESS')")
+    @PatchMapping("/{patentId}/withdraw")
+    public ApiResponse<PatentDetailResponse> withdraw(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId
+    ) {
+        return ApiResponse.ok(patentService.withdraw(userDetails.getUser(), patentId));
     }
 
     /**
