@@ -669,6 +669,27 @@ class PatentServiceTest {
     }
 
     @Test
+    void getApplicationsIncludesRejectionReason() {
+        Patent rejectedPatent = patent(1L, "Rejected Patent", "APP-REJECTED", null, null, null, null,
+                PatentApprovalStatus.PENDING_APPROVAL);
+        rejectedPatent.reject("Insufficient novelty");
+        when(patentRepository.findAll()).thenReturn(List.of(rejectedPatent));
+        when(patentLegalStatusRepository.findAll()).thenReturn(List.of());
+
+        Page<?> result = patentService.getApplications(
+                legalUser(),
+                "REJECTED",
+                null,
+                null,
+                PageRequest.of(0, 20)
+        );
+
+        assertThat(result.getContent().get(0))
+                .extracting("approvalStatus", "rejectionReason")
+                .containsExactly("REJECTED", "Insufficient novelty");
+    }
+
+    @Test
     void getApplicationsLimitsBusinessUserToOwnDepartment() {
         Department userDepartment = department("Telecom", 1L);
         Department otherDepartment = department("Battery", 2L);
@@ -849,6 +870,7 @@ class PatentServiceTest {
         PatentDetailResponse response = patentService.reject(1L, new PatentRejectRequest("Insufficient novelty"));
 
         assertThat(response.approvalStatus()).isEqualTo("REJECTED");
+        assertThat(response.rejectionReason()).isEqualTo("Insufficient novelty");
         assertThat(patent.getApprovalStatus()).isEqualTo(PatentApprovalStatus.REJECTED);
         assertThat(patent.getRejectionReason()).isEqualTo("Insufficient novelty");
     }
