@@ -186,6 +186,61 @@ class PatentExtractAsyncFlowIntegrationTest {
     }
 
     @Test
+    void businessUserCanUsePatentExtractApisForPatentRegistrationRequest() throws Exception {
+        String businessToken = createActiveUserToken(
+                "business-patent-extract-flow",
+                "business-patent-extract-flow@example.com",
+                UserRole.BUSINESS
+        );
+        when(patentExtractStorageService.generateUploadPresignedUrl(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn("https://minio.example.com/skipa/tmp/patent-extract-jobs/1/original.pdf?signature=abc");
+
+        MvcResult uploadUrlResult = mockMvc.perform(post("/patent-extract-jobs/upload-url")
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.status").value("UPLOAD_PENDING"))
+                .andReturn();
+
+        Long extractJobId = objectMapper.readTree(uploadUrlResult.getResponse().getContentAsString())
+                .path("data")
+                .path("extractJobId")
+                .longValue();
+        String objectKey = "tmp/patent-extract-jobs/%d/original.pdf".formatted(extractJobId);
+        when(patentExtractStorageService.exists(objectKey)).thenReturn(true);
+
+        mockMvc.perform(post("/patent-extract-jobs/{extractJobId}/upload-complete", extractJobId)
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ANALYZING"));
+
+        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/status", extractJobId)
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("ANALYZING"));
+
+        mockMvc.perform(patch("/internal/patent-extract-jobs/{extractJobId}/complete", extractJobId)
+                        .header("X-Internal-Api-Key", INTERNAL_API_KEY)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "result": {
+                                    "title": "Business Extracted Patent",
+                                    "applicationNumber": "10-2026-0000001"
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("COMPLETED"));
+
+        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", extractJobId)
+                        .header("Authorization", "Bearer " + businessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.result.title").value("Business Extracted Patent"));
+
+        verify(patentExtractPublisher).publish(extractJobId, objectKey);
+    }
+
+    @Test
     void internalCallbackRejectsMissingApiKey() throws Exception {
         PatentExtractJob job = saveAnalyzingJob(1L);
 
@@ -245,15 +300,19 @@ class PatentExtractAsyncFlowIntegrationTest {
     }
 
     private String createActiveUserToken(String loginId, String email) {
+        return createActiveUserToken(loginId, email, UserRole.LEGAL);
+    }
+
+    private String createActiveUserToken(String loginId, String email, UserRole role) {
         User user = userRepository.save(User.createActive(
                 loginId,
-                "Legal User",
+                "Test User",
                 email,
                 passwordEncoder.encode("password"),
-                UserRole.LEGAL,
+                role,
                 null
         ));
 
-        return jwtProvider.createAccessToken(user.getId(), UserRole.LEGAL);
+        return jwtProvider.createAccessToken(user.getId(), role);
     }
 }
