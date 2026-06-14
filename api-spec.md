@@ -353,14 +353,24 @@
 | registrationNumber | string | 등록번호 |
 | applicationDate | string | 출원일 (`yyyy-MM-dd`) |
 | expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
-| status | string | 최신 권리 상태 |
+| ipcCodes | array | IPC 코드 목록 |
+| cpcCodes | array | CPC 코드 목록 |
+| applicant | string | 출원인명 |
+| inventor | string | 발명자명 |
+| latestLegalStatus | string | 최신 권리 상태 |
 | techField | string | 기술 분야 |
 | businessField | string | 관련사업 분야 |
-| overview | string | 특허 개요 |
+| keywords | array | 주요 키워드 목록 |
+| summary | string | 특허 요약 |
 | citationCount | integer | 피인용 수 |
+| examinationClaimCount | integer | 심사청구항 수 |
 | filingCountry | string | 출원국 코드 |
+| approvalStatus | string | 승인 상태 |
+| rejectionReason | string | 반려 사유. 없으면 `null` |
 | currentDepartmentId | long | 현재 담당 부서 ID. 미배정이면 `null` |
 | currentDepartmentName | string | 현재 담당 부서명. 미배정이면 `null` |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
 
 **응답 예시**
 
@@ -376,14 +386,24 @@
         "registrationNumber": "10-2500001",
         "applicationDate": "2023-03-15",
         "expiryDate": "2043-03-15",
-        "status": "REGISTERED",
+        "ipcCodes": ["H01M 10/00"],
+        "cpcCodes": [],
+        "applicant": "SK이노베이션",
+        "inventor": "홍길동",
+        "latestLegalStatus": "REGISTERED",
         "techField": "배터리",
         "businessField": "에너지솔루션",
-        "overview": "고용량 배터리 셀의 음극재 구조를 개선하여 에너지 밀도를 향상시킨 발명",
+        "keywords": ["음극재", "에너지밀도"],
+        "summary": "고용량 배터리 셀의 음극재 구조를 개선하여 에너지 밀도를 향상시킨 발명",
         "citationCount": 14,
+        "examinationClaimCount": 12,
         "filingCountry": "KR",
+        "approvalStatus": "APPROVED",
+        "rejectionReason": null,
         "currentDepartmentId": 3,
-        "currentDepartmentName": "에너지솔루션 사업부"
+        "currentDepartmentName": "에너지솔루션 사업부",
+        "createdAt": "2026-06-08T01:00:00Z",
+        "updatedAt": "2026-06-08T01:00:00Z"
       }
     ],
     "page": 0,
@@ -491,18 +511,22 @@
 | registrationNumber | string | 등록번호 |
 | publicationNumber | string | 공개번호 |
 | announcementNumber | string | 공고번호 |
-| manageNumber | string | 관리번호 |
+| managementNumber | string | 관리번호 |
 | applicationDate | string | 출원일 (`yyyy-MM-dd`) |
 | registrationDate | string | 등록일 (`yyyy-MM-dd`) |
 | publicationDate | string | 공개일 (`yyyy-MM-dd`) |
 | announcementDate | string | 공고일 (`yyyy-MM-dd`) |
 | expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
-| ipcCode | string | IPC 코드 |
-| cpcCode | string | CPC 코드 |
+| ipcCodes | array | IPC 코드 목록 |
+| cpcCodes | array | CPC 코드 목록 |
 | applicant | string | 출원인명 |
 | inventor | string | 발명자명 |
 | citationCount | integer | 피인용 수 |
+| examinationClaimCount | integer | 심사청구항 수 |
 | originalPdfKey | string | 특허 원문 S3 키 |
+| parsedJsonKey | string | AI 추출 결과 JSON S3 키 |
+| approvalStatus | string | 승인 상태. `APPROVED`, `PENDING_APPROVAL`, `REJECTED` |
+| rejectionReason | string | 반려 사유. 없으면 `null` |
 | businessField | string | 관련사업 분야 |
 | techField | string | 관련기술 분야 |
 | relatedProducts | array | 관련 제품 목록 |
@@ -513,9 +537,11 @@
 | currentDepartmentId | long | 현재 담당 부서 ID |
 | currentDepartmentName | string | 현재 담당 부서명 |
 | latestLegalStatus | string | 최신 권리 상태 |
+| latestReportScore | number | 최신 평가 보고서 점수. 없으면 `null` |
 | keywords | array | AI 추출 주요 키워드 목록 |
-| overview | string | AI 생성 특허 개요 |
-| coreContent | string | AI 생성 핵심 내용 |
+| summary | string | 특허 요약 |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
 
 **응답 예시**
 
@@ -529,18 +555,22 @@
     "registrationNumber": "10-2500001",
     "publicationNumber": "10-2023-0111111",
     "announcementNumber": null,
-    "manageNumber": "MNG-2023-001",
+    "managementNumber": "MNG-2023-001",
     "applicationDate": "2023-03-15",
     "registrationDate": "2024-01-10",
     "publicationDate": "2023-09-15",
     "announcementDate": null,
     "expiryDate": "2043-03-15",
-    "ipcCode": "H01M 10/00",
-    "cpcCode": null,
+    "ipcCodes": ["H01M 10/00"],
+    "cpcCodes": [],
     "applicant": "SK이노베이션",
     "inventor": "홍길동",
     "citationCount": 14,
+    "examinationClaimCount": 12,
     "originalPdfKey": "patents/1/original.pdf",
+    "parsedJsonKey": "patents/1/parsed.json",
+    "approvalStatus": "APPROVED",
+    "rejectionReason": null,
     "businessField": "에너지솔루션",
     "techField": "배터리",
     "relatedProducts": ["배터리팩A", "셀모듈B"],
@@ -551,9 +581,11 @@
     "currentDepartmentId": 3,
     "currentDepartmentName": "에너지솔루션 사업부",
     "latestLegalStatus": "REGISTERED",
+    "latestReportScore": 82.5,
     "keywords": ["음극재", "에너지밀도"],
-    "overview": "고용량 배터리 셀의 음극재 구조를 개선하여 에너지 밀도를 향상시킨 발명",
-    "coreContent": "음극재 두께를 최적화하고 결합재 비율을 조정하여 에너지 밀도 20% 향상"
+    "summary": "고용량 배터리 셀의 음극재 구조를 개선하여 에너지 밀도를 향상시킨 발명",
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:00:00Z"
   }
 }
 ```
@@ -575,12 +607,16 @@
 | registrationNumber | string | N | 등록번호 |
 | applicationDate | string | N | 출원일 (`yyyy-MM-dd`) |
 | registrationDate | string | N | 등록일 (`yyyy-MM-dd`) |
-| ipcCode | string | N | IPC 코드 |
-| cpcCode | string | N | CPC 코드 |
+| publicationNumber | string | N | 공개번호 |
+| announcementNumber | string | N | 공고번호 |
+| ipcCodes | array | N | IPC 코드 목록 |
+| cpcCodes | array | N | CPC 코드 목록 |
 | applicant | string | N | 출원인명 |
 | inventor | string | N | 발명자명 |
 | expiryDate | string | N | 예상 소멸일 (`yyyy-MM-dd`) |
-| manageNumber | string | N | 관리번호 |
+| citationCount | integer | N | 피인용 수 |
+| examinationClaimCount | integer | N | 심사청구항 수 |
+| managementNumber | string | N | 관리번호 |
 | businessField | string | N | 관련사업 분야 |
 | techField | string | N | 관련기술 분야 |
 | relatedProducts | array | N | 관련 제품 목록 |
@@ -588,17 +624,54 @@
 | isJointApplication | boolean | N | 공동출원 여부 |
 | jointApplicant | string | N | 공동출원인명 |
 | keywords | array | N | 주요 키워드 목록 |
-| overview | string | N | 특허 개요 |
-| coreContent | string | N | 핵심 내용 |
+| summary | string | N | 특허 요약 |
 | originalPdfKey | string | N | 기존 원문 PDF object key. `extractJobId`가 없을 때 그대로 저장 |
-| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{applicationNumber}/patent.pdf`로 복사하고 최종 key를 저장 |
+| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{patentId}/original.pdf`로 복사하고 추출 JSON을 `patents/{patentId}/parsed.json`으로 저장 |
 
 **응답 예시**
 
 ```json
 {
   "success": true,
-  "data": { "patentId": 42 }
+  "data": {
+    "id": 42,
+    "title": "반도체 패키지 구조",
+    "applicationNumber": "10-2026-0000000",
+    "registrationNumber": "10-1234567",
+    "publicationNumber": "10-2026-0000001",
+    "announcementNumber": null,
+    "applicationDate": "2026-05-26",
+    "registrationDate": null,
+    "publicationDate": null,
+    "announcementDate": null,
+    "ipcCodes": ["H01L 21/00"],
+    "cpcCodes": [],
+    "applicant": "SK하이닉스",
+    "inventor": "홍길동",
+    "expiryDate": "2046-05-26",
+    "citationCount": 10,
+    "examinationClaimCount": 12,
+    "originalPdfKey": "patents/42/original.pdf",
+    "parsedJsonKey": "patents/42/parsed.json",
+    "approvalStatus": "APPROVED",
+    "rejectionReason": null,
+    "managementNumber": "MNG-2026-0001",
+    "businessField": "반도체",
+    "techField": "패키징",
+    "relatedProducts": ["제품A", "제품B"],
+    "filingCountry": "KR",
+    "isJointApplication": false,
+    "jointApplicant": null,
+    "initialDepartment": "반도체",
+    "currentDepartmentId": null,
+    "currentDepartmentName": null,
+    "latestLegalStatus": null,
+    "latestReportScore": null,
+    "keywords": ["패키지", "반도체"],
+    "summary": "특허 요약",
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:00:00Z"
+  }
 }
 ```
 
@@ -659,10 +732,12 @@
 | Name | Type | Description |
 | --- | --- | --- |
 | extractJobId | long | 추출 작업 ID |
-| objectKey | string | 임시 PDF object key. `patents/extract-jobs/{extractJobId}/patent.pdf` |
+| objectKey | string | 임시 PDF object key. `tmp/patent-extract-jobs/{extractJobId}/original.pdf` |
 | uploadUrl | string | MinIO PUT presigned URL |
 | expiresInSeconds | integer | URL 만료 시간(초) |
 | status | string | `UPLOAD_PENDING` |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
 
 **응답 예시**
 
@@ -671,8 +746,8 @@
   "success": true,
   "data": {
     "extractJobId": 9001,
-    "objectKey": "patents/extract-jobs/9001/patent.pdf",
-    "uploadUrl": "https://minio.skipa.internal/skipa/patents/extract-jobs/9001/patent.pdf?...",
+    "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "uploadUrl": "https://minio.skipa.internal/skipa/tmp/patent-extract-jobs/9001/original.pdf?...",
     "expiresInSeconds": 600,
     "status": "UPLOAD_PENDING",
     "createdAt": "2026-06-08T01:00:00Z",
@@ -699,7 +774,7 @@
 {
   "type": "PATENT_EXTRACT",
   "extractJobId": 9001,
-  "objectKey": "patents/extract-jobs/9001/patent.pdf"
+  "objectKey": "tmp/patent-extract-jobs/9001/original.pdf"
 }
 ```
 
@@ -710,7 +785,7 @@
   "success": true,
   "data": {
     "extractJobId": 9001,
-    "objectKey": "patents/extract-jobs/9001/patent.pdf",
+    "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
     "status": "ANALYZING",
     "errorMessage": null,
     "uploadedAt": "2026-06-08T01:02:00Z",
@@ -741,6 +816,8 @@
 | errorMessage | string | 실패 사유. 실패가 아니면 `null` |
 | uploadedAt | datetime | 업로드 완료 처리 시각 |
 | completedAt | datetime | 완료 또는 실패 처리 시각 |
+| createdAt | datetime | 생성 시각 |
+| updatedAt | datetime | 수정 시각 |
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
 
@@ -759,21 +836,24 @@
   "success": true,
   "data": {
     "extractJobId": 9001,
-    "objectKey": "patents/extract-jobs/9001/patent.pdf",
+    "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
     "status": "COMPLETED",
     "result": {
       "title": "반도체 패키지 구조",
       "applicationNumber": "10-2026-0000000",
       "registrationNumber": "10-1234567",
       "applicationDate": "2020-05-26",
-      "ipcCode": "H01L 21/00",
+      "ipcCodes": ["H01L 21/00"],
+      "cpcCodes": [],
       "applicant": "SK하이닉스",
       "inventor": "홍길동",
       "keywords": ["패키지", "반도체"],
-      "overview": "특허 개요",
-      "coreContent": "특허 핵심 내용"
+      "summary": "특허 요약"
     },
-    "completedAt": "2026-06-08T01:05:00Z"
+    "uploadedAt": "2026-06-08T01:02:00Z",
+    "completedAt": "2026-06-08T01:05:00Z",
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:05:00Z"
   }
 }
 ```
@@ -803,12 +883,12 @@ AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
     "applicationNumber": "10-2026-0000000",
     "registrationNumber": "10-1234567",
     "applicationDate": "2020-05-26",
-    "ipcCode": "H01L 21/00",
+    "ipcCodes": ["H01L 21/00"],
+    "cpcCodes": [],
     "applicant": "SK하이닉스",
     "inventor": "홍길동",
     "keywords": ["패키지", "반도체"],
-    "overview": "특허 개요",
-    "coreContent": "특허 핵심 내용"
+    "summary": "특허 요약"
   }
 }
 ```
@@ -820,7 +900,13 @@ AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
   "success": true,
   "data": {
     "extractJobId": 9001,
-    "status": "COMPLETED"
+    "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "status": "COMPLETED",
+    "errorMessage": null,
+    "uploadedAt": "2026-06-08T01:02:00Z",
+    "completedAt": "2026-06-08T01:05:00Z",
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:05:00Z"
   }
 }
 ```
@@ -856,7 +942,13 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
   "success": true,
   "data": {
     "extractJobId": 9001,
-    "status": "FAILED"
+    "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "status": "FAILED",
+    "errorMessage": "AI patent extraction failed",
+    "uploadedAt": "2026-06-08T01:02:00Z",
+    "completedAt": "2026-06-08T01:05:00Z",
+    "createdAt": "2026-06-08T01:00:00Z",
+    "updatedAt": "2026-06-08T01:05:00Z"
   }
 }
 ```
