@@ -67,15 +67,18 @@
 | 사용자 역할 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 사용자 상태 | `PENDING`, `ACTIVE` |
 | 부서 상태 | `ACTIVE`, `INACTIVE` |
-| 권리 상태 | `PUBLISHED`, `REGISTERED`, `REJECTED`, `ABANDONED`, `EXPIRED`, `INVALIDATED`, `WITHDRAWN` |
+| 권리 상태 | `APPLIED`, `PUBLISHED`, `REGISTERED`, `REJECTED`, `ABANDONED`, `EXPIRED`, `INVALIDATED`, `WITHDRAWN` |
+| 특허 승인 상태 | `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `WITHDRAWN` |
 | 연차료 납부 상태 | `PAID`, `UNPAID`, `ABANDONED` |
 | 특허 추출 작업 상태 | `UPLOAD_PENDING`, `ANALYZING`, `COMPLETED`, `FAILED` |
 | 보고서 처리 상태 | `GENERATING`, `REPORT_COMPLETED`, `EMBEDDING_COMPLETED`, `FAILED` |
 | 사전 평가 처리 상태 | `PROCESSING`, `REPORT_COMPLETED`, `EMBEDDING_COMPLETED`, `FAILED` |
 | 사전 평가 채팅 역할 | `USER`, `ASSISTANT` |
 | 검토 주기 유형 | `QUARTERLY`, `AD_HOC` |
-| 검토 제출 상태 | `PENDING`, `SUBMITTED` |
+| 검토 제출 상태 | `SCHEDULED`, `PENDING`, `OVERDUE`, `SUBMITTED` |
 | 사업부 의견 | `MAINTAIN`, `ABANDON` |
+
+보고서와 사전 평가는 백엔드 enum 값을 그대로 사용합니다. 최종 완료 상태는 `COMPLETED`가 아니라 `REPORT_COMPLETED` 또는 `EMBEDDING_COMPLETED`입니다.
 
 ---
 
@@ -465,6 +468,366 @@
 ```
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /patents/expiring/summary`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+3개월, 6개월, 12개월, 36개월, 60개월 기준으로 소멸 예정 특허를 기술 분야별로 집계합니다.
+`BUSINESS` 사용자는 본인 소속 부서 특허만 집계합니다.
+
+요청 Body 없음.
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| periods | array | 기간별 소멸 예정 특허 집계 |
+| periods[].months | integer | 기준 기간(개월). `3`, `6`, `12`, `36`, `60` |
+| periods[].byTechField | array | 기술 분야별 집계 |
+| periods[].byTechField[].name | string | 기술 분야명. 값이 없으면 `미분류` |
+| periods[].byTechField[].count | long | 해당 기간 내 소멸 예정 특허 수 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "periods": [
+      {
+        "months": 3,
+        "byTechField": [
+          { "name": "배터리", "count": 2 },
+          { "name": "반도체", "count": 1 }
+        ]
+      },
+      {
+        "months": 6,
+        "byTechField": [
+          { "name": "배터리", "count": 5 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /patents/expiring`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+선택 기간 내 소멸 예정 특허를 `expiryDate` 오름차순으로 조회합니다.
+`BUSINESS` 사용자는 본인 소속 부서 특허만 조회합니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| months | integer | N | 조회 기간(개월). 미지정 시 60개월 |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
+
+**응답 items[] 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 특허 ID |
+| title | string | 특허명 |
+| applicationNumber | string | 출원번호 |
+| techField | string | 기술 분야 |
+| departmentId | long | 현재 담당 부서 ID. 미배정이면 `null` |
+| departmentName | string | 현재 담당 부서명. 미배정이면 `null` |
+| expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 1,
+        "title": "고효율 배터리 셀 구조",
+        "applicationNumber": "10-2023-0012345",
+        "techField": "배터리",
+        "departmentId": 3,
+        "departmentName": "에너지솔루션 사업부",
+        "expiryDate": "2026-09-30"
+      }
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /patents/expiring/calendar`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+선택 연도의 월별 소멸 예정 특허 개수와 특허 목록을 조회합니다.
+`BUSINESS` 사용자는 본인 소속 부서 특허만 조회합니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| year | integer | N | 조회 연도. 미지정 시 현재 연도 |
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| months | array | 월별 소멸 예정 특허 버킷 |
+| months[].month | integer | 월 (`1`~`12`) |
+| months[].count | long | 해당 월 소멸 예정 특허 수 |
+| months[].patents | array | 해당 월 소멸 예정 특허 목록 |
+| months[].patents[].id | long | 특허 ID |
+| months[].patents[].title | string | 특허명 |
+| months[].patents[].applicationNumber | string | 출원번호 |
+| months[].patents[].expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
+| months[].patents[].techField | string | 기술 분야 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "months": [
+      {
+        "month": 9,
+        "count": 1,
+        "patents": [
+          {
+            "id": 1,
+            "title": "고효율 배터리 셀 구조",
+            "applicationNumber": "10-2023-0012345",
+            "expiryDate": "2026-09-30",
+            "techField": "배터리"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /patents/pending-approval`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+사업부가 등록 요청한 `PENDING_APPROVAL` 상태 특허만 조회합니다.
+
+**권한**: `ADMIN`, `LEGAL`
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| keyword | string | N | 특허명, 출원번호, 발명자, 출원인 검색 |
+| sort | string | N | `title`, `applicationNumber`, `applicationDate`, `expiryDate`, `citationCount` 정렬. `field,asc` 또는 `field,desc` |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
+
+**응답 items[] 필드**: `GET /patents`와 동일
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 42,
+        "title": "반도체 패키지 구조",
+        "applicationNumber": "10-2026-0000000",
+        "approvalStatus": "PENDING_APPROVAL",
+        "rejectionReason": null,
+        "currentDepartmentId": 2,
+        "currentDepartmentName": "반도체 사업부"
+      }
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /patents/applications`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+특허 등록 신청 목록을 조회합니다. `ADMIN`, `LEGAL`은 전체 신청을 조회하고, `BUSINESS`는 본인 부서 신청만 조회합니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| approvalStatus | string | N | `PENDING_APPROVAL`, `APPROVED`, `REJECTED`, `WITHDRAWN`. `PENDING`은 `PENDING_APPROVAL`로 처리 |
+| keyword | string | N | 특허명, 출원번호, 발명자, 출원인 검색 |
+| sort | string | N | `title`, `applicationNumber`, `applicationDate`, `expiryDate`, `citationCount` 정렬. `field,asc` 또는 `field,desc` |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
+
+**응답 items[] 필드**: `GET /patents`와 동일
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 42,
+        "title": "반도체 패키지 구조",
+        "applicationNumber": "10-2026-0000000",
+        "approvalStatus": "REJECTED",
+        "rejectionReason": "필수 서지 정보가 부족합니다.",
+        "currentDepartmentId": 2,
+        "currentDepartmentName": "반도체 사업부"
+      }
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `PATCH /patents/{patentId}/approve`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**권한**: `ADMIN`, `LEGAL`
+
+승인 대기 특허 등록 신청을 승인합니다. 요청 Body 없음.
+
+**응답**: `GET /patents/{patentId}`와 동일한 `PatentDetailResponse`
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "title": "반도체 패키지 구조",
+    "applicationNumber": "10-2026-0000000",
+    "approvalStatus": "APPROVED",
+    "rejectionReason": null
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `INVALID_REQUEST`(400 — 승인 대기 상태가 아님)
+
+---
+
+#### `PATCH /patents/{patentId}/reject`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**권한**: `ADMIN`, `LEGAL`
+
+승인 대기 특허 등록 신청을 거절하고 거절 사유를 저장합니다.
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| reason | string | * | 거절 사유. 빈 문자열 불가 |
+
+**요청 예시**
+
+```json
+{ "reason": "필수 서지 정보가 부족합니다." }
+```
+
+**응답**: `GET /patents/{patentId}`와 동일한 `PatentDetailResponse`
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "title": "반도체 패키지 구조",
+    "applicationNumber": "10-2026-0000000",
+    "approvalStatus": "REJECTED",
+    "rejectionReason": "필수 서지 정보가 부족합니다."
+  }
+}
+```
+
+**에러**: `INVALID_REQUEST`(400 — reason 누락 또는 승인 대기 상태가 아님), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `PATCH /patents/{patentId}/withdraw`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+**권한**: `BUSINESS`
+
+사업부 사용자가 본인 부서의 승인 대기 특허 등록 신청을 철회합니다. 요청 Body 없음.
+
+**응답**: `GET /patents/{patentId}`와 동일한 `PatentDetailResponse`
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "title": "반도체 패키지 구조",
+    "applicationNumber": "10-2026-0000000",
+    "approvalStatus": "WITHDRAWN",
+    "rejectionReason": null
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 본인 부서 신청 아님), `NOT_FOUND`(404), `INVALID_REQUEST`(400 — 승인 대기 상태가 아님)
 
 ---
 
@@ -1034,7 +1397,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | createdCount | integer | 생성 성공 건수 |
 | skippedCount | integer | 건너뜀 건수 |
 | items[].patentId | long | 특허 ID |
-| items[].result | string | `CREATED` / `SKIPPED` |
+| items[].status | string | `CREATED` / `SKIPPED` |
 | items[].reason | string | 건너뜀 사유. `CREATED`이면 `null`. `DUPLICATE_REVIEW_REQUEST` / `PATENT_DEPARTMENT_NOT_ASSIGNED` |
 
 **응답 예시**
@@ -1047,9 +1410,9 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
     "createdCount": 2,
     "skippedCount": 1,
     "items": [
-      { "patentId": 1, "result": "CREATED", "reason": null },
-      { "patentId": 2, "result": "SKIPPED", "reason": "DUPLICATE_REVIEW_REQUEST" },
-      { "patentId": 3, "result": "SKIPPED", "reason": "PATENT_DEPARTMENT_NOT_ASSIGNED" }
+      { "patentId": 1, "status": "CREATED", "reason": null },
+      { "patentId": 2, "status": "SKIPPED", "reason": "DUPLICATE_REVIEW_REQUEST" },
+      { "patentId": 3, "status": "SKIPPED", "reason": "PATENT_DEPARTMENT_NOT_ASSIGNED" }
     ]
   }
 }
@@ -1204,6 +1567,270 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
+#### `GET /business-reviews/summary`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+사업부 사용자의 소속 부서 기준 현재 검토 주기 정보와 제출 KPI를 조회합니다.
+
+요청 Body 없음.
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| reviewCycle | object | 현재 검토 주기 정보 |
+| reviewCycle.id | long | 검토 주기 ID |
+| reviewCycle.year | integer | 검토 주기 연도 |
+| reviewCycle.quarter | integer | 검토 주기 분기 |
+| reviewCycle.startDate | string | 시작일 (`yyyy-MM-dd`) |
+| reviewCycle.endDate | string | 종료일 (`yyyy-MM-dd`) |
+| reviewCycle.deadline | string | 회신 기한 (`yyyy-MM-dd`) |
+| kpi | object | 제출 현황 KPI |
+| kpi.submitted | long | 제출 완료 건수 |
+| kpi.notSubmitted | long | 미제출 건수 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "reviewCycle": {
+      "id": 1,
+      "year": 2026,
+      "quarter": 2,
+      "startDate": "2026-04-01",
+      "endDate": "2026-06-30",
+      "deadline": "2026-06-30"
+    },
+    "kpi": {
+      "submitted": 12,
+      "notSubmitted": 3
+    }
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 사업부 사용자 아님 또는 소속 부서 없음), `NOT_FOUND`(404 — 현재 활성 검토 주기 없음)
+
+---
+
+#### `GET /business-reviews`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+본인 부서에 현재 검토 주기로 요청된 특허 검토 현황 목록을 조회합니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| status | string | N | `PENDING`, `OVERDUE`, `SUBMITTED` |
+| opinion | string | N | `MAINTAIN`, `ABANDON` |
+| submittedFrom | string | N | 제출일 시작일 (`yyyy-MM-dd`) |
+| submittedTo | string | N | 제출일 종료일 (`yyyy-MM-dd`) |
+| sort | string | N | `title`, `applicationNumber`, `applicationDate`, `expiryDate`, `citationCount` 정렬. 미지정 시 출원번호 오름차순 |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
+
+**응답 items[] 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 검토 ID |
+| patentId | long | 특허 ID |
+| title | string | 특허명 |
+| applicationNumber | string | 출원번호 |
+| keywords | array | 주요 키워드 목록 |
+| summary | string | 특허 요약 |
+| opinion | string | `MAINTAIN` / `ABANDON` / `null` |
+| comment | string | 상세 의견 |
+| status | string | `PENDING` / `OVERDUE` / `SUBMITTED` |
+| submittedAt | datetime | 제출 시각 |
+| createdAt | datetime | 특허 생성 시각 |
+| updatedAt | datetime | 특허 수정 시각 |
+| reviewRequestedAt | datetime | 검토 요청 생성 시각 |
+| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
+| totalScore | number | 최신 완료 평가 점수. 없으면 `null` |
+| valueGrade | string | 최신 완료 평가 등급. 없으면 `null` |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 10,
+        "patentId": 1,
+        "title": "고효율 배터리 셀 구조",
+        "applicationNumber": "10-2023-0012345",
+        "keywords": ["음극재", "에너지밀도"],
+        "summary": "배터리 셀 구조 개선 특허",
+        "opinion": null,
+        "comment": null,
+        "status": "PENDING",
+        "submittedAt": null,
+        "createdAt": "2026-06-01T09:00:00Z",
+        "updatedAt": "2026-06-01T09:00:00Z",
+        "reviewRequestedAt": "2026-06-07T01:00:00Z",
+        "dueDate": "2026-06-30",
+        "totalScore": 82.5,
+        "valueGrade": "A"
+      }
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 사업부 사용자 아님 또는 소속 부서 없음), `NOT_FOUND`(404 — 현재 활성 검토 주기 없음)
+
+---
+
+#### `GET /business-reviews/history`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+본인 부서 기준 과거 검토 주기의 제출 완료 이력을 조회합니다. 현재 진행 중인 검토 주기는 포함하지 않습니다.
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| year | integer | N | 검토 주기 연도 |
+| quarter | integer | N | 검토 주기 분기. `year`와 함께 사용 |
+| opinion | string | N | `MAINTAIN`, `ABANDON` |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
+
+**응답 items[] 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 검토 ID |
+| patentId | long | 특허 ID |
+| reviewCycle | object | 검토 주기 정보 |
+| reviewCycle.id | long | 검토 주기 ID |
+| reviewCycle.year | integer | 검토 주기 연도 |
+| reviewCycle.quarter | integer | 검토 주기 분기 |
+| reviewCycle.startDate | string | 시작일 (`yyyy-MM-dd`) |
+| reviewCycle.endDate | string | 종료일 (`yyyy-MM-dd`) |
+| reviewCycle.deadline | string | 회신 기한 (`yyyy-MM-dd`) |
+| title | string | 특허명 |
+| applicationNumber | string | 출원번호 |
+| opinion | string | `MAINTAIN` / `ABANDON` |
+| comment | string | 상세 의견 |
+| status | string | `SUBMITTED` |
+| submittedAt | datetime | 제출 시각 |
+| reviewRequestedAt | datetime | 검토 요청 생성 시각 |
+| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
+| totalScore | number | 최신 완료 평가 점수. 없으면 `null` |
+| valueGrade | string | 최신 완료 평가 등급. 없으면 `null` |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 9,
+        "patentId": 1,
+        "reviewCycle": {
+          "id": 1,
+          "year": 2026,
+          "quarter": 1,
+          "startDate": "2026-01-01",
+          "endDate": "2026-03-31",
+          "deadline": "2026-03-31"
+        },
+        "title": "고효율 배터리 셀 구조",
+        "applicationNumber": "10-2023-0012345",
+        "opinion": "MAINTAIN",
+        "comment": "핵심 특허로 유지를 요청합니다.",
+        "status": "SUBMITTED",
+        "submittedAt": "2026-03-20T09:00:00Z",
+        "reviewRequestedAt": "2026-03-01T09:00:00Z",
+        "dueDate": "2026-03-31",
+        "totalScore": 82.5,
+        "valueGrade": "A"
+      }
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 사업부 사용자 아님 또는 소속 부서 없음)
+
+---
+
+#### `GET /business-reviews/{patentId}`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+본인 부서에 현재 검토 주기로 요청된 특정 특허의 상세 정보와 의견 제출 상태를 조회합니다.
+
+**Path Parameter**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| patentId | long | * | 특허 ID |
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| patent | object | `GET /patents/{patentId}`와 동일한 특허 상세 정보 |
+| opinion | string | `MAINTAIN` / `ABANDON` / `null` |
+| comment | string | 상세 의견 |
+| status | string | `PENDING` / `OVERDUE` / `SUBMITTED` |
+| submittedAt | datetime | 제출 시각 |
+| reviewRequestedAt | datetime | 검토 요청 생성 시각 |
+| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "patent": {
+      "id": 1,
+      "title": "고효율 배터리 셀 구조",
+      "applicationNumber": "10-2023-0012345",
+      "approvalStatus": "APPROVED",
+      "currentDepartmentId": 3,
+      "currentDepartmentName": "에너지솔루션 사업부"
+    },
+    "opinion": null,
+    "comment": null,
+    "status": "PENDING",
+    "submittedAt": null,
+    "reviewRequestedAt": "2026-06-07T01:00:00Z",
+    "dueDate": "2026-06-30"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 본인 부서 검토 대상 아님), `NOT_FOUND`(404)
+
+---
+
 #### `POST /business-reviews/{patentId}/opinions`
 
 **헤더**: `Authorization: Bearer {accessToken}`
@@ -1232,9 +1859,22 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 {
   "success": true,
   "data": {
-    "reviewId": 10,
+    "id": 10,
+    "patentId": 1,
+    "title": "고효율 배터리 셀 구조",
+    "applicationNumber": "10-2023-0012345",
+    "keywords": ["음극재", "에너지밀도"],
+    "summary": "배터리 셀 구조 개선 특허",
     "opinion": "MAINTAIN",
-    "submittedAt": "2026-06-07T10:30:00Z"
+    "comment": "핵심 기술로 유지를 권고합니다.",
+    "status": "SUBMITTED",
+    "submittedAt": "2026-06-07T10:30:00Z",
+    "createdAt": "2026-06-01T09:00:00Z",
+    "updatedAt": "2026-06-01T09:00:00Z",
+    "reviewRequestedAt": "2026-06-07T01:00:00Z",
+    "dueDate": "2026-06-30",
+    "totalScore": 82.5,
+    "valueGrade": "A"
   }
 }
 ```
@@ -1256,7 +1896,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 보고서 채팅 이력 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 보고서 채팅 메시지 전송 | `POST` | `/patents/{patentId}/reports/{reportId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 보고서 채팅 초기화 | `DELETE` | `/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 전체 삭제 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달 | Internal API Key |
+| 보고서 생성 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달. `/internal/reports/{reportId}/complete`도 동일 처리 | Internal API Key |
 | 임베딩 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/embedding-complete` | AI Worker가 임베딩 완료 전달 | Internal API Key |
 | 보고서 생성 실패 콜백 | `PATCH` | `/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
 
@@ -1269,6 +1909,13 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
 #### `GET /patents/{patentId}/reports`
 
 **헤더**: `Authorization: Bearer {accessToken}`
+
+**쿼리 파라미터**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
 
 **응답 items[] 필드**
 
@@ -1300,7 +1947,13 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
         "createdAt": "2026-05-01T08:55:00Z",
         "updatedAt": "2026-05-01T09:05:00Z"
       }
-    ]
+    ],
+    "page": 0,
+    "size": 50,
+    "totalItems": 1,
+    "totalPages": 1,
+    "hasNext": false,
+    "hasPrevious": false
   }
 }
 ```
@@ -1347,6 +2000,111 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
+#### `GET /patents/{patentId}/reports/latest`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+가장 최근 생성된 평가 보고서 1건을 조회합니다. 완료된 보고서는 presigned URL과 평가 점수/등급을 함께 반환하고, 아직 생성 중이면 `url`, `totalScore`, `valueGrade`, `evaluatedAt`이 `null`일 수 있습니다.
+
+**Path Parameter**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| patentId | long | * | 특허 ID |
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 보고서 ID |
+| patentId | long | 특허 ID |
+| status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
+| url | string | MinIO presigned URL. 완료 전이면 `null` |
+| totalScore | number | 평가 점수. 완료 전이면 `null` |
+| valueGrade | string | 평가 등급. 완료 전이면 `null` |
+| evaluatedAt | datetime | 평가 완료 시각. 완료 전이면 `null` |
+| opinion | string | 해당 보고서에 대한 사업부 제출 의견. 없으면 `null` |
+| comment | string | 해당 보고서에 대한 사업부 제출 코멘트. 없으면 `null` |
+| submittedAt | datetime | 사업부 의견 제출 시각. 없으면 `null` |
+| createdAt | datetime | 보고서 생성 요청 시각 |
+| updatedAt | datetime | 보고서 수정 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 8,
+    "patentId": 1,
+    "status": "EMBEDDING_COMPLETED",
+    "url": "https://minio.skipa.internal/skipa/reports/8/report.html?...",
+    "totalScore": 82.5,
+    "valueGrade": "A",
+    "evaluatedAt": "2026-06-09T09:00:00Z",
+    "opinion": "MAINTAIN",
+    "comment": "핵심 특허로 판단되어 유지를 요청합니다.",
+    "submittedAt": "2026-06-10T09:00:00Z",
+    "createdAt": "2026-06-09T08:55:00Z",
+    "updatedAt": "2026-06-09T09:05:00Z"
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — BUSINESS가 본인 부서 담당 특허가 아닌 보고서 조회), `NOT_FOUND`(404 — 승인 완료 특허 또는 보고서 없음)
+
+---
+
+#### `GET /patents/{patentId}/reports/history`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+완료된 평가 보고서 중 최신 완료 보고서 1건을 제외한 과거 평가 이력을 조회합니다. 페이징 없이 `items` 배열로 반환합니다.
+
+**Path Parameter**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| patentId | long | * | 특허 ID |
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| items | array | 과거 평가 이력 목록 |
+| items[].id | long | 보고서 ID |
+| items[].patentId | long | 특허 ID |
+| items[].totalScore | number | 평가 점수 |
+| items[].valueGrade | string | 평가 등급 |
+| items[].evaluatedAt | datetime | 평가 완료 시각 |
+| items[].opinion | string | 사업부 제출 의견. 없으면 `null` |
+| items[].comment | string | 사업부 제출 코멘트. 없으면 `null` |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": 7,
+        "patentId": 1,
+        "totalScore": 78.0,
+        "valueGrade": "B",
+        "evaluatedAt": "2026-05-01T09:00:00Z",
+        "opinion": "MAINTAIN",
+        "comment": "현재 제품군과 연관성이 있습니다."
+      }
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — BUSINESS가 본인 부서 담당 특허가 아닌 보고서 조회), `NOT_FOUND`(404 — 승인 완료 특허 없음)
+
+---
+
 #### `GET /patents/{patentId}/reports/{reportId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
@@ -1359,8 +2117,14 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 | patentId | long | 특허 ID |
 | status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
 | url | string | MinIO presigned URL. `REPORT_COMPLETED` 또는 `EMBEDDING_COMPLETED` 상태에서만 포함 |
+| totalScore | number | 평가 점수 |
+| valueGrade | string | 평가 등급 |
 | evaluatedAt | datetime | 평가 기준 일시 |
+| opinion | string | 해당 보고서에 대한 사업부 제출 의견. 없으면 `null` |
+| comment | string | 해당 보고서에 대한 사업부 제출 코멘트. 없으면 `null` |
+| submittedAt | datetime | 사업부 의견 제출 시각. 없으면 `null` |
 | createdAt | datetime | 생성 요청 일시 |
+| updatedAt | datetime | 수정 시각 |
 
 **응답 예시**
 
@@ -1372,8 +2136,14 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
     "patentId": 1,
     "status": "REPORT_COMPLETED",
     "url": "https://minio.skipa.internal/skipa/reports/7/report.html?...",
+    "totalScore": 82.5,
+    "valueGrade": "A",
     "evaluatedAt": "2026-05-01T09:00:00Z",
-    "createdAt": "2026-05-01T08:55:00Z"
+    "opinion": "MAINTAIN",
+    "comment": "핵심 특허로 판단되어 유지를 요청합니다.",
+    "submittedAt": "2026-05-02T09:00:00Z",
+    "createdAt": "2026-05-01T08:55:00Z",
+    "updatedAt": "2026-05-01T09:05:00Z"
   }
 }
 ```
@@ -1397,6 +2167,8 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 | id | long | 보고서 ID |
 | patentId | long | 특허 ID |
 | status | string | `GENERATING` (polling 계속) / `REPORT_COMPLETED` (보고서 조회 가능) / `EMBEDDING_COMPLETED` (임베딩 완료) / `FAILED` (재시도) |
+| totalScore | number | 평가 점수. 완료 전에는 `null` |
+| valueGrade | string | 평가 등급. 완료 전에는 `null` |
 | evaluatedAt | datetime | 완료 일시. 완료 전에는 `null` |
 | updatedAt | datetime | 마지막 상태 변경 일시 |
 
@@ -1409,9 +2181,148 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
     "id": 8,
     "patentId": 1,
     "status": "GENERATING",
+    "totalScore": null,
+    "valueGrade": null,
     "evaluatedAt": null,
     "updatedAt": "2026-06-07T08:55:00Z"
   }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
+#### `GET /patents/{patentId}/reports/{reportId}/chat/messages`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+평가 보고서 채팅 메시지 이력을 생성순으로 조회합니다.
+
+**Path Parameter**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| patentId | long | * | 특허 ID |
+| reportId | long | * | 보고서 ID |
+
+**응답 items[] 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| id | long | 채팅 메시지 ID |
+| patentId | long | 응답 필드명은 `patentId`이나, 현재 구현상 보고서 채팅 target ID가 들어갑니다 |
+| role | string | `USER` / `ASSISTANT` |
+| content | string | 메시지 내용 |
+| sourceCards | array | AI 응답 출처 카드 목록. 없으면 빈 배열 |
+| createdAt | datetime | 메시지 생성 시각 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 100,
+      "patentId": 8,
+      "role": "USER",
+      "content": "이 평가 보고서에서 가장 중요한 리스크는 무엇인가요?",
+      "sourceCards": [],
+      "createdAt": "2026-06-10T09:00:00Z"
+    },
+    {
+      "id": 101,
+      "patentId": 8,
+      "role": "ASSISTANT",
+      "content": "가장 큰 리스크는 권리 범위가 경쟁 특허와 일부 중첩될 가능성입니다.",
+      "sourceCards": [],
+      "createdAt": "2026-06-10T09:00:03Z"
+    }
+  ]
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — BUSINESS가 본인 부서 담당 특허가 아닌 보고서 조회), `NOT_FOUND`(404), `CONFLICT`(409 — 보고서 생성 미완료)
+
+---
+
+#### `POST /patents/{patentId}/reports/{reportId}/chat/messages`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+사용자 메시지를 저장하고 AI 서버 채팅 API를 호출한 뒤 사용자 메시지와 AI 응답 메시지를 함께 반환합니다.
+
+**Path Parameter**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| patentId | long | * | 특허 ID |
+| reportId | long | * | 보고서 ID |
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | * | 사용자 채팅 메시지. 빈 문자열 불가 |
+
+**요청 예시**
+
+```json
+{ "message": "이 평가 보고서에서 가장 중요한 리스크는 무엇인가요?" }
+```
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| userMessage | object | 저장된 사용자 메시지 |
+| assistantMessage | object | 저장된 AI 응답 메시지 |
+
+`userMessage`, `assistantMessage` 필드는 `GET /patents/{patentId}/reports/{reportId}/chat/messages`의 메시지 항목과 동일합니다.
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "userMessage": {
+      "id": 100,
+      "patentId": 8,
+      "role": "USER",
+      "content": "이 평가 보고서에서 가장 중요한 리스크는 무엇인가요?",
+      "sourceCards": [],
+      "createdAt": "2026-06-10T09:00:00Z"
+    },
+    "assistantMessage": {
+      "id": 101,
+      "patentId": 8,
+      "role": "ASSISTANT",
+      "content": "가장 큰 리스크는 권리 범위가 경쟁 특허와 일부 중첩될 가능성입니다.",
+      "sourceCards": [],
+      "createdAt": "2026-06-10T09:00:03Z"
+    }
+  }
+}
+```
+
+**에러**: `INVALID_REQUEST`(400 — message 누락), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `CONFLICT`(409 — 보고서 생성 미완료), `EXTERNAL_SERVICE_ERROR`(502 — AI 서버 호출 실패)
+
+---
+
+#### `DELETE /patents/{patentId}/reports/{reportId}/chat/messages`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+해당 보고서 채팅 메시지를 모두 삭제합니다. 요청 Body 없음.
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": null
 }
 ```
 
@@ -2166,5 +3077,209 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 | 포트폴리오 분포 조회 | `GET` | `/portfolio/distribution` | 평가 등급, 기술 분야, 국가, 사업부별 분포 조회 | `ADMIN`, `LEGAL` |
 | 포트폴리오 추이 조회 | `GET` | `/portfolio/trends` | 연도별 출원/등록/소멸 추이와 연차료 추이 조회 | `ADMIN`, `LEGAL` |
 | 포트폴리오 결정 비율 조회 | `GET` | `/portfolio/decisions` | 분기, 사업부, 기술 분야별 유지/포기 결정 현황 조회 | `ADMIN`, `LEGAL` |
+
+---
+
+#### `GET /portfolio/insights`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+포트폴리오 분포/추이/결정 데이터를 기반으로 AI 인사이트를 조회합니다. 캐시가 있으면 캐시된 인사이트를 반환합니다.
+
+요청 Body 없음.
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| insights | array | AI가 생성한 포트폴리오 인사이트 문장 목록 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "insights": [
+      "A등급 이상 특허는 배터리 분야에 집중되어 있어 핵심 포트폴리오 유지 전략이 필요합니다.",
+      "최근 3년간 소멸 예정 특허가 증가하고 있어 연차료 대비 사업 기여도 점검이 필요합니다."
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `EXTERNAL_SERVICE_ERROR`(502 — AI 인사이트 생성 실패)
+
+---
+
+#### `GET /portfolio/distribution`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+평가 등급, 기술 분야, 출원국, 담당 부서별 포트폴리오 분포를 조회합니다.
+
+요청 Body 없음.
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| byGrade | array | 부서별 평가 등급 분포 |
+| byGrade[].departmentId | long | 부서 ID |
+| byGrade[].departmentName | string | 부서명 |
+| byGrade[].s | long | S등급 특허 수 |
+| byGrade[].a | long | A등급 특허 수 |
+| byGrade[].b | long | B등급 특허 수 |
+| byGrade[].c | long | C등급 특허 수 |
+| byGrade[].d | long | D등급 특허 수 |
+| byTechField | array | 기술 분야별 특허 수 |
+| byTechField[].name | string | 기술 분야명 |
+| byTechField[].count | long | 특허 수 |
+| byFilingCountry | array | 출원국별 특허 수 |
+| byFilingCountry[].country | string | 출원국 코드 |
+| byFilingCountry[].count | long | 특허 수 |
+| byDepartment | array | 담당 부서별 특허 수 |
+| byDepartment[].departmentId | long | 부서 ID |
+| byDepartment[].departmentName | string | 부서명 |
+| byDepartment[].count | long | 특허 수 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "byGrade": [
+      {
+        "departmentId": 3,
+        "departmentName": "에너지솔루션 사업부",
+        "s": 1,
+        "a": 8,
+        "b": 12,
+        "c": 4,
+        "d": 1
+      }
+    ],
+    "byTechField": [
+      { "name": "배터리", "count": 26 }
+    ],
+    "byFilingCountry": [
+      { "country": "KR", "count": 18 },
+      { "country": "US", "count": 8 }
+    ],
+    "byDepartment": [
+      { "departmentId": 3, "departmentName": "에너지솔루션 사업부", "count": 26 }
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /portfolio/trends`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+연도별 출원/등록/소멸 추이와 연차료 비용 추이를 조회합니다.
+
+요청 Body 없음.
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| yearlyPatentTrends | array | 연도별 특허 흐름 |
+| yearlyPatentTrends[].year | integer | 연도 |
+| yearlyPatentTrends[].applications | long | 해당 연도 출원 건수 |
+| yearlyPatentTrends[].registrations | long | 해당 연도 등록 건수 |
+| yearlyPatentTrends[].expiries | long | 해당 연도 소멸 예정/소멸 건수 |
+| yearlyAnnuityCosts | array | 연도별 연차료 비용 |
+| yearlyAnnuityCosts[].year | integer | 연도 |
+| yearlyAnnuityCosts[].amount | long | 연차료 금액 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "yearlyPatentTrends": [
+      {
+        "year": 2026,
+        "applications": 24,
+        "registrations": 18,
+        "expiries": 3
+      }
+    ],
+    "yearlyAnnuityCosts": [
+      { "year": 2026, "amount": 12500000 }
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
+
+#### `GET /portfolio/decisions`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+분기별 유지/포기 결정 현황과 사업부·기술 분야별 세부 분포를 조회합니다.
+
+요청 Body 없음.
+
+**응답**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| byQuarter | array | 분기별 결정 현황 |
+| byQuarter[].quarter | string | 분기 라벨. 예: `2026-Q2` |
+| byQuarter[].maintain | long | 유지 의견 수 |
+| byQuarter[].abandon | long | 포기 의견 수 |
+| byQuarter[].byDepartment | array | 사업부별 유지/포기 현황 |
+| byQuarter[].byDepartment[].departmentId | long | 부서 ID |
+| byQuarter[].byDepartment[].departmentName | string | 부서명 |
+| byQuarter[].byDepartment[].maintain | long | 유지 의견 수 |
+| byQuarter[].byDepartment[].abandon | long | 포기 의견 수 |
+| byQuarter[].byTechField | array | 기술 분야별 유지/포기 현황 |
+| byQuarter[].byTechField[].name | string | 기술 분야명 |
+| byQuarter[].byTechField[].maintain | long | 유지 의견 수 |
+| byQuarter[].byTechField[].abandon | long | 포기 의견 수 |
+
+**응답 예시**
+
+```json
+{
+  "success": true,
+  "data": {
+    "byQuarter": [
+      {
+        "quarter": "2026-Q2",
+        "maintain": 12,
+        "abandon": 3,
+        "byDepartment": [
+          {
+            "departmentId": 3,
+            "departmentName": "에너지솔루션 사업부",
+            "maintain": 8,
+            "abandon": 1
+          }
+        ],
+        "byTechField": [
+          { "name": "배터리", "maintain": 8, "abandon": 1 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
+
+---
 
 **공통 에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
