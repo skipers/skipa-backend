@@ -317,7 +317,7 @@
 | 담당 특허 목록 조회 | `GET` | `/patents/assigned` | 현재 담당 부서가 본인 소속 부서와 일치하는 특허 목록 조회 | `BUSINESS` |
 | 특허 통계 조회 | `GET` | `/patents/stats` | 권리 상태별·기술분야별·국가별·사업부별 집계 | `ADMIN`, `LEGAL` |
 | 특허 단일 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 등록 | `POST` | `/patents` | 특허 정보 수동 등록 | `ADMIN`, `LEGAL` |
+| 특허 등록 | `POST` | `/patents` | 특허 정보 수동 등록 또는 등록 요청 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 특허 수정 | `PUT` | `/patents/{patentId}` | 특허 정보 수정 | `ADMIN`, `LEGAL` |
 | 담당 부서 변경 | `PATCH` | `/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
 | 특허 삭제 | `DELETE` | `/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
@@ -710,10 +710,10 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| PDF 업로드 URL 발급 | `POST` | `/patent-extract-jobs/upload-url` | 추출 작업 생성 후 MinIO PUT presigned URL 반환 | `ADMIN`, `LEGAL` |
-| PDF 업로드 완료 | `POST` | `/patent-extract-jobs/{extractJobId}/upload-complete` | PDF 존재 확인 후 RabbitMQ 메시지 발행 | `ADMIN`, `LEGAL` |
-| 추출 작업 상태 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/status` | 프론트 polling용 상태 조회 | `ADMIN`, `LEGAL` |
-| 추출 결과 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/result` | 완료된 추출 결과 JSON 조회 | `ADMIN`, `LEGAL` |
+| PDF 업로드 URL 발급 | `POST` | `/patent-extract-jobs/upload-url` | 추출 작업 생성 후 MinIO PUT presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| PDF 업로드 완료 | `POST` | `/patent-extract-jobs/{extractJobId}/upload-complete` | PDF 존재 확인 후 RabbitMQ 메시지 발행 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 추출 작업 상태 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/status` | 프론트 polling용 상태 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 추출 결과 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/result` | 완료된 추출 결과 JSON 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 추출 완료 콜백 | `PATCH` | `/internal/patent-extract-jobs/{extractJobId}/complete` | AI Worker가 추출 결과 전달 | Internal API Key |
 | 추출 실패 콜백 | `PATCH` | `/internal/patent-extract-jobs/{extractJobId}/fail` | AI Worker가 추출 실패 전달 | Internal API Key |
 
