@@ -67,10 +67,10 @@ public class PatentExtractJobService {
     }
 
     @Transactional
-    public PatentExtractJobStatusResponse complete(Long extractJobId, JsonNode result) {
+    public PatentExtractJobStatusResponse complete(Long extractJobId, JsonNode result, String parsedJsonKey) {
         PatentExtractJob job = getJob(extractJobId);
 
-        job.complete(result, null);
+        job.complete(result, parsedJsonKey, null);
 
         return PatentExtractJobStatusResponse.from(job);
     }

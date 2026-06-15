@@ -70,10 +70,11 @@ class PatentExtractJobTest {
                 .put("summary", "Summary");
         Instant completedAt = Instant.parse("2026-06-08T01:10:00Z");
 
-        job.complete(resultJson, completedAt);
+        job.complete(resultJson, "tmp/patent-extract-jobs/1/parsed.json", completedAt);
 
         assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.COMPLETED);
         assertThat(job.getResultJson()).isEqualTo(resultJson);
+        assertThat(job.getParsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/1/parsed.json");
         assertThat(job.getCompletedAt()).isEqualTo(completedAt);
         assertThat(job.isCompleted()).isTrue();
     }
@@ -83,7 +84,19 @@ class PatentExtractJobTest {
         PatentExtractJob job = analyzingJob();
 
         assertPatentExtractError(
-                () -> job.complete(null, Instant.parse("2026-06-08T01:10:00Z")),
+                () -> job.complete(null, "tmp/patent-extract-jobs/1/parsed.json", Instant.parse("2026-06-08T01:10:00Z")),
+                ErrorCode.INVALID_REQUEST
+        );
+
+        assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.ANALYZING);
+    }
+
+    @Test
+    void completeRejectsBlankParsedJsonKey() {
+        PatentExtractJob job = analyzingJob();
+
+        assertPatentExtractError(
+                () -> job.complete(objectMapper.createObjectNode().put("title", "Patent"), " ", Instant.parse("2026-06-08T01:10:00Z")),
                 ErrorCode.INVALID_REQUEST
         );
 
@@ -105,7 +118,11 @@ class PatentExtractJobTest {
     @Test
     void completedJobCannotBeFailedAgain() {
         PatentExtractJob job = analyzingJob();
-        job.complete(objectMapper.createObjectNode().put("title", "Patent"), Instant.parse("2026-06-08T01:10:00Z"));
+        job.complete(
+                objectMapper.createObjectNode().put("title", "Patent"),
+                "tmp/patent-extract-jobs/1/parsed.json",
+                Instant.parse("2026-06-08T01:10:00Z")
+        );
 
         assertPatentExtractError(() -> job.fail("retry failed"), ErrorCode.PATENT_EXTRACT_ALREADY_PROCESSED);
 
@@ -118,7 +135,11 @@ class PatentExtractJobTest {
         job.fail("AI worker failed");
 
         assertPatentExtractError(
-                () -> job.complete(objectMapper.createObjectNode().put("title", "Patent"), Instant.parse("2026-06-08T01:10:00Z")),
+                () -> job.complete(
+                        objectMapper.createObjectNode().put("title", "Patent"),
+                        "tmp/patent-extract-jobs/1/parsed.json",
+                        Instant.parse("2026-06-08T01:10:00Z")
+                ),
                 ErrorCode.PATENT_EXTRACT_ALREADY_PROCESSED
         );
 

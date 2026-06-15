@@ -28,7 +28,11 @@ public class InternalPatentExtractJobController {
             @Valid @RequestBody PatentExtractCompleteRequest request
     ) {
         return ApiResponse.ok(PatentExtractCallbackResponse.from(
-                patentExtractJobService.complete(extractJobId, objectMapper.valueToTree(request.result()))
+                patentExtractJobService.complete(
+                        extractJobId,
+                        objectMapper.valueToTree(request.result()),
+                        request.parsedJsonKey()
+                )
         ));
     }
 

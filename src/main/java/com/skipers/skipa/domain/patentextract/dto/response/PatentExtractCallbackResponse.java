@@ -5,6 +5,7 @@ import java.time.Instant;
 public record PatentExtractCallbackResponse(
         Long extractJobId,
         String objectKey,
+        String parsedJsonKey,
         String status,
         String errorMessage,
         Instant uploadedAt,
@@ -17,6 +18,7 @@ public record PatentExtractCallbackResponse(
         return new PatentExtractCallbackResponse(
                 response.extractJobId(),
                 response.objectKey(),
+                response.parsedJsonKey(),
                 response.status(),
                 response.errorMessage(),
                 response.uploadedAt(),

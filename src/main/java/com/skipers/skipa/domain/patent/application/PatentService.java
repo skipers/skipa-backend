@@ -632,6 +632,9 @@ public class PatentService {
         if (!extractJob.isCompleted()) {
             throw new PatentExtractException(ErrorCode.PATENT_EXTRACT_NOT_COMPLETED);
         }
+        if (extractJob.getParsedJsonKey() == null || extractJob.getParsedJsonKey().isBlank()) {
+            throw new PatentExtractException(ErrorCode.INVALID_REQUEST);
+        }
 
         return extractJob;
     }
@@ -648,19 +651,13 @@ public class PatentService {
 
     private void assignExtractedStorageKeys(Patent patent, PatentExtractJob extractJob) {
         String originalPdfKey = buildFinalPdfObjectKey(patent.getId());
-        String parsedJsonKey = buildParsedJsonObjectKey(patent.getId());
 
         patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), originalPdfKey);
-        patentOriginalPdfStorageService.saveJson(parsedJsonKey, extractJob.getResultJson());
-        patent.assignStorageKeys(originalPdfKey, parsedJsonKey);
+        patent.assignStorageKeys(originalPdfKey, extractJob.getParsedJsonKey());
     }
 
     private String buildFinalPdfObjectKey(Long patentId) {
         return "patents/%d/original.pdf".formatted(patentId);
-    }
-
-    private String buildParsedJsonObjectKey(Long patentId) {
-        return "patents/%d/parsed.json".formatted(patentId);
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {
