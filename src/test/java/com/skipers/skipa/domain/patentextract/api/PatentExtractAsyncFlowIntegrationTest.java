@@ -119,6 +119,7 @@ class PatentExtractAsyncFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "parsedJsonKey": "tmp/patent-extract-jobs/%d/parsed.json",
                                   "result": {
                                     "title": "AI Extracted Patent",
                                     "applicationNumber": "10-2026-0000000",
@@ -126,20 +127,23 @@ class PatentExtractAsyncFlowIntegrationTest {
                                     "summary": "AI generated summary"
                                   }
                                 }
-                                """))
+                                """.formatted(extractJobId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.extractJobId").value(extractJobId))
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
         mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/status", extractJobId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.completedAt").isNotEmpty());
 
         mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", extractJobId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.result.title").value("AI Extracted Patent"))
                 .andExpect(jsonPath("$.data.result.keywords[0]").value("semiconductor"));
 
@@ -158,16 +162,12 @@ class PatentExtractAsyncFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.applicationNumber").value("10-2026-0000000"))
                 .andExpect(jsonPath("$.data.originalPdfKey").value("patents/1/original.pdf"))
-                .andExpect(jsonPath("$.data.parsedJsonKey").value("patents/1/parsed.json"));
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)));
 
         verify(patentOriginalPdfStorageService).copy(objectKey, "patents/1/original.pdf");
-        verify(patentOriginalPdfStorageService).saveJson(
-                org.mockito.ArgumentMatchers.eq("patents/1/parsed.json"),
-                org.mockito.ArgumentMatchers.any(com.fasterxml.jackson.databind.JsonNode.class)
-        );
         Patent patent = patentRepository.findByApplicationNumber("10-2026-0000000").orElseThrow();
         assertThat(patent.getOriginalPdfKey()).isEqualTo("patents/1/original.pdf");
-        assertThat(patent.getParsedJsonKey()).isEqualTo("patents/1/parsed.json");
+        assertThat(patent.getParsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId));
     }
 
     @Test
@@ -223,13 +223,15 @@ class PatentExtractAsyncFlowIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "parsedJsonKey": "tmp/patent-extract-jobs/%d/parsed.json",
                                   "result": {
                                     "title": "Business Extracted Patent",
                                     "applicationNumber": "10-2026-0000001"
                                   }
                                 }
-                                """))
+                                """.formatted(extractJobId)))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
         mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", extractJobId)

@@ -7,6 +7,7 @@ import java.time.Instant;
 public record PatentExtractResultResponse(
         Long extractJobId,
         String objectKey,
+        String parsedJsonKey,
         String status,
         Object result,
         Instant uploadedAt,
@@ -19,6 +20,7 @@ public record PatentExtractResultResponse(
         return new PatentExtractResultResponse(
                 job.getId(),
                 job.getObjectKey(),
+                job.getParsedJsonKey(),
                 job.getStatus().name(),
                 result,
                 job.getUploadedAt(),

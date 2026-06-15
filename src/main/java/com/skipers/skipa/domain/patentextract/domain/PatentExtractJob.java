@@ -43,6 +43,9 @@ public class PatentExtractJob extends BaseTimeEntity {
     @Column(name = "result_json", columnDefinition = "jsonb")
     private JsonNode resultJson;
 
+    @Column(name = "parsed_json_key", length = 500)
+    private String parsedJsonKey;
+
     @Column(name = "error_message", columnDefinition = "text")
     private String errorMessage;
 
@@ -57,6 +60,7 @@ public class PatentExtractJob extends BaseTimeEntity {
             String objectKey,
             PatentExtractJobStatus status,
             JsonNode resultJson,
+            String parsedJsonKey,
             String errorMessage,
             Instant uploadedAt,
             Instant completedAt
@@ -64,6 +68,7 @@ public class PatentExtractJob extends BaseTimeEntity {
         this.objectKey = objectKey;
         this.status = status != null ? status : PatentExtractJobStatus.UPLOAD_PENDING;
         this.resultJson = resultJson;
+        this.parsedJsonKey = parsedJsonKey;
         this.errorMessage = errorMessage;
         this.uploadedAt = uploadedAt;
         this.completedAt = completedAt;
@@ -96,14 +101,18 @@ public class PatentExtractJob extends BaseTimeEntity {
         this.uploadedAt = uploadedAt != null ? uploadedAt : Instant.now();
     }
 
-    public void complete(JsonNode resultJson, Instant completedAt) {
+    public void complete(JsonNode resultJson, String parsedJsonKey, Instant completedAt) {
         validateAnalyzing();
 
         if (resultJson == null || resultJson.isNull()) {
             throw new PatentExtractException(ErrorCode.INVALID_REQUEST);
         }
+        if (parsedJsonKey == null || parsedJsonKey.isBlank()) {
+            throw new PatentExtractException(ErrorCode.INVALID_REQUEST);
+        }
 
         this.resultJson = resultJson;
+        this.parsedJsonKey = parsedJsonKey;
         this.status = PatentExtractJobStatus.COMPLETED;
         this.completedAt = completedAt != null ? completedAt : Instant.now();
     }

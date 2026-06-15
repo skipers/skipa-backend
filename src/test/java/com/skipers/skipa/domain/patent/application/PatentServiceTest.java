@@ -163,7 +163,7 @@ class PatentServiceTest {
     }
 
     @Test
-    void createWithExtractJobCopiesTemporaryPdfAndStoresFinalPdfKey() {
+    void createWithExtractJobCopiesTemporaryPdfAndStoresAiParsedJsonKey() {
         PatentExtractJob extractJob = completedExtractJob(7L, "tmp/patent-extract-jobs/7/original.pdf");
         when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
         when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> {
@@ -175,14 +175,10 @@ class PatentServiceTest {
         PatentDetailResponse response = patentService.create(legalUser(), createRequestWithExtractJob("Patent", "10-2026-0000000", 7L));
 
         assertThat(response.originalPdfKey()).isEqualTo("patents/1/original.pdf");
-        assertThat(response.parsedJsonKey()).isEqualTo("patents/1/parsed.json");
+        assertThat(response.parsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/7/parsed.json");
         verify(patentOriginalPdfStorageService).copy(
                 "tmp/patent-extract-jobs/7/original.pdf",
                 "patents/1/original.pdf"
-        );
-        verify(patentOriginalPdfStorageService).saveJson(
-                org.mockito.ArgumentMatchers.eq("patents/1/parsed.json"),
-                org.mockito.ArgumentMatchers.same(extractJob.getResultJson())
         );
     }
 
@@ -211,6 +207,24 @@ class PatentServiceTest {
         assertPatentExtractError(
                 () -> patentService.create(legalUser(), createRequestWithExtractJob("Patent", "APP-1", 7L)),
                 ErrorCode.PATENT_EXTRACT_NOT_COMPLETED
+        );
+
+        verify(patentRepository, never()).save(any());
+        verify(patentOriginalPdfStorageService, never()).copy(any(), any());
+    }
+
+    @Test
+    void createRejectsCompletedExtractJobWithoutParsedJsonKey() {
+        PatentExtractJob extractJob = PatentExtractJob.builder()
+                .objectKey("tmp/patent-extract-jobs/7/original.pdf")
+                .status(PatentExtractJobStatus.COMPLETED)
+                .build();
+        ReflectionTestUtils.setField(extractJob, "id", 7L);
+        when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
+
+        assertPatentExtractError(
+                () -> patentService.create(legalUser(), createRequestWithExtractJob("Patent", "APP-1", 7L)),
+                ErrorCode.INVALID_REQUEST
         );
 
         verify(patentRepository, never()).save(any());
@@ -1121,6 +1135,7 @@ class PatentServiceTest {
     private PatentExtractJob completedExtractJob(Long extractJobId, String objectKey) {
         PatentExtractJob extractJob = PatentExtractJob.builder()
                 .objectKey(objectKey)
+                .parsedJsonKey("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId))
                 .status(PatentExtractJobStatus.COMPLETED)
                 .build();
         ReflectionTestUtils.setField(extractJob, "id", extractJobId);

@@ -191,13 +191,16 @@ class PatentExtractJobServiceTest {
                 1L,
                 objectMapper.createObjectNode()
                         .put("title", "Patent")
-                        .put("summary", "Summary")
+                        .put("summary", "Summary"),
+                "tmp/patent-extract-jobs/1/parsed.json"
         );
 
         assertThat(response.extractJobId()).isEqualTo(1L);
         assertThat(response.status()).isEqualTo(PatentExtractJobStatus.COMPLETED.name());
+        assertThat(response.parsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/1/parsed.json");
         assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.COMPLETED);
         assertThat(job.getResultJson().get("title").asText()).isEqualTo("Patent");
+        assertThat(job.getParsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/1/parsed.json");
         assertThat(job.getCompletedAt()).isNotNull();
     }
 
@@ -206,7 +209,11 @@ class PatentExtractJobServiceTest {
         when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertPatentExtractError(
-                () -> patentExtractJobService.complete(1L, objectMapper.createObjectNode().put("title", "Patent")),
+                () -> patentExtractJobService.complete(
+                        1L,
+                        objectMapper.createObjectNode().put("title", "Patent"),
+                        "tmp/patent-extract-jobs/1/parsed.json"
+                ),
                 ErrorCode.PATENT_EXTRACT_JOB_NOT_FOUND
         );
     }
@@ -216,7 +223,23 @@ class PatentExtractJobServiceTest {
         PatentExtractJob job = analyzingJob(1L);
         when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
 
-        assertPatentExtractError(() -> patentExtractJobService.complete(1L, null), ErrorCode.INVALID_REQUEST);
+        assertPatentExtractError(
+                () -> patentExtractJobService.complete(1L, null, "tmp/patent-extract-jobs/1/parsed.json"),
+                ErrorCode.INVALID_REQUEST
+        );
+
+        assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.ANALYZING);
+    }
+
+    @Test
+    void completeRejectsBlankParsedJsonKey() {
+        PatentExtractJob job = analyzingJob(1L);
+        when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
+
+        assertPatentExtractError(
+                () -> patentExtractJobService.complete(1L, objectMapper.createObjectNode().put("title", "Patent"), " "),
+                ErrorCode.INVALID_REQUEST
+        );
 
         assertThat(job.getStatus()).isEqualTo(PatentExtractJobStatus.ANALYZING);
     }
@@ -227,7 +250,11 @@ class PatentExtractJobServiceTest {
         when(patentExtractJobRepository.findById(1L)).thenReturn(Optional.of(job));
 
         assertPatentExtractError(
-                () -> patentExtractJobService.complete(1L, objectMapper.createObjectNode().put("title", "Patent")),
+                () -> patentExtractJobService.complete(
+                        1L,
+                        objectMapper.createObjectNode().put("title", "Patent"),
+                        "tmp/patent-extract-jobs/1/parsed.json"
+                ),
                 ErrorCode.PATENT_EXTRACT_ALREADY_PROCESSED
         );
     }
@@ -272,7 +299,11 @@ class PatentExtractJobServiceTest {
 
     private PatentExtractJob completedJob(Long extractJobId) {
         PatentExtractJob job = analyzingJob(extractJobId);
-        job.complete(objectMapper.createObjectNode().put("title", "Patent"), null);
+        job.complete(
+                objectMapper.createObjectNode().put("title", "Patent"),
+                "tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId),
+                null
+        );
         return job;
     }
 
