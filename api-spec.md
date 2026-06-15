@@ -858,7 +858,7 @@
 | citationCount | integer | 피인용 수 |
 | examinationClaimCount | integer | 심사청구항 수 |
 | originalPdfKey | string | 특허 원문 S3 키 |
-| parsedJsonKey | string | AI 추출 결과 JSON S3 키 |
+| parsedJsonKey | string | AI 서버가 저장한 추출 결과 JSON object key |
 | approvalStatus | string | 승인 상태. `APPROVED`, `PENDING_APPROVAL`, `REJECTED` |
 | rejectionReason | string | 반려 사유. 없으면 `null` |
 | businessField | string | 관련사업 분야 |
@@ -902,7 +902,7 @@
     "citationCount": 14,
     "examinationClaimCount": 12,
     "originalPdfKey": "patents/1/original.pdf",
-    "parsedJsonKey": "patents/1/parsed.json",
+    "parsedJsonKey": "tmp/patent-extract-jobs/9001/parsed.json",
     "approvalStatus": "APPROVED",
     "rejectionReason": null,
     "businessField": "에너지솔루션",
@@ -960,7 +960,7 @@
 | keywords | array | N | 주요 키워드 목록 |
 | summary | string | N | 특허 요약 |
 | originalPdfKey | string | N | 기존 원문 PDF object key. `extractJobId`가 없을 때 그대로 저장 |
-| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{patentId}/original.pdf`로 복사하고 추출 JSON을 `patents/{patentId}/parsed.json`으로 저장 |
+| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{patentId}/original.pdf`로 복사하고, AI 서버가 전달한 `parsedJsonKey`를 특허에 연결 |
 
 **응답 예시**
 
@@ -986,7 +986,7 @@
     "citationCount": 10,
     "examinationClaimCount": 12,
     "originalPdfKey": "patents/42/original.pdf",
-    "parsedJsonKey": "patents/42/parsed.json",
+    "parsedJsonKey": "tmp/patent-extract-jobs/9001/parsed.json",
     "approvalStatus": "APPROVED",
     "rejectionReason": null,
     "managementNumber": "MNG-2026-0001",
@@ -1120,6 +1120,7 @@
   "data": {
     "extractJobId": 9001,
     "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "parsedJsonKey": null,
     "status": "ANALYZING",
     "errorMessage": null,
     "uploadedAt": "2026-06-08T01:02:00Z",
@@ -1146,6 +1147,7 @@
 | --- | --- | --- |
 | extractJobId | long | 추출 작업 ID |
 | objectKey | string | 임시 PDF object key |
+| parsedJsonKey | string | AI 서버가 저장한 추출 결과 JSON object key. 완료 전에는 `null` |
 | status | string | `UPLOAD_PENDING` / `ANALYZING` / `COMPLETED` / `FAILED` |
 | errorMessage | string | 실패 사유. 실패가 아니면 `null` |
 | uploadedAt | datetime | 업로드 완료 처리 시각 |
@@ -1171,6 +1173,7 @@
   "data": {
     "extractJobId": 9001,
     "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "parsedJsonKey": "tmp/patent-extract-jobs/9001/parsed.json",
     "status": "COMPLETED",
     "result": {
       "title": "반도체 패키지 구조",
@@ -1206,12 +1209,14 @@ AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
+| parsedJsonKey | string | * | AI 서버가 MinIO에 업로드한 추출 결과 JSON object key |
 | result | object | * | AI 추출 결과 JSON. `patent_extract_jobs.result_json`에 저장 |
 
 **요청 예시**
 
 ```json
 {
+  "parsedJsonKey": "tmp/patent-extract-jobs/9001/parsed.json",
   "result": {
     "title": "반도체 패키지 구조",
     "applicationNumber": "10-2026-0000000",
@@ -1235,6 +1240,7 @@ AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
   "data": {
     "extractJobId": 9001,
     "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "parsedJsonKey": "tmp/patent-extract-jobs/9001/parsed.json",
     "status": "COMPLETED",
     "errorMessage": null,
     "uploadedAt": "2026-06-08T01:02:00Z",
@@ -1245,7 +1251,7 @@ AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
 }
 ```
 
-**에러**: `INVALID_REQUEST`(400 — result 누락), `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 완료 가능한 상태가 아님)
+**에러**: `INVALID_REQUEST`(400 — parsedJsonKey 또는 result 누락), `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 완료 가능한 상태가 아님)
 
 ---
 
@@ -1277,6 +1283,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
   "data": {
     "extractJobId": 9001,
     "objectKey": "tmp/patent-extract-jobs/9001/original.pdf",
+    "parsedJsonKey": null,
     "status": "FAILED",
     "errorMessage": "AI patent extraction failed",
     "uploadedAt": "2026-06-08T01:02:00Z",
