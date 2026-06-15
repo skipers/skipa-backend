@@ -651,13 +651,19 @@ public class PatentService {
 
     private void assignExtractedStorageKeys(Patent patent, PatentExtractJob extractJob) {
         String originalPdfKey = buildFinalPdfObjectKey(patent.getId());
+        String parsedJsonKey = buildFinalParsedJsonObjectKey(patent.getId());
 
         patentOriginalPdfStorageService.copy(extractJob.getObjectKey(), originalPdfKey);
-        patent.assignStorageKeys(originalPdfKey, extractJob.getParsedJsonKey());
+        patentOriginalPdfStorageService.copy(extractJob.getParsedJsonKey(), parsedJsonKey);
+        patent.assignStorageKeys(originalPdfKey, parsedJsonKey);
     }
 
     private String buildFinalPdfObjectKey(Long patentId) {
         return "patents/%d/original.pdf".formatted(patentId);
+    }
+
+    private String buildFinalParsedJsonObjectKey(Long patentId) {
+        return "patents/%d/parsed.json".formatted(patentId);
     }
 
     private PatentDetailResponse toDetailResponse(Patent patent) {

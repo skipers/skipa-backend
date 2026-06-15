@@ -383,7 +383,8 @@ Content-Type: application/json
 12. 프론트는 상태 polling 후 결과 조회 API로 추출 결과를 받습니다.
 13. 프론트가 최종 특허 생성 시 `extractJobId`를 함께 전달합니다.
 14. 백엔드는 임시 PDF를 최종 경로로 복사하고 `originalPdfKey`에 저장합니다.
-15. 백엔드는 AI 서버가 전달한 `parsedJsonKey`를 특허의 `parsedJsonKey`에 연결합니다. 백엔드는 `parsed.json` 파일을 직접 업로드하거나 덮어쓰지 않습니다.
+15. 백엔드는 AI 서버가 전달한 `parsedJsonKey`의 JSON을 최종 경로로 복사하고, 최종 key를 특허의 `parsedJsonKey`에 저장합니다.
+16. 백엔드는 `parsed.json` 내용을 직접 생성하거나 업로드하지 않습니다. AI 서버가 만든 파일을 copy만 합니다.
 
 ### 3-2. PDF 업로드 URL 발급
 
@@ -517,7 +518,7 @@ tmp/patent-extract-jobs/{extractJobId}/parsed.json
 tmp/patent-extract-jobs/7/parsed.json
 ```
 
-AI 서버가 실제 저장한 object key를 완료 콜백의 `parsedJsonKey`로 전달해야 합니다. 백엔드는 이 파일을 다시 생성하거나 덮어쓰지 않습니다.
+AI 서버가 실제 저장한 object key를 완료 콜백의 `parsedJsonKey`로 전달해야 합니다. 백엔드는 이 파일 내용을 다시 생성하지 않고, 최종 특허 생성 시 최종 경로로 copy합니다.
 
 ### 3-6. 특허 추출 완료 콜백
 
@@ -566,7 +567,7 @@ Content-Type: application/json
 ```
 
 `result`는 프론트가 최종 특허 생성 API에 채워 넣을 초안 데이터입니다. 가능한 한 백엔드 `POST /patents` 요청 필드명과 맞춰야 합니다.
-`parsedJsonKey`는 AI 서버가 MinIO에 업로드한 추출 결과 JSON object key입니다. 백엔드는 이 key를 저장/연결만 하며, 같은 경로에 JSON을 다시 업로드하지 않습니다.
+`parsedJsonKey`는 AI 서버가 MinIO에 업로드한 추출 결과 JSON object key입니다. 백엔드는 같은 경로에 JSON을 다시 업로드하지 않으며, 최종 특허 생성 시 이 object를 최종 경로로 copy합니다.
 
 주요 필드:
 
@@ -747,13 +748,19 @@ patents/1/original.pdf
 
 최종 PDF key는 특허의 `originalPdfKey`에 저장됩니다.
 
-`extractJobId` 기반으로 특허를 생성하면 백엔드는 AI 서버가 완료 콜백에서 전달한 `parsedJsonKey`를 특허의 `parsedJsonKey`에 저장합니다.
-백엔드는 `parsed.json`을 MinIO에 직접 업로드하지 않고, AI 서버가 저장한 파일을 덮어쓰지 않습니다.
+`extractJobId` 기반으로 특허를 생성하면 백엔드는 AI 서버가 완료 콜백에서 전달한 `parsedJsonKey`의 파일을 최종 key로 복사하고, 최종 key를 특허의 `parsedJsonKey`에 저장합니다.
+백엔드는 `parsed.json` 내용을 직접 생성하거나 업로드하지 않고, AI 서버가 저장한 파일을 copy만 합니다.
 
-추출 결과 JSON key 권장값:
+AI 서버가 업로드하는 추출 결과 JSON key 권장값:
 
 ```text
 tmp/patent-extract-jobs/{extractJobId}/parsed.json
+```
+
+최종 추출 결과 JSON key:
+
+```text
+patents/{patentId}/parsed.json
 ```
 
 보고서 JSON의 최종 key:

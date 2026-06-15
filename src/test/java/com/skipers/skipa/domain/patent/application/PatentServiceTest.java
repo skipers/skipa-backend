@@ -163,7 +163,7 @@ class PatentServiceTest {
     }
 
     @Test
-    void createWithExtractJobCopiesTemporaryPdfAndStoresAiParsedJsonKey() {
+    void createWithExtractJobCopiesTemporaryPdfAndParsedJsonToFinalKeys() {
         PatentExtractJob extractJob = completedExtractJob(7L, "tmp/patent-extract-jobs/7/original.pdf");
         when(patentExtractJobRepository.findById(7L)).thenReturn(Optional.of(extractJob));
         when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> {
@@ -175,10 +175,14 @@ class PatentServiceTest {
         PatentDetailResponse response = patentService.create(legalUser(), createRequestWithExtractJob("Patent", "10-2026-0000000", 7L));
 
         assertThat(response.originalPdfKey()).isEqualTo("patents/1/original.pdf");
-        assertThat(response.parsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/7/parsed.json");
+        assertThat(response.parsedJsonKey()).isEqualTo("patents/1/parsed.json");
         verify(patentOriginalPdfStorageService).copy(
                 "tmp/patent-extract-jobs/7/original.pdf",
                 "patents/1/original.pdf"
+        );
+        verify(patentOriginalPdfStorageService).copy(
+                "tmp/patent-extract-jobs/7/parsed.json",
+                "patents/1/parsed.json"
         );
     }
 
