@@ -960,7 +960,7 @@
 | keywords | array | N | 주요 키워드 목록 |
 | summary | string | N | 특허 요약 |
 | originalPdfKey | string | N | 기존 원문 PDF object key. `extractJobId`가 없을 때 그대로 저장 |
-| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{patentId}/original.pdf`로 복사하고, AI 서버가 전달한 `parsedJsonKey`를 특허에 연결 |
+| extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{patentId}/original.pdf`로 복사하고, AI 서버가 전달한 `parsedJsonKey`의 JSON을 `patents/{patentId}/parsed.json`로 복사 |
 
 **응답 예시**
 
@@ -986,7 +986,7 @@
     "citationCount": 10,
     "examinationClaimCount": 12,
     "originalPdfKey": "patents/42/original.pdf",
-    "parsedJsonKey": "tmp/patent-extract-jobs/9001/parsed.json",
+    "parsedJsonKey": "patents/42/parsed.json",
     "approvalStatus": "APPROVED",
     "rejectionReason": null,
     "managementNumber": "MNG-2026-0001",

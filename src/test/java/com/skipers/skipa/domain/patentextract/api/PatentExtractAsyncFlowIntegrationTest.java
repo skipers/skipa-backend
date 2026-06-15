@@ -162,12 +162,16 @@ class PatentExtractAsyncFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.applicationNumber").value("10-2026-0000000"))
                 .andExpect(jsonPath("$.data.originalPdfKey").value("patents/1/original.pdf"))
-                .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)));
+                .andExpect(jsonPath("$.data.parsedJsonKey").value("patents/1/parsed.json"));
 
         verify(patentOriginalPdfStorageService).copy(objectKey, "patents/1/original.pdf");
+        verify(patentOriginalPdfStorageService).copy(
+                "tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId),
+                "patents/1/parsed.json"
+        );
         Patent patent = patentRepository.findByApplicationNumber("10-2026-0000000").orElseThrow();
         assertThat(patent.getOriginalPdfKey()).isEqualTo("patents/1/original.pdf");
-        assertThat(patent.getParsedJsonKey()).isEqualTo("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId));
+        assertThat(patent.getParsedJsonKey()).isEqualTo("patents/1/parsed.json");
     }
 
     @Test
