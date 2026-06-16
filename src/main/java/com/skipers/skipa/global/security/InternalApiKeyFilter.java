@@ -1,5 +1,6 @@
 package com.skipers.skipa.global.security;
 
+import com.skipers.skipa.global.config.WebConfig;
 import com.skipers.skipa.global.exception.ErrorCode;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -20,7 +21,7 @@ import java.security.MessageDigest;
 public class InternalApiKeyFilter extends OncePerRequestFilter {
 
     private static final String INTERNAL_API_KEY_HEADER = "X-Internal-Api-Key";
-    private static final String INTERNAL_PATH_PREFIX = "/internal/";
+    private static final String INTERNAL_PATH_PREFIX = WebConfig.API_PREFIX + "/internal/";
 
     @Value("${app.internal.api-key:}")
     private String internalApiKey;

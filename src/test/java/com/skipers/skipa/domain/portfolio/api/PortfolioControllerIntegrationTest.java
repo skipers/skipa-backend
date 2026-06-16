@@ -230,13 +230,13 @@ class PortfolioControllerIntegrationTest {
                         List.of("새 인사이트 1", "새 인사이트 2", "새 인사이트 3")
                 );
 
-        mockMvc.perform(get("/portfolio/insights")
+        mockMvc.perform(get("/api/v1/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.insights.length()").value(3))
                 .andExpect(jsonPath("$.data.insights[0]").value("인사이트 1"));
 
-        mockMvc.perform(get("/portfolio/insights")
+        mockMvc.perform(get("/api/v1/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.insights.length()").value(3))
@@ -255,7 +255,7 @@ class PortfolioControllerIntegrationTest {
                 "A"
         );
 
-        mockMvc.perform(get("/portfolio/insights")
+        mockMvc.perform(get("/api/v1/portfolio/insights")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.insights.length()").value(3))
@@ -266,7 +266,7 @@ class PortfolioControllerIntegrationTest {
 
     @Test
     void portfolioDistributionReturnsPatentDistributions() throws Exception {
-        mockMvc.perform(get("/portfolio/distribution")
+        mockMvc.perform(get("/api/v1/portfolio/distribution")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.byGrade.length()").value(3))
@@ -287,7 +287,7 @@ class PortfolioControllerIntegrationTest {
         int currentYear = LocalDate.now().getYear();
         int startYear = currentYear - 6;
 
-        mockMvc.perform(get("/portfolio/trends")
+        mockMvc.perform(get("/api/v1/portfolio/trends")
                 .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.yearlyPatentTrends.length()").value(7))
@@ -306,7 +306,7 @@ class PortfolioControllerIntegrationTest {
 
     @Test
     void portfolioDecisionsReturnsDecisionBreakdowns() throws Exception {
-        mockMvc.perform(get("/portfolio/decisions")
+        mockMvc.perform(get("/api/v1/portfolio/decisions")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.byQuarter.length()").value(1))
@@ -334,7 +334,7 @@ class PortfolioControllerIntegrationTest {
     void portfolioApisForbidBusinessUsers() throws Exception {
         String businessToken = createActiveUserToken("business-portfolio", "business-portfolio@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/portfolio/insights")
+        mockMvc.perform(get("/api/v1/portfolio/insights")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
     }

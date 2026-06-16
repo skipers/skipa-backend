@@ -1,6 +1,7 @@
 package com.skipers.skipa.global.security;
 
 import com.skipers.skipa.domain.auth.exception.AuthException;
+import com.skipers.skipa.global.config.WebConfig;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,11 +24,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final Set<String> FILTER_EXCLUDED_PATHS = Set.of(
-            "/auth/login",
-            "/auth/refresh",
-            "/auth/register"
+            WebConfig.API_PREFIX + "/auth/login",
+            WebConfig.API_PREFIX + "/auth/refresh",
+            WebConfig.API_PREFIX + "/auth/register"
     );
-    private static final String INTERNAL_PATH_PREFIX = "/internal/";
+    private static final String INTERNAL_PATH_PREFIX = WebConfig.API_PREFIX + "/internal/";
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
