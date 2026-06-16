@@ -35,6 +35,8 @@ import java.util.Map;
 public class PortfolioService {
 
     private static final int TREND_YEAR_COUNT = 7;
+    private static final int DISTRIBUTION_VISIBLE_LIMIT = 4;
+    private static final String OTHER_GROUP_NAME = "기타";
 
     private final PatentRepository patentRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
@@ -207,10 +209,12 @@ public class PortfolioService {
     }
 
     private List<PortfolioDistributionResponse.NameCount> nameCounts(Map<String, Long> counts) {
-        return counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
+        List<PortfolioDistributionResponse.NameCount> sortedCounts = counts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder())
+                        .thenComparing(Map.Entry.comparingByKey()))
                 .map(entry -> new PortfolioDistributionResponse.NameCount(entry.getKey(), entry.getValue()))
                 .toList();
+        return limitNameCounts(sortedCounts);
     }
 
     private List<PortfolioDistributionResponse.CountryCount> countryCounts(Map<String, Long> counts) {
@@ -223,14 +227,50 @@ public class PortfolioService {
     private List<PortfolioDistributionResponse.DepartmentCount> departmentCounts(
             Map<Long, DepartmentAccumulator> counts
     ) {
-        return counts.values().stream()
-                .sorted(Comparator.comparing(DepartmentAccumulator::departmentName))
+        List<PortfolioDistributionResponse.DepartmentCount> sortedCounts = counts.values().stream()
+                .sorted(Comparator.comparingLong(DepartmentAccumulator::count).reversed()
+                        .thenComparing(DepartmentAccumulator::departmentName))
                 .map(accumulator -> new PortfolioDistributionResponse.DepartmentCount(
                         accumulator.departmentId(),
                         accumulator.departmentName(),
                         accumulator.count
                 ))
                 .toList();
+        return limitDepartmentCounts(sortedCounts);
+    }
+
+    private List<PortfolioDistributionResponse.NameCount> limitNameCounts(
+            List<PortfolioDistributionResponse.NameCount> sortedCounts
+    ) {
+        if (sortedCounts.size() <= DISTRIBUTION_VISIBLE_LIMIT) {
+            return sortedCounts;
+        }
+
+        List<PortfolioDistributionResponse.NameCount> limited = new ArrayList<>(
+                sortedCounts.subList(0, DISTRIBUTION_VISIBLE_LIMIT)
+        );
+        long otherCount = sortedCounts.subList(DISTRIBUTION_VISIBLE_LIMIT, sortedCounts.size()).stream()
+                .mapToLong(PortfolioDistributionResponse.NameCount::count)
+                .sum();
+        limited.add(new PortfolioDistributionResponse.NameCount(OTHER_GROUP_NAME, otherCount));
+        return limited;
+    }
+
+    private List<PortfolioDistributionResponse.DepartmentCount> limitDepartmentCounts(
+            List<PortfolioDistributionResponse.DepartmentCount> sortedCounts
+    ) {
+        if (sortedCounts.size() <= DISTRIBUTION_VISIBLE_LIMIT) {
+            return sortedCounts;
+        }
+
+        List<PortfolioDistributionResponse.DepartmentCount> limited = new ArrayList<>(
+                sortedCounts.subList(0, DISTRIBUTION_VISIBLE_LIMIT)
+        );
+        long otherCount = sortedCounts.subList(DISTRIBUTION_VISIBLE_LIMIT, sortedCounts.size()).stream()
+                .mapToLong(PortfolioDistributionResponse.DepartmentCount::count)
+                .sum();
+        limited.add(new PortfolioDistributionResponse.DepartmentCount(null, OTHER_GROUP_NAME, otherCount));
+        return limited;
     }
 
     private Map<Long, Report> latestCompletedReportsByPatentId() {
@@ -316,6 +356,10 @@ public class PortfolioService {
 
         private String departmentName() {
             return departmentName;
+        }
+
+        private long count() {
+            return count;
         }
     }
 

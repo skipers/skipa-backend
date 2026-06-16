@@ -42,6 +42,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -283,6 +284,43 @@ class PortfolioControllerIntegrationTest {
     }
 
     @Test
+    void portfolioDistributionLimitsTechFieldAndDepartmentToTopFourPlusOthers() throws Exception {
+        saveDistributionPatents("AI", 6);
+        saveDistributionPatents("Cloud", 5);
+        saveDistributionPatents("Display", 4);
+        saveDistributionPatents("Energy", 3);
+        saveDistributionPatents("Factory", 2);
+        saveDistributionPatents("Green", 1);
+
+        mockMvc.perform(get("/api/v1/portfolio/distribution")
+                        .header("Authorization", "Bearer " + legalToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.byTechField.length()").value(5))
+                .andExpect(jsonPath("$.data.byTechField[0].name").value("AI"))
+                .andExpect(jsonPath("$.data.byTechField[0].count").value(6))
+                .andExpect(jsonPath("$.data.byTechField[1].name").value("Cloud"))
+                .andExpect(jsonPath("$.data.byTechField[1].count").value(5))
+                .andExpect(jsonPath("$.data.byTechField[2].name").value("Display"))
+                .andExpect(jsonPath("$.data.byTechField[2].count").value(4))
+                .andExpect(jsonPath("$.data.byTechField[3].name").value("Energy"))
+                .andExpect(jsonPath("$.data.byTechField[3].count").value(3))
+                .andExpect(jsonPath("$.data.byTechField[4].name").value("기타"))
+                .andExpect(jsonPath("$.data.byTechField[4].count").value(6))
+                .andExpect(jsonPath("$.data.byDepartment.length()").value(5))
+                .andExpect(jsonPath("$.data.byDepartment[0].departmentName").value("AI 사업부"))
+                .andExpect(jsonPath("$.data.byDepartment[0].count").value(6))
+                .andExpect(jsonPath("$.data.byDepartment[1].departmentName").value("Cloud 사업부"))
+                .andExpect(jsonPath("$.data.byDepartment[1].count").value(5))
+                .andExpect(jsonPath("$.data.byDepartment[2].departmentName").value("Display 사업부"))
+                .andExpect(jsonPath("$.data.byDepartment[2].count").value(4))
+                .andExpect(jsonPath("$.data.byDepartment[3].departmentName").value("Energy 사업부"))
+                .andExpect(jsonPath("$.data.byDepartment[3].count").value(3))
+                .andExpect(jsonPath("$.data.byDepartment[4].departmentId").value(nullValue()))
+                .andExpect(jsonPath("$.data.byDepartment[4].departmentName").value("기타"))
+                .andExpect(jsonPath("$.data.byDepartment[4].count").value(6));
+    }
+
+    @Test
     void portfolioTrendsReturnsYearlyPatentAndAnnuityTrends() throws Exception {
         int currentYear = LocalDate.now().getYear();
         int startYear = currentYear - 6;
@@ -359,6 +397,24 @@ class PortfolioControllerIntegrationTest {
                 .registrationDate(registrationDate)
                 .expiryDate(expiryDate)
                 .build());
+    }
+
+    private void saveDistributionPatents(String groupName, int count) {
+        Department department = departmentRepository.save(Department.builder()
+                .name(groupName + " 사업부")
+                .build());
+        for (int index = 1; index <= count; index++) {
+            savePatent(
+                    groupName + " Patent " + index,
+                    "APP-PORT-" + groupName + "-" + index,
+                    groupName,
+                    "KR",
+                    department,
+                    LocalDate.of(2026, 1, 1),
+                    null,
+                    LocalDate.now().plusYears(5)
+            );
+        }
     }
 
     private String createActiveUserToken(String loginId, String email, UserRole role) {
