@@ -10,7 +10,7 @@
 | URL 버전 prefix | 없음 |
 | 인증 방식 | JWT Bearer Token (`Authorization: Bearer <token>`) |
 | 내부 API 인증 방식 | Internal API Key (`X-Internal-Api-Key: <secret>`) |
-| 토큰 발급 | `POST /auth/login` |
+| 토큰 발급 | `POST /api/v1/auth/login` |
 | 토큰 만료 | access token 10분 / refresh token 7일 |
 
 ## 공통 응답 형식
@@ -88,15 +88,15 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 로그인 | `POST` | `/auth/login` | ID/PW 검증 후 access token, refresh token, 사용자 정보 반환 | 없음 |
-| 회원가입 | `POST` | `/auth/register` | `PENDING` 상태의 사용자 계정 생성 | 없음 |
-| 로그아웃 | `POST` | `/auth/logout` | 토큰 무효화 | 인증 사용자 |
-| 내 정보 조회 | `GET` | `/auth/me` | 현재 로그인 사용자 정보 반환 | 인증 사용자 |
-| 토큰 갱신 | `POST` | `/auth/refresh` | refresh token으로 access token 재발급 | 없음 |
+| 로그인 | `POST` | `/api/v1/auth/login` | ID/PW 검증 후 access token, refresh token, 사용자 정보 반환 | 없음 |
+| 회원가입 | `POST` | `/api/v1/auth/register` | `PENDING` 상태의 사용자 계정 생성 | 없음 |
+| 로그아웃 | `POST` | `/api/v1/auth/logout` | 토큰 무효화 | 인증 사용자 |
+| 내 정보 조회 | `GET` | `/api/v1/auth/me` | 현재 로그인 사용자 정보 반환 | 인증 사용자 |
+| 토큰 갱신 | `POST` | `/api/v1/auth/refresh` | refresh token으로 access token 재발급 | 없음 |
 
 ---
 
-#### `POST /auth/login`
+#### `POST /api/v1/auth/login`
 
 **요청**
 
@@ -118,7 +118,7 @@
 
 | Name | Type | Description |
 | --- | --- | --- |
-| accessToken | string | 유효기간 10분. 만료 시 `/auth/refresh` 호출 |
+| accessToken | string | 유효기간 10분. 만료 시 `/api/v1/auth/refresh` 호출 |
 | refreshToken | string | 유효기간 7일 |
 | user.id | long | 사용자 DB ID |
 | user.loginId | string | 로그인 ID |
@@ -152,7 +152,7 @@
 
 ---
 
-#### `GET /auth/me`
+#### `GET /api/v1/auth/me`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -193,7 +193,7 @@
 
 ---
 
-#### `POST /auth/refresh`
+#### `POST /api/v1/auth/refresh`
 
 **요청**
 
@@ -220,7 +220,7 @@
 
 ---
 
-#### `POST /auth/logout`
+#### `POST /api/v1/auth/logout`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -240,7 +240,7 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 사용자 가입 승인 | `PATCH` | `/admin/users/{userId}/approve` | 사용자를 `ACTIVE`로 변경. `BUSINESS` 역할은 활성 부서 지정 필수 | `ADMIN` |
+| 사용자 가입 승인 | `PATCH` | `/api/v1/admin/users/{userId}/approve` | 사용자를 `ACTIVE`로 변경. `BUSINESS` 역할은 활성 부서 지정 필수 | `ADMIN` |
 
 ---
 
@@ -248,18 +248,18 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 부서 목록 조회 | `GET` | `/departments` | 활성 부서 목록 조회. `page`, `size` 사용 가능 | `ADMIN`, `LEGAL` |
-| 부서 단일 조회 | `GET` | `/departments/{departmentId}` | 부서 정보 조회. 비활성 부서도 조회 가능 | `ADMIN`, `LEGAL` |
-| 부서 생성 | `POST` | `/departments` | 활성 부서 생성 | `ADMIN` |
-| 부서 수정 | `PUT` | `/departments/{departmentId}` | 부서명 수정 | `ADMIN` |
-| 부서 비활성화 | `DELETE` | `/departments/{departmentId}` | 삭제 대신 상태를 `INACTIVE`로 변경 | `ADMIN` |
+| 부서 목록 조회 | `GET` | `/api/v1/departments` | 활성 부서 목록 조회. `page`, `size` 사용 가능 | `ADMIN`, `LEGAL` |
+| 부서 단일 조회 | `GET` | `/api/v1/departments/{departmentId}` | 부서 정보 조회. 비활성 부서도 조회 가능 | `ADMIN`, `LEGAL` |
+| 부서 생성 | `POST` | `/api/v1/departments` | 활성 부서 생성 | `ADMIN` |
+| 부서 수정 | `PUT` | `/api/v1/departments/{departmentId}` | 부서명 수정 | `ADMIN` |
+| 부서 비활성화 | `DELETE` | `/api/v1/departments/{departmentId}` | 삭제 대신 상태를 `INACTIVE`로 변경 | `ADMIN` |
 
 비활성 부서는 기존 사용자, 특허, 검토 이력의 참조를 유지합니다.
 비활성 부서는 신규 사용자 승인, 특허 담당 부서 변경, 신규 검토 요청에 사용할 수 없습니다.
 
 ---
 
-#### `GET /departments`
+#### `GET /api/v1/departments`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -306,29 +306,29 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 특허 요약 조회 | `GET` | `/patents/summary` | 최신 권리 상태 기준 유지중/비활성 특허 수 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 목록 조회 | `GET` | `/patents` | 승인 완료 특허 목록 조회. 키워드·상태·국가·사업부·정렬 필터 포함 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 담당 특허 목록 조회 | `GET` | `/patents/assigned` | 현재 담당 부서가 본인 소속 부서와 일치하는 특허 목록 조회 | `BUSINESS` |
-| 소멸 예정 특허 요약 조회 | `GET` | `/patents/expiring/summary` | 3개월, 6개월, 1년, 3년, 5년 기준 소멸 예정 특허 요약 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 소멸 예정 특허 목록 조회 | `GET` | `/patents/expiring` | 선택 기간 내 소멸 예정 특허 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 소멸 예정 특허 캘린더 조회 | `GET` | `/patents/expiring/calendar` | 선택 연도 월별 소멸 예정 특허 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 승인 대기 특허 목록 조회 | `GET` | `/patents/pending-approval` | 사업부 등록 요청 중 승인 대기 특허 목록 조회 | `ADMIN`, `LEGAL` |
-| 특허 등록 신청 목록 조회 | `GET` | `/patents/applications` | 등록 신청 목록 조회. BUSINESS는 본인 부서 신청만 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 단일 조회 | `GET` | `/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 등록 | `POST` | `/patents` | 특허 정보 수동 등록 또는 등록 요청 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 수정 | `PUT` | `/patents/{patentId}` | 특허 정보 수정 | `ADMIN`, `LEGAL` |
-| 담당 부서 변경 | `PATCH` | `/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
-| 특허 등록 신청 승인 | `PATCH` | `/patents/{patentId}/approve` | 승인 대기 특허 등록 신청 승인 | `ADMIN`, `LEGAL` |
-| 특허 등록 신청 거절 | `PATCH` | `/patents/{patentId}/reject` | 승인 대기 특허 등록 신청 거절 | `ADMIN`, `LEGAL` |
-| 특허 등록 신청 철회 | `PATCH` | `/patents/{patentId}/withdraw` | BUSINESS 사용자가 본인 부서의 승인 대기 신청 철회 | `BUSINESS` |
-| 특허 삭제 | `DELETE` | `/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
+| 특허 요약 조회 | `GET` | `/api/v1/patents/summary` | 최신 권리 상태 기준 유지중/비활성 특허 수 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 목록 조회 | `GET` | `/api/v1/patents` | 승인 완료 특허 목록 조회. 키워드·상태·국가·사업부·정렬 필터 포함 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 담당 특허 목록 조회 | `GET` | `/api/v1/patents/assigned` | 현재 담당 부서가 본인 소속 부서와 일치하는 특허 목록 조회 | `BUSINESS` |
+| 소멸 예정 특허 요약 조회 | `GET` | `/api/v1/patents/expiring/summary` | 3개월, 6개월, 1년, 3년, 5년 기준 소멸 예정 특허 요약 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 소멸 예정 특허 목록 조회 | `GET` | `/api/v1/patents/expiring` | 선택 기간 내 소멸 예정 특허 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 소멸 예정 특허 캘린더 조회 | `GET` | `/api/v1/patents/expiring/calendar` | 선택 연도 월별 소멸 예정 특허 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 승인 대기 특허 목록 조회 | `GET` | `/api/v1/patents/pending-approval` | 사업부 등록 요청 중 승인 대기 특허 목록 조회 | `ADMIN`, `LEGAL` |
+| 특허 등록 신청 목록 조회 | `GET` | `/api/v1/patents/applications` | 등록 신청 목록 조회. BUSINESS는 본인 부서 신청만 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 단일 조회 | `GET` | `/api/v1/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 등록 | `POST` | `/api/v1/patents` | 특허 정보 수동 등록 또는 등록 요청 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 수정 | `PUT` | `/api/v1/patents/{patentId}` | 특허 정보 수정 | `ADMIN`, `LEGAL` |
+| 담당 부서 변경 | `PATCH` | `/api/v1/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
+| 특허 등록 신청 승인 | `PATCH` | `/api/v1/patents/{patentId}/approve` | 승인 대기 특허 등록 신청 승인 | `ADMIN`, `LEGAL` |
+| 특허 등록 신청 거절 | `PATCH` | `/api/v1/patents/{patentId}/reject` | 승인 대기 특허 등록 신청 거절 | `ADMIN`, `LEGAL` |
+| 특허 등록 신청 철회 | `PATCH` | `/api/v1/patents/{patentId}/withdraw` | BUSINESS 사용자가 본인 부서의 승인 대기 신청 철회 | `BUSINESS` |
+| 특허 삭제 | `DELETE` | `/api/v1/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
 
-`GET /patents`는 `BUSINESS` 사용자도 승인 완료된 전체 특허를 조회할 수 있습니다.
-담당 특허만 필요한 경우 `GET /patents/assigned`를 사용합니다.
+`GET /api/v1/patents`는 `BUSINESS` 사용자도 승인 완료된 전체 특허를 조회할 수 있습니다.
+담당 특허만 필요한 경우 `GET /api/v1/patents/assigned`를 사용합니다.
 
 ---
 
-#### `GET /patents`
+#### `GET /api/v1/patents`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -421,7 +421,7 @@
 
 ---
 
-#### `GET /patents/assigned`
+#### `GET /api/v1/patents/assigned`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -438,13 +438,13 @@
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 20) |
 
-**응답 items[] 필드**: `GET /patents`와 동일
+**응답 items[] 필드**: `GET /api/v1/patents`와 동일
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403 — 사업부 사용자의 소속 부서 없음)
 
 ---
 
-#### `GET /patents/summary`
+#### `GET /api/v1/patents/summary`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -471,7 +471,7 @@
 
 ---
 
-#### `GET /patents/expiring/summary`
+#### `GET /api/v1/patents/expiring/summary`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -519,7 +519,7 @@
 
 ---
 
-#### `GET /patents/expiring`
+#### `GET /api/v1/patents/expiring`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -577,7 +577,7 @@
 
 ---
 
-#### `GET /patents/expiring/calendar`
+#### `GET /api/v1/patents/expiring/calendar`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -633,7 +633,7 @@
 
 ---
 
-#### `GET /patents/pending-approval`
+#### `GET /api/v1/patents/pending-approval`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -650,7 +650,7 @@
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 50) |
 
-**응답 items[] 필드**: `GET /patents`와 동일
+**응답 items[] 필드**: `GET /api/v1/patents`와 동일
 
 **응답 예시**
 
@@ -683,7 +683,7 @@
 
 ---
 
-#### `GET /patents/applications`
+#### `GET /api/v1/patents/applications`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -699,7 +699,7 @@
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 50) |
 
-**응답 items[] 필드**: `GET /patents`와 동일
+**응답 items[] 필드**: `GET /api/v1/patents`와 동일
 
 **응답 예시**
 
@@ -732,7 +732,7 @@
 
 ---
 
-#### `PATCH /patents/{patentId}/approve`
+#### `PATCH /api/v1/patents/{patentId}/approve`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -740,7 +740,7 @@
 
 승인 대기 특허 등록 신청을 승인합니다. 요청 Body 없음.
 
-**응답**: `GET /patents/{patentId}`와 동일한 `PatentDetailResponse`
+**응답**: `GET /api/v1/patents/{patentId}`와 동일한 `PatentDetailResponse`
 
 **응답 예시**
 
@@ -761,7 +761,7 @@
 
 ---
 
-#### `PATCH /patents/{patentId}/reject`
+#### `PATCH /api/v1/patents/{patentId}/reject`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -781,7 +781,7 @@
 { "reason": "필수 서지 정보가 부족합니다." }
 ```
 
-**응답**: `GET /patents/{patentId}`와 동일한 `PatentDetailResponse`
+**응답**: `GET /api/v1/patents/{patentId}`와 동일한 `PatentDetailResponse`
 
 **응답 예시**
 
@@ -802,7 +802,7 @@
 
 ---
 
-#### `PATCH /patents/{patentId}/withdraw`
+#### `PATCH /api/v1/patents/{patentId}/withdraw`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -810,7 +810,7 @@
 
 사업부 사용자가 본인 부서의 승인 대기 특허 등록 신청을 철회합니다. 요청 Body 없음.
 
-**응답**: `GET /patents/{patentId}`와 동일한 `PatentDetailResponse`
+**응답**: `GET /api/v1/patents/{patentId}`와 동일한 `PatentDetailResponse`
 
 **응답 예시**
 
@@ -831,7 +831,7 @@
 
 ---
 
-#### `GET /patents/{patentId}`
+#### `GET /api/v1/patents/{patentId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -928,7 +928,7 @@
 
 ---
 
-#### `POST /patents`
+#### `POST /api/v1/patents`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1013,7 +1013,7 @@
 
 ---
 
-#### `PATCH /patents/{patentId}/department`
+#### `PATCH /api/v1/patents/{patentId}/department`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1044,16 +1044,16 @@
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| PDF 업로드 URL 발급 | `POST` | `/patent-extract-jobs/upload-url` | 추출 작업 생성 후 MinIO PUT presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| PDF 업로드 완료 | `POST` | `/patent-extract-jobs/{extractJobId}/upload-complete` | PDF 존재 확인 후 RabbitMQ 메시지 발행 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 추출 작업 상태 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/status` | 프론트 polling용 상태 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 추출 결과 조회 | `GET` | `/patent-extract-jobs/{extractJobId}/result` | 완료된 추출 결과 JSON 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 추출 완료 콜백 | `PATCH` | `/internal/patent-extract-jobs/{extractJobId}/complete` | AI Worker가 추출 결과 전달 | Internal API Key |
-| 추출 실패 콜백 | `PATCH` | `/internal/patent-extract-jobs/{extractJobId}/fail` | AI Worker가 추출 실패 전달 | Internal API Key |
+| PDF 업로드 URL 발급 | `POST` | `/api/v1/patent-extract-jobs/upload-url` | 추출 작업 생성 후 MinIO PUT presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| PDF 업로드 완료 | `POST` | `/api/v1/patent-extract-jobs/{extractJobId}/upload-complete` | PDF 존재 확인 후 RabbitMQ 메시지 발행 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 추출 작업 상태 조회 | `GET` | `/api/v1/patent-extract-jobs/{extractJobId}/status` | 프론트 polling용 상태 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 추출 결과 조회 | `GET` | `/api/v1/patent-extract-jobs/{extractJobId}/result` | 완료된 추출 결과 JSON 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 추출 완료 콜백 | `PATCH` | `/api/v1/internal/patent-extract-jobs/{extractJobId}/complete` | AI Worker가 추출 결과 전달 | Internal API Key |
+| 추출 실패 콜백 | `PATCH` | `/api/v1/internal/patent-extract-jobs/{extractJobId}/fail` | AI Worker가 추출 실패 전달 | Internal API Key |
 
 ---
 
-#### `POST /patent-extract-jobs/upload-url`
+#### `POST /api/v1/patent-extract-jobs/upload-url`
 
 특허 신규 등록 전 원문 PDF를 업로드하기 위한 presigned URL을 발급합니다. 호출 즉시 `UPLOAD_PENDING` 상태의 `patent_extract_jobs` 레코드가 생성됩니다.
 
@@ -1094,7 +1094,7 @@
 
 ---
 
-#### `POST /patent-extract-jobs/{extractJobId}/upload-complete`
+#### `POST /api/v1/patent-extract-jobs/{extractJobId}/upload-complete`
 
 프론트가 presigned URL로 PDF 업로드를 완료한 뒤 호출합니다. 백엔드는 MinIO object 존재 여부를 확인하고, 성공 시 작업 상태를 `ANALYZING`으로 변경한 뒤 RabbitMQ에 추출 요청 메시지를 발행합니다.
 
@@ -1135,7 +1135,7 @@
 
 ---
 
-#### `GET /patent-extract-jobs/{extractJobId}/status`
+#### `GET /api/v1/patent-extract-jobs/{extractJobId}/status`
 
 프론트 polling용 API입니다. `COMPLETED` 또는 `FAILED` 응답 시 polling을 종료합니다.
 
@@ -1159,9 +1159,9 @@
 
 ---
 
-#### `GET /patent-extract-jobs/{extractJobId}/result`
+#### `GET /api/v1/patent-extract-jobs/{extractJobId}/result`
 
-완료된 추출 작업의 결과 JSON을 조회합니다. 프론트는 `result`를 특허 등록 폼에 자동 입력하고, 사용자가 수정한 뒤 `POST /patents`로 최종 생성합니다.
+완료된 추출 작업의 결과 JSON을 조회합니다. 프론트는 `result`를 특허 등록 폼에 자동 입력하고, 사용자가 수정한 뒤 `POST /api/v1/patents`로 최종 생성합니다.
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1199,7 +1199,7 @@
 
 ---
 
-#### `PATCH /internal/patent-extract-jobs/{extractJobId}/complete`
+#### `PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/complete`
 
 AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
 
@@ -1255,7 +1255,7 @@ AI Worker가 PDF 분석을 완료한 뒤 호출합니다.
 
 ---
 
-#### `PATCH /internal/patent-extract-jobs/{extractJobId}/fail`
+#### `PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/fail`
 
 AI Worker가 PDF 분석 실패 후 호출합니다.
 
@@ -1301,7 +1301,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 ### 4-2. 특허 담당 부서
 
 특허 담당 부서는 별도 매핑 엔티티를 두지 않고, `patents.current_department_id`가 `departments.id`를 외래키로 참조하는 방식으로 관리합니다.
-담당 부서 조회는 `GET /patents/{patentId}` 응답 필드로 확인합니다.
+담당 부서 조회는 `GET /api/v1/patents/{patentId}` 응답 필드로 확인합니다.
 
 ---
 
@@ -1309,8 +1309,8 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 권리 상태 이력 조회 | `GET` | `/patents/{patentId}/legal-status` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 권리 상태 이력 추가 | `POST` | `/patents/{patentId}/legal-status` | 권리 상태 수동 추가 | `LEGAL` |
+| 권리 상태 이력 조회 | `GET` | `/api/v1/patents/{patentId}/legal-status` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 권리 상태 이력 추가 | `POST` | `/api/v1/patents/{patentId}/legal-status` | 권리 상태 수동 추가 | `LEGAL` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다.
 
@@ -1320,10 +1320,10 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 연차료 납부 이력 조회 | `GET` | `/patents/{patentId}/annuities` | 납부 완료(`PAID`) 이력 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 연차료 납부 이력 추가 | `POST` | `/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
-| 연차료 납부 이력 수정 | `PUT` | `/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력의 납부 연수, 금액, 납부일자 수정 | `LEGAL` |
-| 연차료 납부 이력 삭제 | `DELETE` | `/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력 삭제 | `LEGAL` |
+| 연차료 납부 이력 조회 | `GET` | `/api/v1/patents/{patentId}/annuities` | 납부 완료(`PAID`) 이력 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 연차료 납부 이력 추가 | `POST` | `/api/v1/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
+| 연차료 납부 이력 수정 | `PUT` | `/api/v1/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력의 납부 연수, 금액, 납부일자 수정 | `LEGAL` |
+| 연차료 납부 이력 삭제 | `DELETE` | `/api/v1/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력 삭제 | `LEGAL` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다. 조회 결과에는 `PAID` 상태의 납부 완료 이력만 포함됩니다.
 수정/삭제 대상도 `PAID` 상태의 납부 완료 이력으로 제한됩니다.
@@ -1353,13 +1353,13 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 주기 생성 | `POST` | `/review-cycles` | 검토 주기 등록 | `ADMIN` |
-| 현재 검토 주기 조회 | `GET` | `/review-cycles/current` | 오늘 날짜가 포함된 현재 활성 검토 주기 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 검토 주기 목록 조회 | `GET` | `/review-cycles` | 최근 시작일 순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 검토 주기 단일 조회 | `GET` | `/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 검토 주기 수정 | `PUT` | `/review-cycles/{reviewCycleId}` | 검토 주기 정보 수정 | `ADMIN` |
-| 검토 주기 마감일 설정 | `PATCH` | `/review-cycles/{reviewCycleId}/deadline` | 검토 요청 발송에 사용할 마감일 설정 | `LEGAL` |
-| 검토 주기 삭제 | `DELETE` | `/review-cycles/{reviewCycleId}` | 미사용 검토 주기 삭제 | `ADMIN` |
+| 검토 주기 생성 | `POST` | `/api/v1/review-cycles` | 검토 주기 등록 | `ADMIN` |
+| 현재 검토 주기 조회 | `GET` | `/api/v1/review-cycles/current` | 오늘 날짜가 포함된 현재 활성 검토 주기 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 검토 주기 목록 조회 | `GET` | `/api/v1/review-cycles` | 최근 시작일 순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 검토 주기 단일 조회 | `GET` | `/api/v1/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 검토 주기 수정 | `PUT` | `/api/v1/review-cycles/{reviewCycleId}` | 검토 주기 정보 수정 | `ADMIN` |
+| 검토 주기 마감일 설정 | `PATCH` | `/api/v1/review-cycles/{reviewCycleId}/deadline` | 검토 요청 발송에 사용할 마감일 설정 | `LEGAL` |
+| 검토 주기 삭제 | `DELETE` | `/api/v1/review-cycles/{reviewCycleId}` | 미사용 검토 주기 삭제 | `ADMIN` |
 
 검토 주기의 기간은 서로 겹칠 수 없습니다. 검토 요청에서 사용 중인 주기는 삭제할 수 없습니다.
 
@@ -1369,8 +1369,8 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 요청 전송 | `POST` | `/patents/{patentId}/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성. 최신 평가 보고서가 있으면 `reportId`로 함께 연결 | `LEGAL` |
-| 검토 일괄 요청 전송 | `POST` | `/reviews/bulk` | 여러 특허에 검토 요청 생성. 생성 불가 특허는 사유와 함께 건너뜀 | `LEGAL` |
+| 검토 요청 전송 | `POST` | `/api/v1/patents/{patentId}/api/v1/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성. 최신 평가 보고서가 있으면 `reportId`로 함께 연결 | `LEGAL` |
+| 검토 일괄 요청 전송 | `POST` | `/api/v1/reviews/bulk` | 여러 특허에 검토 요청 생성. 생성 불가 특허는 사유와 함께 건너뜀 | `LEGAL` |
 
 검토 요청의 회신 기한은 현재 활성 검토 주기의 `deadline`으로 서버에서 자동 설정합니다.
 동일한 검토 주기, 특허, 부서 조합은 중복 요청할 수 없습니다.
@@ -1378,7 +1378,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
-#### `POST /reviews/bulk`
+#### `POST /api/v1/reviews/bulk`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1433,13 +1433,13 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 대상 목록 조회 | `GET` | `/review-targets` | 현재 활성 검토 주기 기준 검토 대상 목록 조회 | `ADMIN`, `LEGAL` |
-| 검토 대상 단일 조회 | `GET` | `/review-targets/{reviewId}` | 검토 대상 특허의 요청 상태와 사업부 회신 조회 | `ADMIN`, `LEGAL` |
-| 회신 확인 처리 | `PATCH` | `/reviews/{reviewId}/confirm` | Legal 팀 회신 확인 처리. `confirmed_at` 기록 | `LEGAL` |
+| 검토 대상 목록 조회 | `GET` | `/api/v1/review-targets` | 현재 활성 검토 주기 기준 검토 대상 목록 조회 | `ADMIN`, `LEGAL` |
+| 검토 대상 단일 조회 | `GET` | `/api/v1/review-targets/{reviewId}` | 검토 대상 특허의 요청 상태와 사업부 회신 조회 | `ADMIN`, `LEGAL` |
+| 회신 확인 처리 | `PATCH` | `/api/v1/reviews/{reviewId}/confirm` | Legal 팀 회신 확인 처리. `confirmed_at` 기록 | `LEGAL` |
 
 ---
 
-#### `GET /review-targets`
+#### `GET /api/v1/review-targets`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1526,17 +1526,17 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
-#### `GET /review-targets/{reviewId}`
+#### `GET /api/v1/review-targets/{reviewId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
-응답 필드는 `GET /review-targets`의 items[] 항목과 동일합니다.
+응답 필드는 `GET /api/v1/review-targets`의 items[] 항목과 동일합니다.
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
 
 ---
 
-#### `PATCH /reviews/{reviewId}/confirm`
+#### `PATCH /api/v1/reviews/{reviewId}/confirm`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1564,17 +1564,17 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 현황 요약 조회 | `GET` | `/business-reviews/summary` | 본인 소속 부서 기준 현재 검토 현황 KPI 조회 | `BUSINESS` |
-| 검토 현황 목록 조회 | `GET` | `/business-reviews` | 본인 부서에 요청된 최신 검토 현황 목록 조회 | `BUSINESS` |
-| 과거 제출 이력 조회 | `GET` | `/business-reviews/history` | 본인 부서 기준 과거 검토 제출 이력 조회 | `BUSINESS` |
-| 검토 현황 단일 조회 | `GET` | `/business-reviews/{patentId}` | 특허 상세 정보와 최신 검토 현황 조회 | `BUSINESS` |
-| 의견 제출 | `POST` | `/business-reviews/{patentId}/opinions` | 현재 검토 주기 요청에 `MAINTAIN` 또는 `ABANDON` 제출 | `BUSINESS` |
+| 검토 현황 요약 조회 | `GET` | `/api/v1/business-reviews/summary` | 본인 소속 부서 기준 현재 검토 현황 KPI 조회 | `BUSINESS` |
+| 검토 현황 목록 조회 | `GET` | `/api/v1/business-reviews` | 본인 부서에 요청된 최신 검토 현황 목록 조회 | `BUSINESS` |
+| 과거 제출 이력 조회 | `GET` | `/api/v1/business-reviews/history` | 본인 부서 기준 과거 검토 제출 이력 조회 | `BUSINESS` |
+| 검토 현황 단일 조회 | `GET` | `/api/v1/business-reviews/{patentId}` | 특허 상세 정보와 최신 검토 현황 조회 | `BUSINESS` |
+| 의견 제출 | `POST` | `/api/v1/business-reviews/{patentId}/opinions` | 현재 검토 주기 요청에 `MAINTAIN` 또는 `ABANDON` 제출 | `BUSINESS` |
 
 회신 기한이 지난 요청과 이미 제출한 요청에는 의견을 제출할 수 없습니다.
 
 ---
 
-#### `GET /business-reviews/summary`
+#### `GET /api/v1/business-reviews/summary`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1623,7 +1623,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
-#### `GET /business-reviews`
+#### `GET /api/v1/business-reviews`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1702,7 +1702,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
-#### `GET /business-reviews/history`
+#### `GET /api/v1/business-reviews/history`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1786,7 +1786,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
-#### `GET /business-reviews/{patentId}`
+#### `GET /api/v1/business-reviews/{patentId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1802,7 +1802,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | Name | Type | Description |
 | --- | --- | --- |
-| patent | object | `GET /patents/{patentId}`와 동일한 특허 상세 정보 |
+| patent | object | `GET /api/v1/patents/{patentId}`와 동일한 특허 상세 정보 |
 | opinion | string | `MAINTAIN` / `ABANDON` / `null` |
 | comment | string | 상세 의견 |
 | status | string | `PENDING` / `OVERDUE` / `SUBMITTED` |
@@ -1838,7 +1838,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 ---
 
-#### `POST /business-reviews/{patentId}/opinions`
+#### `POST /api/v1/business-reviews/{patentId}/opinions`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1894,18 +1894,18 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 보고서 목록 조회 | `GET` | `/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 요청 | `POST` | `/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 후 RabbitMQ 메시지 발행 | `LEGAL` |
-| 최신 보고서 조회 | `GET` | `/patents/{patentId}/reports/latest` | 가장 최근 생성된 평가 보고서 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 과거 평가 이력 조회 | `GET` | `/patents/{patentId}/reports/history` | 최신 완료 보고서 1건을 제외한 과거 평가 이력 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 단일 조회 | `GET` | `/patents/{patentId}/reports/{reportId}` | 완료된 보고서 상세 및 MinIO presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 평가 처리 상태 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/status` | 보고서 생성 및 임베딩 상태 polling용 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 채팅 이력 조회 | `GET` | `/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 채팅 메시지 전송 | `POST` | `/patents/{patentId}/reports/{reportId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 채팅 초기화 | `DELETE` | `/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 전체 삭제 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달. `/internal/reports/{reportId}/complete`도 동일 처리 | Internal API Key |
-| 임베딩 완료 콜백 | `PATCH` | `/internal/reports/{reportId}/embedding-complete` | AI Worker가 임베딩 완료 전달 | Internal API Key |
-| 보고서 생성 실패 콜백 | `PATCH` | `/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
+| 보고서 목록 조회 | `GET` | `/api/v1/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 생성 요청 | `POST` | `/api/v1/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 후 RabbitMQ 메시지 발행 | `LEGAL` |
+| 최신 보고서 조회 | `GET` | `/api/v1/patents/{patentId}/reports/latest` | 가장 최근 생성된 평가 보고서 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 과거 평가 이력 조회 | `GET` | `/api/v1/patents/{patentId}/reports/history` | 최신 완료 보고서 1건을 제외한 과거 평가 이력 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 단일 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}` | 완료된 보고서 상세 및 MinIO presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 처리 상태 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}/status` | 보고서 생성 및 임베딩 상태 polling용 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 채팅 이력 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 채팅 메시지 전송 | `POST` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 채팅 초기화 | `DELETE` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 전체 삭제 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 보고서 생성 완료 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달. `/api/v1/internal/reports/{reportId}/complete`도 동일 처리 | Internal API Key |
+| 임베딩 완료 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/embedding-complete` | AI Worker가 임베딩 완료 전달 | Internal API Key |
+| 보고서 생성 실패 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 보고서만 조회할 수 있습니다.
 프론트는 MinIO object key를 직접 받지 않고, 백엔드가 생성한 presigned URL만 사용합니다.
@@ -1913,7 +1913,7 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
 
 ---
 
-#### `GET /patents/{patentId}/reports`
+#### `GET /api/v1/patents/{patentId}/reports`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -1969,7 +1969,7 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
 
 ---
 
-#### `POST /patents/{patentId}/reports`
+#### `POST /api/v1/patents/{patentId}/reports`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2007,7 +2007,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `GET /patents/{patentId}/reports/latest`
+#### `GET /api/v1/patents/{patentId}/reports/latest`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2062,7 +2062,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `GET /patents/{patentId}/reports/history`
+#### `GET /api/v1/patents/{patentId}/reports/history`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2112,7 +2112,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `GET /patents/{patentId}/reports/{reportId}`
+#### `GET /api/v1/patents/{patentId}/reports/{reportId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2161,7 +2161,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `GET /patents/{patentId}/reports/{reportId}/status`
+#### `GET /api/v1/patents/{patentId}/reports/{reportId}/status`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2200,7 +2200,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `GET /patents/{patentId}/reports/{reportId}/chat/messages`
+#### `GET /api/v1/patents/{patentId}/reports/{reportId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2254,7 +2254,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `POST /patents/{patentId}/reports/{reportId}/chat/messages`
+#### `POST /api/v1/patents/{patentId}/reports/{reportId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2286,7 +2286,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 | userMessage | object | 저장된 사용자 메시지 |
 | assistantMessage | object | 저장된 AI 응답 메시지 |
 
-`userMessage`, `assistantMessage` 필드는 `GET /patents/{patentId}/reports/{reportId}/chat/messages`의 메시지 항목과 동일합니다.
+`userMessage`, `assistantMessage` 필드는 `GET /api/v1/patents/{patentId}/reports/{reportId}/chat/messages`의 메시지 항목과 동일합니다.
 
 **응답 예시**
 
@@ -2318,7 +2318,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `DELETE /patents/{patentId}/reports/{reportId}/chat/messages`
+#### `DELETE /api/v1/patents/{patentId}/reports/{reportId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2337,11 +2337,11 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 ---
 
-#### `PATCH /internal/reports/{reportId}/report-complete`
+#### `PATCH /api/v1/internal/reports/{reportId}/report-complete`
 
 AI Worker가 보고서 생성 완료 후 호출합니다.
 
-기존 호환을 위해 `/internal/reports/{reportId}/complete`도 동일하게 동작합니다.
+기존 호환을 위해 `/api/v1/internal/reports/{reportId}/complete`도 동일하게 동작합니다.
 
 **헤더**: `X-Internal-Api-Key: {secret}`
 
@@ -2385,7 +2385,7 @@ AI Worker가 보고서 생성 완료 후 호출합니다.
 
 ---
 
-#### `PATCH /internal/reports/{reportId}/embedding-complete`
+#### `PATCH /api/v1/internal/reports/{reportId}/embedding-complete`
 
 AI Worker가 평가 보고서 임베딩 완료 후 호출합니다.
 
@@ -2415,7 +2415,7 @@ AI Worker가 평가 보고서 임베딩 완료 후 호출합니다.
 
 ---
 
-#### `PATCH /internal/reports/{reportId}/fail`
+#### `PATCH /api/v1/internal/reports/{reportId}/fail`
 
 AI Worker가 보고서 생성 실패 후 호출합니다.
 
@@ -2463,17 +2463,17 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 사전 평가 시작 | `POST` | `/pre-evaluations` | 임시 특허 정보를 저장하고 AI 서버에 사전 평가 보고서 생성을 요청 | `BUSINESS` |
-| 사전 평가 목록 조회 | `GET` | `/pre-evaluations` | 현재 사용자의 사전 평가 이력 목록 조회 | `BUSINESS` |
-| 사전 평가 상세 조회 | `GET` | `/pre-evaluations/{preEvaluationId}` | 사전 평가 입력 정보, 상태, 보고서 URL 조회 | `BUSINESS` |
-| 사전 평가 처리 상태 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/status` | 보고서 생성 및 임베딩 상태 polling | `BUSINESS` |
-| 사전 평가 이력 삭제 | `DELETE` | `/pre-evaluations/{preEvaluationId}` | 사전 평가와 관련 채팅 메시지 삭제 | `BUSINESS` |
-| 채팅 이력 조회 | `GET` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가별 채팅 메시지 목록 조회 | `BUSINESS` |
-| 채팅 메시지 전송 | `POST` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `BUSINESS` |
-| 채팅 초기화 | `DELETE` | `/pre-evaluations/{preEvaluationId}/chat/messages` | 해당 사전 평가의 채팅 메시지 전체 삭제 | `BUSINESS` |
-| 사전 평가 보고서 생성 완료 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/report-complete` | AI 서버가 보고서 생성 완료 후 호출 | Internal API Key |
-| 사전 평가 임베딩 완료 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/embedding-complete` | AI 서버가 임베딩 완료 후 호출 | Internal API Key |
-| 사전 평가 실패 callback | `PATCH` | `/internal/pre-evaluations/{preEvaluationId}/fail` | AI 서버가 보고서 생성 실패 후 호출 | Internal API Key |
+| 사전 평가 시작 | `POST` | `/api/v1/pre-evaluations` | 임시 특허 정보를 저장하고 AI 서버에 사전 평가 보고서 생성을 요청 | `BUSINESS` |
+| 사전 평가 목록 조회 | `GET` | `/api/v1/pre-evaluations` | 현재 사용자의 사전 평가 이력 목록 조회 | `BUSINESS` |
+| 사전 평가 상세 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}` | 사전 평가 입력 정보, 상태, 보고서 URL 조회 | `BUSINESS` |
+| 사전 평가 처리 상태 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}/status` | 보고서 생성 및 임베딩 상태 polling | `BUSINESS` |
+| 사전 평가 이력 삭제 | `DELETE` | `/api/v1/pre-evaluations/{preEvaluationId}` | 사전 평가와 관련 채팅 메시지 삭제 | `BUSINESS` |
+| 채팅 이력 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가별 채팅 메시지 목록 조회 | `BUSINESS` |
+| 채팅 메시지 전송 | `POST` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `BUSINESS` |
+| 채팅 초기화 | `DELETE` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 해당 사전 평가의 채팅 메시지 전체 삭제 | `BUSINESS` |
+| 사전 평가 보고서 생성 완료 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete` | AI 서버가 보고서 생성 완료 후 호출 | Internal API Key |
+| 사전 평가 임베딩 완료 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete` | AI 서버가 임베딩 완료 후 호출 | Internal API Key |
+| 사전 평가 실패 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/fail` | AI 서버가 보고서 생성 실패 후 호출 | Internal API Key |
 
 사전 평가 상태값은 다음과 같습니다.
 
@@ -2486,7 +2486,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `POST /pre-evaluations`
+#### `POST /api/v1/pre-evaluations`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2567,7 +2567,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /pre-evaluations`
+#### `GET /api/v1/pre-evaluations`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2623,7 +2623,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /pre-evaluations/{preEvaluationId}`
+#### `GET /api/v1/pre-evaluations/{preEvaluationId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2673,7 +2673,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /pre-evaluations/{preEvaluationId}/status`
+#### `GET /api/v1/pre-evaluations/{preEvaluationId}/status`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2704,7 +2704,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `DELETE /pre-evaluations/{preEvaluationId}`
+#### `DELETE /api/v1/pre-evaluations/{preEvaluationId}`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2720,7 +2720,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /pre-evaluations/{preEvaluationId}/chat/messages`
+#### `GET /api/v1/pre-evaluations/{preEvaluationId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2778,7 +2778,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `POST /pre-evaluations/{preEvaluationId}/chat/messages`
+#### `POST /api/v1/pre-evaluations/{preEvaluationId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2888,7 +2888,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `DELETE /pre-evaluations/{preEvaluationId}/chat/messages`
+#### `DELETE /api/v1/pre-evaluations/{preEvaluationId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -2904,11 +2904,11 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `PATCH /internal/pre-evaluations/{preEvaluationId}/report-complete`
+#### `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete`
 
 AI 서버가 사전 평가 보고서 생성 완료 후 호출합니다.
 
-기존 호환을 위해 `/internal/pre-evaluations/{preEvaluationId}/complete`도 동일하게 동작합니다.
+기존 호환을 위해 `/api/v1/internal/pre-evaluations/{preEvaluationId}/complete`도 동일하게 동작합니다.
 
 **헤더**: `X-Internal-Api-Key: {secret}`
 
@@ -2947,7 +2947,7 @@ AI 서버가 사전 평가 보고서 생성 완료 후 호출합니다.
 
 ---
 
-#### `PATCH /internal/pre-evaluations/{preEvaluationId}/embedding-complete`
+#### `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete`
 
 AI 서버가 사전 평가 임베딩 완료 후 호출합니다.
 
@@ -2976,7 +2976,7 @@ AI 서버가 사전 평가 임베딩 완료 후 호출합니다.
 
 ---
 
-#### `PATCH /internal/pre-evaluations/{preEvaluationId}/fail`
+#### `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/fail`
 
 AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
@@ -3023,10 +3023,10 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| Legal 홈 대시보드 조회 | `GET` | `/dashboard/legal` | Legal 홈 화면용 검토 현황, 분포, 최근 회신 조회 | `ADMIN`, `LEGAL` |
-| Business 홈 대시보드 조회 | `GET` | `/dashboard/business` | Business 홈 화면용 소속 부서 검토 현황과 특허 요약 조회 | `BUSINESS` |
+| Legal 홈 대시보드 조회 | `GET` | `/api/v1/dashboard/legal` | Legal 홈 화면용 검토 현황, 분포, 최근 회신 조회 | `ADMIN`, `LEGAL` |
+| Business 홈 대시보드 조회 | `GET` | `/api/v1/dashboard/business` | Business 홈 화면용 소속 부서 검토 현황과 특허 요약 조회 | `BUSINESS` |
 
-#### `GET /dashboard/legal`
+#### `GET /api/v1/dashboard/legal`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -3051,7 +3051,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /dashboard/business`
+#### `GET /api/v1/dashboard/business`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -3080,14 +3080,14 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 포트폴리오 인사이트 조회 | `GET` | `/portfolio/insights` | 포트폴리오 데이터 기반 AI 인사이트 조회 | `ADMIN`, `LEGAL` |
-| 포트폴리오 분포 조회 | `GET` | `/portfolio/distribution` | 평가 등급, 기술 분야, 국가, 사업부별 분포 조회 | `ADMIN`, `LEGAL` |
-| 포트폴리오 추이 조회 | `GET` | `/portfolio/trends` | 연도별 출원/등록/소멸 추이와 연차료 추이 조회 | `ADMIN`, `LEGAL` |
-| 포트폴리오 결정 비율 조회 | `GET` | `/portfolio/decisions` | 분기, 사업부, 기술 분야별 유지/포기 결정 현황 조회 | `ADMIN`, `LEGAL` |
+| 포트폴리오 인사이트 조회 | `GET` | `/api/v1/portfolio/insights` | 포트폴리오 데이터 기반 AI 인사이트 조회 | `ADMIN`, `LEGAL` |
+| 포트폴리오 분포 조회 | `GET` | `/api/v1/portfolio/distribution` | 평가 등급, 기술 분야, 국가, 사업부별 분포 조회 | `ADMIN`, `LEGAL` |
+| 포트폴리오 추이 조회 | `GET` | `/api/v1/portfolio/trends` | 연도별 출원/등록/소멸 추이와 연차료 추이 조회 | `ADMIN`, `LEGAL` |
+| 포트폴리오 결정 비율 조회 | `GET` | `/api/v1/portfolio/decisions` | 분기, 사업부, 기술 분야별 유지/포기 결정 현황 조회 | `ADMIN`, `LEGAL` |
 
 ---
 
-#### `GET /portfolio/insights`
+#### `GET /api/v1/portfolio/insights`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -3119,7 +3119,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /portfolio/distribution`
+#### `GET /api/v1/portfolio/distribution`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -3185,7 +3185,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /portfolio/trends`
+#### `GET /api/v1/portfolio/trends`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
@@ -3231,7 +3231,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 ---
 
-#### `GET /portfolio/decisions`
+#### `GET /api/v1/portfolio/decisions`
 
 **헤더**: `Authorization: Bearer {accessToken}`
 

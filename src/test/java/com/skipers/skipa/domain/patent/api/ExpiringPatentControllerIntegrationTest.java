@@ -128,7 +128,7 @@ class ExpiringPatentControllerIntegrationTest {
 
     @Test
     void expiringSummaryReturnsPeriodCountsAndTechFieldBreakdown() throws Exception {
-        mockMvc.perform(get("/patents/expiring/summary")
+        mockMvc.perform(get("/api/v1/patents/expiring/summary")
                 .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.periods.length()").value(5))
@@ -144,14 +144,14 @@ class ExpiringPatentControllerIntegrationTest {
 
     @Test
     void expiringPatentListReturnsSelectedPeriodItems() throws Exception {
-        mockMvc.perform(get("/patents/expiring")
+        mockMvc.perform(get("/api/v1/patents/expiring")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalItems").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(expiringSoonPatent.getId()))
                 .andExpect(jsonPath("$.data.items[0].departmentName").value("반도체 사업부"));
 
-        mockMvc.perform(get("/patents/expiring")
+        mockMvc.perform(get("/api/v1/patents/expiring")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("months", "3"))
                 .andExpect(status().isOk())
@@ -161,7 +161,7 @@ class ExpiringPatentControllerIntegrationTest {
 
     @Test
     void expiringPatentListRejectsInvalidMonths() throws Exception {
-        mockMvc.perform(get("/patents/expiring")
+        mockMvc.perform(get("/api/v1/patents/expiring")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("months", "0"))
                 .andExpect(status().isBadRequest())
@@ -170,7 +170,7 @@ class ExpiringPatentControllerIntegrationTest {
 
     @Test
     void expiringCalendarGroupsItemsByYearAndMonth() throws Exception {
-        mockMvc.perform(get("/patents/expiring/calendar")
+        mockMvc.perform(get("/api/v1/patents/expiring/calendar")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("year", String.valueOf(LocalDate.now().getYear())))
                 .andExpect(status().isOk())
@@ -186,13 +186,13 @@ class ExpiringPatentControllerIntegrationTest {
 
     @Test
     void businessUserOnlySeesOwnDepartmentExpiringPatents() throws Exception {
-        mockMvc.perform(get("/patents/expiring")
+        mockMvc.perform(get("/api/v1/patents/expiring")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalItems").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(expiringSoonPatent.getId()));
 
-        mockMvc.perform(get("/patents/expiring/calendar")
+        mockMvc.perform(get("/api/v1/patents/expiring/calendar")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("year", String.valueOf(LocalDate.now().getYear())))
                 .andExpect(status().isOk())

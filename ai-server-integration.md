@@ -14,7 +14,7 @@
 
 ### 1-1. Internal API 인증
 
-AI 서버가 백엔드의 `/internal/**` API를 호출할 때는 반드시 아래 헤더를 포함해야 합니다.
+AI 서버가 백엔드의 `/api/v1/internal/**` API를 호출할 때는 반드시 아래 헤더를 포함해야 합니다.
 
 ```http
 X-Internal-Api-Key: {INTERNAL_API_KEY}
@@ -54,7 +54,7 @@ X-Internal-Api-Key: {INTERNAL_API_KEY}
 프론트가 호출하는 API입니다. AI 서버가 직접 호출하지 않습니다.
 
 ```http
-POST /patents/{patentId}/reports
+POST /api/v1/patents/{patentId}/reports
 ```
 
 백엔드는 보고서를 생성하고 RabbitMQ 메시지를 발행합니다.
@@ -148,12 +148,12 @@ patents/1/reports/8/report.json
 AI 서버가 보고서 JSON 파일 업로드를 완료한 뒤 호출합니다.
 
 ```http
-PATCH /internal/reports/{reportId}/report-complete
+PATCH /api/v1/internal/reports/{reportId}/report-complete
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
 
-기존 호환을 위해 `/internal/reports/{reportId}/complete`도 동일하게 동작하지만, 신규 구현에서는 `/report-complete` 사용을 권장합니다.
+기존 호환을 위해 `/api/v1/internal/reports/{reportId}/complete`도 동일하게 동작하지만, 신규 구현에서는 `/report-complete` 사용을 권장합니다.
 
 요청 body:
 
@@ -192,7 +192,7 @@ Content-Type: application/json
 AI 서버가 보고서 임베딩을 완료한 뒤 호출합니다.
 
 ```http
-PATCH /internal/reports/{reportId}/embedding-complete
+PATCH /api/v1/internal/reports/{reportId}/embedding-complete
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
@@ -223,7 +223,7 @@ Content-Type: application/json
 AI 서버가 보고서 생성에 실패한 경우 호출합니다.
 
 ```http
-PATCH /internal/reports/{reportId}/fail
+PATCH /api/v1/internal/reports/{reportId}/fail
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
@@ -391,7 +391,7 @@ Content-Type: application/json
 프론트가 호출하는 API입니다. AI 서버가 직접 호출하지 않습니다.
 
 ```http
-POST /patent-extract-jobs/upload-url
+POST /api/v1/patent-extract-jobs/upload-url
 ```
 
 응답 예시:
@@ -425,7 +425,7 @@ POST /patent-extract-jobs/upload-url
 프론트가 PDF를 MinIO에 업로드한 뒤 호출합니다.
 
 ```http
-POST /patent-extract-jobs/{extractJobId}/upload-complete
+POST /api/v1/patent-extract-jobs/{extractJobId}/upload-complete
 ```
 
 백엔드는 `objectKey`에 파일이 실제 존재하는지 확인합니다.
@@ -525,7 +525,7 @@ AI 서버가 실제 저장한 object key를 완료 콜백의 `parsedJsonKey`로 
 AI 서버가 추출을 완료하면 호출합니다.
 
 ```http
-PATCH /internal/patent-extract-jobs/{extractJobId}/complete
+PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/complete
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
@@ -566,7 +566,7 @@ Content-Type: application/json
 }
 ```
 
-`result`는 프론트가 최종 특허 생성 API에 채워 넣을 초안 데이터입니다. 가능한 한 백엔드 `POST /patents` 요청 필드명과 맞춰야 합니다.
+`result`는 프론트가 최종 특허 생성 API에 채워 넣을 초안 데이터입니다. 가능한 한 백엔드 `POST /api/v1/patents` 요청 필드명과 맞춰야 합니다.
 `parsedJsonKey`는 AI 서버가 MinIO에 업로드한 추출 결과 JSON object key입니다. 백엔드는 같은 경로에 JSON을 다시 업로드하지 않으며, 최종 특허 생성 시 이 object를 최종 경로로 copy합니다.
 
 주요 필드:
@@ -625,7 +625,7 @@ Content-Type: application/json
 AI 서버가 추출에 실패하면 호출합니다.
 
 ```http
-PATCH /internal/patent-extract-jobs/{extractJobId}/fail
+PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/fail
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
@@ -664,13 +664,13 @@ Content-Type: application/json
 상태 조회:
 
 ```http
-GET /patent-extract-jobs/{extractJobId}/status
+GET /api/v1/patent-extract-jobs/{extractJobId}/status
 ```
 
 결과 조회:
 
 ```http
-GET /patent-extract-jobs/{extractJobId}/result
+GET /api/v1/patent-extract-jobs/{extractJobId}/result
 ```
 
 결과 조회 응답 예시:
@@ -700,7 +700,7 @@ GET /patent-extract-jobs/{extractJobId}/result
 프론트는 추출 결과를 확인한 뒤 최종 특허 생성 API를 호출합니다.
 
 ```http
-POST /patents
+POST /api/v1/patents
 ```
 
 이때 `extractJobId`를 함께 전달하면 백엔드는 특허 row를 생성한 뒤, 생성된 `patentId`를 기준으로 임시 PDF를 최종 경로로 복사합니다.
@@ -793,7 +793,7 @@ patents/{patentId}/reports/{reportId}/report.json
 프론트가 호출하는 API입니다. AI 서버가 직접 호출하지 않습니다.
 
 ```http
-POST /pre-evaluations
+POST /api/v1/pre-evaluations
 ```
 
 백엔드는 사전 평가 row를 생성하고 RabbitMQ 메시지를 발행합니다.
@@ -913,12 +913,12 @@ pre-evaluations/12/report.json
 AI 서버가 사전 평가 보고서 업로드를 완료한 뒤 호출합니다.
 
 ```http
-PATCH /internal/pre-evaluations/{preEvaluationId}/report-complete
+PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
 
-기존 호환을 위해 `/internal/pre-evaluations/{preEvaluationId}/complete`도 동일하게 동작하지만, 신규 구현에서는 `/report-complete` 사용을 권장합니다.
+기존 호환을 위해 `/api/v1/internal/pre-evaluations/{preEvaluationId}/complete`도 동일하게 동작하지만, 신규 구현에서는 `/report-complete` 사용을 권장합니다.
 
 요청 body:
 
@@ -952,7 +952,7 @@ Content-Type: application/json
 AI 서버가 사전 평가 보고서 임베딩을 완료한 뒤 호출합니다.
 
 ```http
-PATCH /internal/pre-evaluations/{preEvaluationId}/embedding-complete
+PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
@@ -982,7 +982,7 @@ Content-Type: application/json
 AI 서버가 사전 평가 보고서 생성에 실패한 경우 호출합니다.
 
 ```http
-PATCH /internal/pre-evaluations/{preEvaluationId}/fail
+PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/fail
 X-Internal-Api-Key: {INTERNAL_API_KEY}
 Content-Type: application/json
 ```
@@ -1128,43 +1128,43 @@ Content-Type: application/json
 목록 조회:
 
 ```http
-GET /pre-evaluations
+GET /api/v1/pre-evaluations
 ```
 
 상태 조회:
 
 ```http
-GET /pre-evaluations/{preEvaluationId}/status
+GET /api/v1/pre-evaluations/{preEvaluationId}/status
 ```
 
 상세 조회:
 
 ```http
-GET /pre-evaluations/{preEvaluationId}
+GET /api/v1/pre-evaluations/{preEvaluationId}
 ```
 
 채팅 이력 조회:
 
 ```http
-GET /pre-evaluations/{preEvaluationId}/chat/messages
+GET /api/v1/pre-evaluations/{preEvaluationId}/chat/messages
 ```
 
 채팅 메시지 전송:
 
 ```http
-POST /pre-evaluations/{preEvaluationId}/chat/messages
+POST /api/v1/pre-evaluations/{preEvaluationId}/chat/messages
 ```
 
 채팅 초기화:
 
 ```http
-DELETE /pre-evaluations/{preEvaluationId}/chat/messages
+DELETE /api/v1/pre-evaluations/{preEvaluationId}/chat/messages
 ```
 
 평가 이력 삭제:
 
 ```http
-DELETE /pre-evaluations/{preEvaluationId}
+DELETE /api/v1/pre-evaluations/{preEvaluationId}
 ```
 
 ## 5. AI 포트폴리오 인사이트 생성
@@ -1189,7 +1189,7 @@ RabbitMQ 메시지를 사용하지 않습니다. 백엔드가 기존 포트폴�
 프론트가 호출하는 API입니다. AI 서버가 직접 호출하지 않습니다.
 
 ```http
-GET /portfolio/insights
+GET /api/v1/portfolio/insights
 ```
 
 응답 예시:
@@ -1217,7 +1217,7 @@ GET /portfolio/insights
 app:
   ai-server:
     base-url: ${AI_SERVER_BASE_URL:http://localhost:8000}
-    portfolio-insights-path: ${AI_PORTFOLIO_INSIGHTS_PATH:/portfolio/insights}
+    portfolio-insights-path: ${AI_PORTFOLIO_INSIGHTS_PATH:/api/v1/portfolio/insights}
   portfolio:
     insights-cache-ttl-seconds: ${PORTFOLIO_INSIGHTS_CACHE_TTL_SECONDS:86400}
 ```
@@ -1405,9 +1405,9 @@ Content-Type: application/json
 - [ ] 생성된 보고서 JSON 파일을 MinIO에 업로드
 - [ ] 업로드 object key를 `reportKey`로 결정
 - [ ] 평가 결과 `totalScore`, `valueGrade` 산출
-- [ ] `reportKey`, `totalScore`, `valueGrade`로 `PATCH /internal/reports/{reportId}/report-complete` 호출
-- [ ] 보고서 임베딩 완료 후 `PATCH /internal/reports/{reportId}/embedding-complete` 호출
-- [ ] 실패 시 `PATCH /internal/reports/{reportId}/fail` 호출
+- [ ] `reportKey`, `totalScore`, `valueGrade`로 `PATCH /api/v1/internal/reports/{reportId}/report-complete` 호출
+- [ ] 보고서 임베딩 완료 후 `PATCH /api/v1/internal/reports/{reportId}/embedding-complete` 호출
+- [ ] 실패 시 `PATCH /api/v1/internal/reports/{reportId}/fail` 호출
 - [ ] 모든 internal API 요청에 `X-Internal-Api-Key` 포함
 
 ### 7-2. 특허 추출 worker
@@ -1418,8 +1418,8 @@ Content-Type: application/json
 - [ ] 특허 초안 JSON 추출
 - [ ] 추출 결과 JSON을 MinIO에 업로드
 - [ ] 업로드 object key를 `parsedJsonKey`로 결정
-- [ ] `PATCH /internal/patent-extract-jobs/{extractJobId}/complete` 호출
-- [ ] 실패 시 `PATCH /internal/patent-extract-jobs/{extractJobId}/fail` 호출
+- [ ] `PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/complete` 호출
+- [ ] 실패 시 `PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/fail` 호출
 - [ ] 모든 internal API 요청에 `X-Internal-Api-Key` 포함
 
 ### 7-3. 사전 평가 worker
@@ -1430,9 +1430,9 @@ Content-Type: application/json
 - [ ] 사전 평가 보고서 생성
 - [ ] 생성된 보고서를 MinIO에 업로드
 - [ ] 업로드 object key를 `reportKey`로 결정
-- [ ] `reportKey`로 `PATCH /internal/pre-evaluations/{preEvaluationId}/report-complete` 호출
-- [ ] 사전 평가 보고서 임베딩 완료 후 `PATCH /internal/pre-evaluations/{preEvaluationId}/embedding-complete` 호출
-- [ ] 실패 시 `PATCH /internal/pre-evaluations/{preEvaluationId}/fail` 호출
+- [ ] `reportKey`로 `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete` 호출
+- [ ] 사전 평가 보고서 임베딩 완료 후 `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete` 호출
+- [ ] 실패 시 `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/fail` 호출
 - [ ] 모든 internal API 요청에 `X-Internal-Api-Key` 포함
 
 ### 7-4. 사전 평가 채팅 API
@@ -1587,7 +1587,7 @@ PATENT_EXTRACT_QUEUE=skipa.patent-extract
 PRE_EVALUATION_GENERATE_QUEUE=skipa.pre-evaluation.generate
 AI_REPORT_CHAT_PATH=/api/v1/patents/{patent_id}/chat
 AI_PRE_EVALUATION_CHAT_PATH=/api/v1/pre-eval/cases/{case_id}/chat
-AI_PORTFOLIO_INSIGHTS_PATH=/portfolio/insights
+AI_PORTFOLIO_INSIGHTS_PATH=/api/v1/portfolio/insights
 ```
 
 ### 8-4. 메시지 처리 기본 규칙
@@ -1667,9 +1667,9 @@ REPORT_GENERATE 메시지 수신
   -> 보고서 생성에 필요한 데이터 준비
   -> AI 보고서 JSON 생성
   -> MinIO에 patents/{patentId}/reports/{reportId}/report.json 업로드
-  -> reportKey, totalScore, valueGrade로 PATCH /internal/reports/{reportId}/report-complete 호출
+  -> reportKey, totalScore, valueGrade로 PATCH /api/v1/internal/reports/{reportId}/report-complete 호출
   -> 보고서 임베딩 수행
-  -> PATCH /internal/reports/{reportId}/embedding-complete 호출
+  -> PATCH /api/v1/internal/reports/{reportId}/embedding-complete 호출
   -> RabbitMQ ack
 ```
 
@@ -1678,7 +1678,7 @@ REPORT_GENERATE 메시지 수신
 ```text
 REPORT_GENERATE 메시지 수신
   -> AI 보고서 생성 실패
-  -> PATCH /internal/reports/{reportId}/fail 호출
+  -> PATCH /api/v1/internal/reports/{reportId}/fail 호출
   -> RabbitMQ ack
 ```
 
@@ -1691,7 +1691,7 @@ PATENT_EXTRACT 메시지 수신
   -> PDF 파싱 및 AI 추출 수행
   -> result JSON 생성
   -> MinIO에 tmp/patent-extract-jobs/{extractJobId}/parsed.json 업로드
-  -> result, parsedJsonKey로 PATCH /internal/patent-extract-jobs/{extractJobId}/complete 호출
+  -> result, parsedJsonKey로 PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/complete 호출
   -> RabbitMQ ack
 ```
 
@@ -1700,7 +1700,7 @@ PATENT_EXTRACT 메시지 수신
 ```text
 PATENT_EXTRACT 메시지 수신
   -> PDF 다운로드 또는 AI 추출 실패
-  -> PATCH /internal/patent-extract-jobs/{extractJobId}/fail 호출
+  -> PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/fail 호출
   -> RabbitMQ ack
 ```
 
@@ -1711,9 +1711,9 @@ PRE_EVALUATION_GENERATE 메시지 수신
   -> preEvaluationId와 임시 특허 입력 정보 확인
   -> 사전 평가 보고서 생성
   -> MinIO에 pre-evaluations/{preEvaluationId}/report.json 업로드
-  -> reportKey로 PATCH /internal/pre-evaluations/{preEvaluationId}/report-complete 호출
+  -> reportKey로 PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete 호출
   -> 사전 평가 보고서 임베딩 수행
-  -> PATCH /internal/pre-evaluations/{preEvaluationId}/embedding-complete 호출
+  -> PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete 호출
   -> RabbitMQ ack
 ```
 
@@ -1722,7 +1722,7 @@ PRE_EVALUATION_GENERATE 메시지 수신
 ```text
 PRE_EVALUATION_GENERATE 메시지 수신
   -> 사전 평가 보고서 생성 실패
-  -> PATCH /internal/pre-evaluations/{preEvaluationId}/fail 호출
+  -> PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/fail 호출
   -> RabbitMQ ack
 ```
 
@@ -1763,7 +1763,7 @@ POST /api/v1/pre-eval/cases/{case_id}/chat 요청 수신
 ### 8-11. AI 포트폴리오 인사이트 API 예시 흐름
 
 ```text
-POST /portfolio/insights 요청 수신
+POST /api/v1/portfolio/insights 요청 수신
   -> trends, distribution, decisions 데이터 확인
   -> 포트폴리오 현황을 3줄 내외로 요약
   -> { "insights": ["...", "...", "..."] } 응답 반환
@@ -1772,7 +1772,7 @@ POST /portfolio/insights 요청 수신
 실패 시:
 
 ```text
-POST /portfolio/insights 요청 수신
+POST /api/v1/portfolio/insights 요청 수신
   -> AI 인사이트 생성 실패
   -> 4xx 또는 5xx 응답 반환
 ```

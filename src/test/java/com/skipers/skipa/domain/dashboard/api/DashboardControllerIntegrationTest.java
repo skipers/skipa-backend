@@ -170,7 +170,7 @@ class DashboardControllerIntegrationTest {
                 .build());
         String legalToken = createActiveUserToken("legal-dashboard", "legal-dashboard@example.com", UserRole.LEGAL, null);
 
-        mockMvc.perform(get("/dashboard/legal")
+        mockMvc.perform(get("/api/v1/dashboard/legal")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
@@ -257,7 +257,7 @@ class DashboardControllerIntegrationTest {
                 semiconductorDepartment
         );
 
-        mockMvc.perform(get("/dashboard/business")
+        mockMvc.perform(get("/api/v1/dashboard/business")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
