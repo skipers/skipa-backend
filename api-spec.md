@@ -3042,10 +3042,37 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 | --- | --- | --- |
 | reviewCycle | object | 검토 주기 요약 |
 | kpi | object | `requested`, `reviewing`, `decided`, `overdue`, `unread`, `unrequested` |
+| cycleProgress | object | 현재 검토 주기의 대상 특허/보고서/사업부 검토 진행 현황 |
 | departments | array | 부서별 `assigned`, `decided` |
 | byTechField | array | 기술 분야별 건수 |
 | byExpiryQuarter | array | 만료 분기별 건수 |
 | recentReplies | array | 최근 사업부 회신 목록 |
+
+**`cycleProgress` 필드**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| targetPatentCount | long | 이번 검토 주기의 대상 특허 수 |
+| reports.notStarted | long | 보고서 생성 전 건수 |
+| reports.generating | long | 보고서 생성 중 건수 |
+| reports.completed | long | 보고서 생성 완료 건수 (`REPORT_COMPLETED`, `EMBEDDING_COMPLETED`) |
+| reports.failed | long | 보고서 생성 실패 건수 |
+| reviews.scheduled | long | 사업부 요청 전 건수 (`SCHEDULED`) |
+| reviews.inReview | long | 사업부 검토 중 건수 (`PENDING`, `OVERDUE`) |
+| reviews.submitted | long | 제출 완료 건수 (`SUBMITTED`) |
+| statusLabel | string | 전체 진행 상태 라벨. 가능한 값은 아래 표 참고 |
+
+**`cycleProgress.statusLabel` 값**
+
+| Value | Meaning |
+| --- | --- |
+| `NO_TARGETS` | 검토 대상 특허가 아직 선정되지 않음 |
+| `REPORT_NOT_STARTED` | 대상 특허 중 보고서가 아직 생성되지 않은 건이 있음 |
+| `REPORT_GENERATING` | 대상 특허 중 보고서 생성 중인 건이 있음 |
+| `REPORT_FAILED` | 대상 특허 중 보고서 생성 실패 건이 있음 |
+| `REVIEW_NOT_REQUESTED` | 보고서는 준비됐지만 사업부 요청 전(`SCHEDULED`) 건이 있음 |
+| `REVIEW_IN_PROGRESS` | 사업부 검토 중(`PENDING`, `OVERDUE`) 건이 있음 |
+| `REVIEW_COMPLETED` | 사업부 검토가 모두 제출 완료됨 |
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403)
 
