@@ -292,6 +292,15 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void swaggerConfigAndOpenApiDocsRemainUnversioned() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/swagger-config"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DirtiesContext(methodMode = DirtiesContext.MethodMode.AFTER_METHOD)
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void meReturnsBusinessDepartmentOutsideTestTransaction() throws Exception {
