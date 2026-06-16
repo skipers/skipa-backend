@@ -963,6 +963,30 @@ class PatentServiceTest {
     }
 
     @Test
+    void changeDepartmentUpdatesCurrentDepartment() {
+        Department before = department("Telecom", 1L);
+        Department after = department("Battery", 2L);
+        Patent patent = patent(
+                1L,
+                "Assigned Patent",
+                "APP-ASSIGNED",
+                null,
+                null,
+                null,
+                before
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(departmentRepository.findById(2L)).thenReturn(Optional.of(after));
+
+        PatentDetailResponse response = patentService.changeDepartment(1L, new PatentDepartmentChangeRequest(2L));
+
+        assertThat(patent.getCurrentDepartment()).isEqualTo(after);
+        assertThat(response.currentDepartmentId()).isEqualTo(2L);
+        assertThat(response.currentDepartmentName()).isEqualTo("Battery");
+        verify(portfolioInsightCacheInvalidator).evict();
+    }
+
+    @Test
     void changeDepartmentRejectsInactiveDepartment() {
         Patent patent = Patent.builder().title("Patent").applicationNumber("APP-1").build();
         Department department = Department.builder().name("Telecom").build();
