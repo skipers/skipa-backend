@@ -9,6 +9,7 @@ import java.util.List;
 public record LegalDashboardResponse(
         ReviewCycleSummary reviewCycle,
         Kpi kpi,
+        CycleProgress cycleProgress,
         List<DepartmentProgress> departments,
         List<NameCount> byTechField,
         List<QuarterCount> byExpiryQuarter,
@@ -31,6 +32,39 @@ public record LegalDashboardResponse(
             String departmentName,
             long assigned,
             long decided
+    ) {
+    }
+
+    public record CycleProgress(
+            long targetPatentCount,
+            ReportProgress reports,
+            ReviewProgress reviews,
+            @Schema(description = """
+                    Overall cycle progress label.
+                    NO_TARGETS: no review targets selected yet.
+                    REPORT_NOT_STARTED: at least one target has no report.
+                    REPORT_GENERATING: at least one report is being generated.
+                    REPORT_FAILED: at least one report generation failed.
+                    REVIEW_NOT_REQUESTED: reports are ready but at least one business review is still scheduled.
+                    REVIEW_IN_PROGRESS: at least one business review is pending or overdue.
+                    REVIEW_COMPLETED: all business reviews have been submitted.
+                    """)
+            String statusLabel
+    ) {
+    }
+
+    public record ReportProgress(
+            long notStarted,
+            long generating,
+            long completed,
+            long failed
+    ) {
+    }
+
+    public record ReviewProgress(
+            long scheduled,
+            long inReview,
+            long submitted
     ) {
     }
 

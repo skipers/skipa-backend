@@ -14,6 +14,7 @@ import com.skipers.skipa.domain.review.domain.Review;
 import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.review.domain.ReviewStatus;
 import com.skipers.skipa.domain.review.exception.ReviewException;
+import com.skipers.skipa.domain.report.domain.ReportStatus;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -66,12 +67,83 @@ public class DashboardService {
         return new LegalDashboardResponse(
                 ReviewCycleSummary.from(reviewCycle),
                 new LegalDashboardResponse.Kpi(reviews.size(), reviewing, decided, overdue, unread, unrequested),
+                cycleProgress(reviews),
                 departmentProgress(reviews, today),
                 nameCounts(patents.stream()
                         .collect(Collectors.groupingBy(patent -> normalizeGroupName(patent.getTechField()), Collectors.counting()))),
                 expiryQuarterCounts(patents, today),
                 recentReplies(reviews)
         );
+    }
+
+    private LegalDashboardResponse.CycleProgress cycleProgress(List<Review> reviews) {
+        long reportNotStarted = reviews.stream()
+                .filter(review -> review.getReport() == null)
+                .count();
+        long reportGenerating = reviews.stream()
+                .filter(review -> review.getReport() != null)
+                .filter(review -> review.getReport().getStatus() == ReportStatus.GENERATING)
+                .count();
+        long reportCompleted = reviews.stream()
+                .filter(review -> review.getReport() != null)
+                .filter(review -> review.getReport().getStatus() == ReportStatus.REPORT_COMPLETED
+                        || review.getReport().getStatus() == ReportStatus.EMBEDDING_COMPLETED)
+                .count();
+        long reportFailed = reviews.stream()
+                .filter(review -> review.getReport() != null)
+                .filter(review -> review.getReport().getStatus() == ReportStatus.FAILED)
+                .count();
+
+        long scheduled = reviews.stream()
+                .filter(review -> review.getStatus() == ReviewStatus.SCHEDULED)
+                .count();
+        long inReview = reviews.stream()
+                .filter(review -> review.getStatus() == ReviewStatus.PENDING || review.getStatus() == ReviewStatus.OVERDUE)
+                .count();
+        long submitted = reviews.stream()
+                .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
+                .count();
+
+        return new LegalDashboardResponse.CycleProgress(
+                reviews.size(),
+                new LegalDashboardResponse.ReportProgress(
+                        reportNotStarted,
+                        reportGenerating,
+                        reportCompleted,
+                        reportFailed
+                ),
+                new LegalDashboardResponse.ReviewProgress(scheduled, inReview, submitted),
+                cycleProgressLabel(reviews.size(), reportNotStarted, reportGenerating, reportFailed, scheduled, inReview)
+        );
+    }
+
+    private String cycleProgressLabel(
+            long targetPatentCount,
+            long reportNotStarted,
+            long reportGenerating,
+            long reportFailed,
+            long scheduled,
+            long inReview
+    ) {
+        if (targetPatentCount == 0) {
+            return "NO_TARGETS";
+        }
+        if (reportFailed > 0) {
+            return "REPORT_FAILED";
+        }
+        if (reportNotStarted > 0) {
+            return "REPORT_NOT_STARTED";
+        }
+        if (reportGenerating > 0) {
+            return "REPORT_GENERATING";
+        }
+        if (inReview > 0) {
+            return "REVIEW_IN_PROGRESS";
+        }
+        if (scheduled > 0) {
+            return "REVIEW_NOT_REQUESTED";
+        }
+        return "REVIEW_COMPLETED";
     }
 
     public BusinessDashboardResponse getBusinessDashboard(User user, Long reviewCycleId) {
