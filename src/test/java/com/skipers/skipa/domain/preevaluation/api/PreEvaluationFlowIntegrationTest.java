@@ -90,7 +90,7 @@ class PreEvaluationFlowIntegrationTest {
         User businessUser = saveActiveUser("business-pre-evaluation", "business-pre-evaluation@example.com", UserRole.BUSINESS);
         String businessToken = jwtProvider.createAccessToken(businessUser.getId(), UserRole.BUSINESS);
 
-        MvcResult createResult = mockMvc.perform(post("/pre-evaluations")
+        MvcResult createResult = mockMvc.perform(post("/api/v1/pre-evaluations")
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -122,13 +122,13 @@ class PreEvaluationFlowIntegrationTest {
                 );
         verify(generationPublisher).publish(created);
 
-        mockMvc.perform(get("/pre-evaluations/{preEvaluationId}/status", preEvaluationId)
+        mockMvc.perform(get("/api/v1/pre-evaluations/{preEvaluationId}/status", preEvaluationId)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("PROCESSING"))
                 .andExpect(jsonPath("$.data.reportUrl").doesNotExist());
 
-        mockMvc.perform(patch("/internal/pre-evaluations/{preEvaluationId}/complete", preEvaluationId)
+        mockMvc.perform(patch("/api/v1/internal/pre-evaluations/{preEvaluationId}/complete", preEvaluationId)
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -146,7 +146,7 @@ class PreEvaluationFlowIntegrationTest {
         assertThat(completed.getReportKey()).isEqualTo("pre-evaluations/%d/report.json".formatted(preEvaluationId));
         assertThat(completed.getCompletedAt()).isNotNull();
 
-        mockMvc.perform(patch("/internal/pre-evaluations/{preEvaluationId}/embedding-complete", preEvaluationId)
+        mockMvc.perform(patch("/api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete", preEvaluationId)
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.preEvaluationId").value(preEvaluationId))
@@ -158,7 +158,7 @@ class PreEvaluationFlowIntegrationTest {
         when(reportStorageService.generatePresignedUrl("pre-evaluations/%d/report.json".formatted(preEvaluationId)))
                 .thenReturn("https://minio.example.com/presigned/pre-evaluations/%d/report.json".formatted(preEvaluationId));
 
-        mockMvc.perform(get("/pre-evaluations/{preEvaluationId}", preEvaluationId)
+        mockMvc.perform(get("/api/v1/pre-evaluations/{preEvaluationId}", preEvaluationId)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(preEvaluationId))
@@ -178,14 +178,14 @@ class PreEvaluationFlowIntegrationTest {
                 UserRole.ADMIN
         );
 
-        mockMvc.perform(post("/pre-evaluations")
+        mockMvc.perform(post("/api/v1/pre-evaluations")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validCreateBody()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(get("/pre-evaluations")
+        mockMvc.perform(get("/api/v1/pre-evaluations")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
@@ -206,7 +206,7 @@ class PreEvaluationFlowIntegrationTest {
         when(chatClient.send(org.mockito.ArgumentMatchers.any(PreEvaluationChatClientRequest.class)))
                 .thenReturn(ChatClientResult.answerOnly("Strengthen the claim around the detection algorithm."));
 
-        mockMvc.perform(post("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
+        mockMvc.perform(post("/api/v1/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -227,14 +227,14 @@ class PreEvaluationFlowIntegrationTest {
                 .extracting(message -> message.getRole())
                 .containsExactly(ChatRole.USER, ChatRole.ASSISTANT);
 
-        mockMvc.perform(get("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
+        mockMvc.perform(get("/api/v1/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].role").value("USER"))
                 .andExpect(jsonPath("$.data[1].role").value("ASSISTANT"));
 
-        mockMvc.perform(delete("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
+        mockMvc.perform(delete("/api/v1/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk());
 
@@ -256,7 +256,7 @@ class PreEvaluationFlowIntegrationTest {
                 .build());
         when(chatClient.send(org.mockito.ArgumentMatchers.any(PreEvaluationChatClientRequest.class)))
                 .thenReturn(ChatClientResult.answerOnly("AI answer"));
-        mockMvc.perform(post("/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
+        mockMvc.perform(post("/api/v1/pre-evaluations/{preEvaluationId}/chat/messages", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -266,7 +266,7 @@ class PreEvaluationFlowIntegrationTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(delete("/pre-evaluations/{preEvaluationId}", preEvaluation.getId())
+        mockMvc.perform(delete("/api/v1/pre-evaluations/{preEvaluationId}", preEvaluation.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk());
 
@@ -287,7 +287,7 @@ class PreEvaluationFlowIntegrationTest {
                 .claims(java.util.List.of("A battery safety system comprising a sensor unit."))
                 .build());
 
-        mockMvc.perform(patch("/internal/pre-evaluations/{preEvaluationId}/fail", preEvaluation.getId())
+        mockMvc.perform(patch("/api/v1/internal/pre-evaluations/{preEvaluationId}/fail", preEvaluation.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized())

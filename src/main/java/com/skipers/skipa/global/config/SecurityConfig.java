@@ -33,10 +33,10 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/h2-console/**",
-            "/auth/login",
-            "/auth/refresh",
-            "/auth/register",
-            "/internal/**"
+            WebConfig.API_PREFIX + "/auth/login",
+            WebConfig.API_PREFIX + "/auth/refresh",
+            WebConfig.API_PREFIX + "/auth/register",
+            WebConfig.API_PREFIX + "/internal/**"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -62,7 +62,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITE_LIST).permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers(WebConfig.API_PREFIX + "/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 

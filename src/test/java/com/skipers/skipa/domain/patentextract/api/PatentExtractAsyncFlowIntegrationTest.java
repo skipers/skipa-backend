@@ -87,7 +87,7 @@ class PatentExtractAsyncFlowIntegrationTest {
         when(patentExtractStorageService.generateUploadPresignedUrl(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn("https://minio.example.com/skipa/tmp/patent-extract-jobs/1/original.pdf?signature=abc");
 
-        MvcResult uploadUrlResult = mockMvc.perform(post("/patent-extract-jobs/upload-url")
+        MvcResult uploadUrlResult = mockMvc.perform(post("/api/v1/patent-extract-jobs/upload-url")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("UPLOAD_PENDING"))
@@ -102,19 +102,19 @@ class PatentExtractAsyncFlowIntegrationTest {
         String objectKey = "tmp/patent-extract-jobs/%d/original.pdf".formatted(extractJobId);
         when(patentExtractStorageService.exists(objectKey)).thenReturn(true);
 
-        mockMvc.perform(post("/patent-extract-jobs/{extractJobId}/upload-complete", extractJobId)
+        mockMvc.perform(post("/api/v1/patent-extract-jobs/{extractJobId}/upload-complete", extractJobId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.extractJobId").value(extractJobId))
                 .andExpect(jsonPath("$.data.status").value("ANALYZING"));
         verify(patentExtractPublisher).publish(extractJobId, objectKey);
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", extractJobId)
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/result", extractJobId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("PATENT_EXTRACT_NOT_COMPLETED"));
 
-        mockMvc.perform(patch("/internal/patent-extract-jobs/{extractJobId}/complete", extractJobId)
+        mockMvc.perform(patch("/api/v1/internal/patent-extract-jobs/{extractJobId}/complete", extractJobId)
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -133,21 +133,21 @@ class PatentExtractAsyncFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/status", extractJobId)
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/status", extractJobId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.completedAt").isNotEmpty());
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", extractJobId)
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/result", extractJobId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.result.title").value("AI Extracted Patent"))
                 .andExpect(jsonPath("$.data.result.keywords[0]").value("semiconductor"));
 
-        mockMvc.perform(post("/patents")
+        mockMvc.perform(post("/api/v1/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -180,7 +180,7 @@ class PatentExtractAsyncFlowIntegrationTest {
         PatentExtractJob job = saveUploadPendingJob(1L);
         when(patentExtractStorageService.exists(job.getObjectKey())).thenReturn(false);
 
-        mockMvc.perform(post("/patent-extract-jobs/{extractJobId}/upload-complete", job.getId())
+        mockMvc.perform(post("/api/v1/patent-extract-jobs/{extractJobId}/upload-complete", job.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_DOCUMENT_NOT_FOUND"));
@@ -199,7 +199,7 @@ class PatentExtractAsyncFlowIntegrationTest {
         when(patentExtractStorageService.generateUploadPresignedUrl(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn("https://minio.example.com/skipa/tmp/patent-extract-jobs/1/original.pdf?signature=abc");
 
-        MvcResult uploadUrlResult = mockMvc.perform(post("/patent-extract-jobs/upload-url")
+        MvcResult uploadUrlResult = mockMvc.perform(post("/api/v1/patent-extract-jobs/upload-url")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("UPLOAD_PENDING"))
@@ -212,17 +212,17 @@ class PatentExtractAsyncFlowIntegrationTest {
         String objectKey = "tmp/patent-extract-jobs/%d/original.pdf".formatted(extractJobId);
         when(patentExtractStorageService.exists(objectKey)).thenReturn(true);
 
-        mockMvc.perform(post("/patent-extract-jobs/{extractJobId}/upload-complete", extractJobId)
+        mockMvc.perform(post("/api/v1/patent-extract-jobs/{extractJobId}/upload-complete", extractJobId)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("ANALYZING"));
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/status", extractJobId)
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/status", extractJobId)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("ANALYZING"));
 
-        mockMvc.perform(patch("/internal/patent-extract-jobs/{extractJobId}/complete", extractJobId)
+        mockMvc.perform(patch("/api/v1/internal/patent-extract-jobs/{extractJobId}/complete", extractJobId)
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -238,7 +238,7 @@ class PatentExtractAsyncFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.parsedJsonKey").value("tmp/patent-extract-jobs/%d/parsed.json".formatted(extractJobId)))
                 .andExpect(jsonPath("$.data.status").value("COMPLETED"));
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", extractJobId)
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/result", extractJobId)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.result.title").value("Business Extracted Patent"));
@@ -250,7 +250,7 @@ class PatentExtractAsyncFlowIntegrationTest {
     void internalCallbackRejectsMissingApiKey() throws Exception {
         PatentExtractJob job = saveAnalyzingJob(1L);
 
-        mockMvc.perform(patch("/internal/patent-extract-jobs/{extractJobId}/fail", job.getId())
+        mockMvc.perform(patch("/api/v1/internal/patent-extract-jobs/{extractJobId}/fail", job.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -269,7 +269,7 @@ class PatentExtractAsyncFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-patent-extract-fail", "legal-patent-extract-fail@example.com");
         PatentExtractJob job = saveAnalyzingJob(1L);
 
-        mockMvc.perform(patch("/internal/patent-extract-jobs/{extractJobId}/fail", job.getId())
+        mockMvc.perform(patch("/api/v1/internal/patent-extract-jobs/{extractJobId}/fail", job.getId())
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -281,13 +281,13 @@ class PatentExtractAsyncFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.extractJobId").value(job.getId()))
                 .andExpect(jsonPath("$.data.status").value("FAILED"));
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/status", job.getId())
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/status", job.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("FAILED"))
                 .andExpect(jsonPath("$.data.errorMessage").value("AI extraction failed"));
 
-        mockMvc.perform(get("/patent-extract-jobs/{extractJobId}/result", job.getId())
+        mockMvc.perform(get("/api/v1/patent-extract-jobs/{extractJobId}/result", job.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("PATENT_EXTRACT_NOT_COMPLETED"));

@@ -82,8 +82,8 @@ class JwtAuthenticationFilterTest {
     @Test
     void loginRequestSkipsAuthenticationEvenWhenExpiredBearerTokenIsPresent() throws Exception {
         JwtAuthenticationFilter filter = createFilter(new ObjectMapper());
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/login");
-        request.setServletPath("/auth/login");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/login");
+        request.setServletPath("/api/v1/auth/login");
         request.addHeader("Authorization", "Bearer expired-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -97,8 +97,8 @@ class JwtAuthenticationFilterTest {
     @Test
     void registerRequestSkipsAuthenticationEvenWhenExpiredBearerTokenIsPresent() throws Exception {
         JwtAuthenticationFilter filter = createFilter(new ObjectMapper());
-        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/register");
-        request.setServletPath("/auth/register");
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/register");
+        request.setServletPath("/api/v1/auth/register");
         request.addHeader("Authorization", "Bearer expired-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -112,8 +112,8 @@ class JwtAuthenticationFilterTest {
     @Test
     void internalRequestSkipsJwtAuthenticationEvenWhenBearerTokenIsPresent() throws Exception {
         JwtAuthenticationFilter filter = createFilter(new ObjectMapper());
-        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/internal/reports/1/complete");
-        request.setServletPath("/internal/reports/1/complete");
+        MockHttpServletRequest request = new MockHttpServletRequest("PATCH", "/api/v1/internal/reports/1/complete");
+        request.setServletPath("/api/v1/internal/reports/1/complete");
         request.addHeader("Authorization", "Bearer invalid-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
 

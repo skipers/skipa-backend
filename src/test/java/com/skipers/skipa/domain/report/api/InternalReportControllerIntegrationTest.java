@@ -50,7 +50,7 @@ class InternalReportControllerIntegrationTest {
     void completeStoresReportKeyAndMarksReportCompleted() throws Exception {
         Report report = saveGeneratingReport("APP-COMPLETE");
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/complete", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/complete", report.getId())
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -80,7 +80,7 @@ class InternalReportControllerIntegrationTest {
         report.completeReport("reports/%d/report.html".formatted(report.getId()), java.math.BigDecimal.valueOf(82.5), "A", null);
         reportRepository.saveAndFlush(report);
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/embedding-complete", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/embedding-complete", report.getId())
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reportId").value(report.getId()))
@@ -94,7 +94,7 @@ class InternalReportControllerIntegrationTest {
     void completeRejectsBlankReportKey() throws Exception {
         Report report = saveGeneratingReport("APP-BLANK");
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/complete", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/complete", report.getId())
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -117,7 +117,7 @@ class InternalReportControllerIntegrationTest {
     void completeRejectsMissingTotalScore() throws Exception {
         Report report = saveGeneratingReport("APP-MISSING-SCORE");
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/complete", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/complete", report.getId())
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -137,7 +137,7 @@ class InternalReportControllerIntegrationTest {
     void failMarksReportFailed() throws Exception {
         Report report = saveGeneratingReport("APP-FAIL");
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/fail", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/fail", report.getId())
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -156,7 +156,7 @@ class InternalReportControllerIntegrationTest {
 
     @Test
     void callbackRejectsMissingReport() throws Exception {
-        mockMvc.perform(patch("/internal/reports/{reportId}/fail", 999999L)
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/fail", 999999L)
                         .header("X-Internal-Api-Key", INTERNAL_API_KEY)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
@@ -168,7 +168,7 @@ class InternalReportControllerIntegrationTest {
     void callbackRejectsMissingInternalApiKey() throws Exception {
         Report report = saveGeneratingReport("APP-NO-KEY");
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/fail", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/fail", report.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isUnauthorized())
@@ -182,7 +182,7 @@ class InternalReportControllerIntegrationTest {
     void callbackRejectsInvalidInternalApiKey() throws Exception {
         Report report = saveGeneratingReport("APP-BAD-KEY");
 
-        mockMvc.perform(patch("/internal/reports/{reportId}/fail", report.getId())
+        mockMvc.perform(patch("/api/v1/internal/reports/{reportId}/fail", report.getId())
                         .header("X-Internal-Api-Key", "wrong-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

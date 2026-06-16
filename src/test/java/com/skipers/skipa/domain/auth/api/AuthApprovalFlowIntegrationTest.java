@@ -141,7 +141,7 @@ class AuthApprovalFlowIntegrationTest {
         assertThat(pendingUser.getStatus()).isEqualTo(UserStatus.PENDING);
         assertThat(pendingUser.getDepartment()).isNull();
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -154,7 +154,7 @@ class AuthApprovalFlowIntegrationTest {
 
         String pendingToken = jwtProvider.createAccessToken(userId, UserRole.BUSINESS);
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + pendingToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("PENDING_USER"));
@@ -165,7 +165,7 @@ class AuthApprovalFlowIntegrationTest {
         Long userId = registerBusinessUser();
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -183,7 +183,7 @@ class AuthApprovalFlowIntegrationTest {
 
         String userToken = loginAndGetAccessToken("business-new", "password");
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + userToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
@@ -191,7 +191,7 @@ class AuthApprovalFlowIntegrationTest {
 
     @Test
     void approvedLegalUserBecomesActiveWithoutDepartment() throws Exception {
-        MvcResult registrationResult = mockMvc.perform(post("/auth/register")
+        MvcResult registrationResult = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -211,7 +211,7 @@ class AuthApprovalFlowIntegrationTest {
                 .longValue();
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
@@ -231,7 +231,7 @@ class AuthApprovalFlowIntegrationTest {
         Long userId = registerBusinessUser();
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -241,7 +241,7 @@ class AuthApprovalFlowIntegrationTest {
                                 """.formatted(department.getId())))
                 .andExpect(status().isOk());
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -255,7 +255,7 @@ class AuthApprovalFlowIntegrationTest {
         String accessToken = loginData.path("accessToken").textValue();
         String refreshToken = loginData.path("refreshToken").textValue();
 
-        mockMvc.perform(get("/auth/me")
+        mockMvc.perform(get("/api/v1/auth/me")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.user.id").value(userId))
@@ -264,7 +264,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.user.departmentId").value(department.getId()))
                 .andExpect(jsonPath("$.data.user.departmentName").value(department.getName()));
 
-        mockMvc.perform(post("/auth/refresh")
+        mockMvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -275,12 +275,12 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.accessToken").isString())
                 .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
 
-        mockMvc.perform(post("/auth/logout")
+        mockMvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(nullValue()));
 
-        mockMvc.perform(post("/auth/refresh")
+        mockMvc.perform(post("/api/v1/auth/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -308,7 +308,7 @@ class AuthApprovalFlowIntegrationTest {
         ));
         String businessToken = jwtProvider.createAccessToken(businessUser.getId(), UserRole.BUSINESS);
 
-        mockMvc.perform(get("/auth/me")
+        mockMvc.perform(get("/api/v1/auth/me")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.user.id").value(businessUser.getId()))
@@ -323,7 +323,7 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-approver", "legal-approver@example.com", UserRole.LEGAL);
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -332,7 +332,7 @@ class AuthApprovalFlowIntegrationTest {
                                 """.formatted(department.getId())))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -343,14 +343,14 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", userId)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", userId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -361,7 +361,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
 
-        mockMvc.perform(patch("/admin/users/{userId}/approve", 999999L)
+        mockMvc.perform(patch("/api/v1/admin/users/{userId}/approve", 999999L)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -379,22 +379,22 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-active", "legal-active@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-active", "business-active@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/departments"))
+        mockMvc.perform(get("/api/v1/departments"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/departments/{departmentId}", department.getId())
+        mockMvc.perform(get("/api/v1/departments/{departmentId}", department.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
     }
@@ -405,7 +405,7 @@ class AuthApprovalFlowIntegrationTest {
         String businessToken = createActiveUserToken("business-active", "business-active@example.com", UserRole.BUSINESS);
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(post("/departments")
+        mockMvc.perform(post("/api/v1/departments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -414,7 +414,7 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(put("/departments/{departmentId}", department.getId())
+        mockMvc.perform(put("/api/v1/departments/{departmentId}", department.getId())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -423,10 +423,10 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(delete("/departments/{departmentId}", department.getId()))
+        mockMvc.perform(delete("/api/v1/departments/{departmentId}", department.getId()))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/departments")
+        mockMvc.perform(post("/api/v1/departments")
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -436,7 +436,7 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(put("/departments/{departmentId}", department.getId())
+        mockMvc.perform(put("/api/v1/departments/{departmentId}", department.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -446,11 +446,11 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(delete("/departments/{departmentId}", department.getId())
+        mockMvc.perform(delete("/api/v1/departments/{departmentId}", department.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
 
-        MvcResult createResult = mockMvc.perform(post("/departments")
+        MvcResult createResult = mockMvc.perform(post("/api/v1/departments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -467,7 +467,7 @@ class AuthApprovalFlowIntegrationTest {
                 .path("id")
                 .longValue();
 
-        mockMvc.perform(put("/departments/{departmentId}", createdDepartmentId)
+        mockMvc.perform(put("/api/v1/departments/{departmentId}", createdDepartmentId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -478,17 +478,17 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.name").value("Updated Department"));
 
-        mockMvc.perform(delete("/departments/{departmentId}", createdDepartmentId)
+        mockMvc.perform(delete("/api/v1/departments/{departmentId}", createdDepartmentId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[?(@.id == %d)]".formatted(createdDepartmentId)).isEmpty());
 
-        mockMvc.perform(get("/departments/{departmentId}", createdDepartmentId)
+        mockMvc.perform(get("/api/v1/departments/{departmentId}", createdDepartmentId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("INACTIVE"));
@@ -499,7 +499,7 @@ class AuthApprovalFlowIntegrationTest {
         createActiveUserToken("assigned-business", "assigned-business@example.com", UserRole.BUSINESS);
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(delete("/departments/{departmentId}", department.getId())
+        mockMvc.perform(delete("/api/v1/departments/{departmentId}", department.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
@@ -512,7 +512,7 @@ class AuthApprovalFlowIntegrationTest {
     void departmentApisReturnDuplicateAndNotFoundErrors() throws Exception {
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(post("/departments")
+        mockMvc.perform(post("/api/v1/departments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -523,12 +523,12 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_DEPARTMENT_NAME"));
 
-        mockMvc.perform(get("/departments/{departmentId}", 999999L)
+        mockMvc.perform(get("/api/v1/departments/{departmentId}", 999999L)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
 
-        mockMvc.perform(put("/departments/{departmentId}", 999999L)
+        mockMvc.perform(put("/api/v1/departments/{departmentId}", 999999L)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -539,7 +539,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
 
-        mockMvc.perform(delete("/departments/{departmentId}", 999999L)
+        mockMvc.perform(delete("/api/v1/departments/{departmentId}", 999999L)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("DEPARTMENT_NOT_FOUND"));
@@ -551,7 +551,7 @@ class AuthApprovalFlowIntegrationTest {
         departmentRepository.save(Department.builder().name("Legal Operations").build());
         String legalToken = createActiveUserToken("legal-reader", "legal-reader@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(get("/departments")
+        mockMvc.perform(get("/api/v1/departments")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("keyword", "legal")
                         .param("page", "0")
@@ -569,15 +569,15 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-patent", "legal-patent@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-patent", "business-patent@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/patents"))
+        mockMvc.perform(get("/api/v1/patents"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(0));
 
-        mockMvc.perform(post("/patents")
+        mockMvc.perform(post("/api/v1/patents")
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -589,7 +589,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.approvalStatus").value("PENDING_APPROVAL"));
 
-        mockMvc.perform(put("/patents/{patentId}", 1L)
+        mockMvc.perform(put("/api/v1/patents/{patentId}", 1L)
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -600,11 +600,11 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(delete("/patents/{patentId}", 1L)
+        mockMvc.perform(delete("/api/v1/patents/{patentId}", 1L)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
 
-        MvcResult createResult = mockMvc.perform(post("/patents")
+        MvcResult createResult = mockMvc.perform(post("/api/v1/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -637,7 +637,7 @@ class AuthApprovalFlowIntegrationTest {
                 .path("id")
                 .longValue();
 
-        mockMvc.perform(get("/patents/{patentId}", patentId)
+        mockMvc.perform(get("/api/v1/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.ipcCodes[0]").value(" H01L 21/00 "))
@@ -646,7 +646,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.keywords[0]").value(" Keyword "))
                 .andExpect(jsonPath("$.data.latestLegalStatus").value(nullValue()));
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + adminToken)
                         .param("keyword", " chip ")
                         .param("page", "0")
@@ -657,28 +657,28 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].ipcCodes[0]").value(" H01L 21/00 "))
                 .andExpect(jsonPath("$.data.items[0].cpcCodes[0]").value(" H01L 23/00 "));
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + adminToken)
                         .param("keyword", "APP-1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(patentId));
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + adminToken)
                         .param("keyword", "inventor"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(patentId));
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + adminToken)
                         .param("keyword", "applicant"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(patentId));
 
-        mockMvc.perform(put("/patents/{patentId}", patentId)
+        mockMvc.perform(put("/api/v1/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -699,7 +699,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.relatedProducts[0]").value("Updated Product"))
                 .andExpect(jsonPath("$.data.initialDepartment").value("Updated Legal"));
 
-        mockMvc.perform(delete("/patents/{patentId}", patentId)
+        mockMvc.perform(delete("/api/v1/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
@@ -728,14 +728,14 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-pending-patent", "legal-pending-patent@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-pending-patent", "business-pending-patent@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/patents/pending-approval"))
+        mockMvc.perform(get("/api/v1/patents/pending-approval"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/patents/pending-approval")
+        mockMvc.perform(get("/api/v1/patents/pending-approval")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/patents/pending-approval")
+        mockMvc.perform(get("/api/v1/patents/pending-approval")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("keyword", "pending")
                         .param("sort", "applicationNumber,asc"))
@@ -745,7 +745,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].approvalStatus").value("PENDING_APPROVAL"))
                 .andExpect(jsonPath("$.data.totalItems").value(1));
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("approvalStatus", "PENDING_APPROVAL"))
                 .andExpect(status().isOk())
@@ -764,17 +764,17 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String legalToken = createActiveUserToken("legal-pending-subresource", "legal-pending-subresource@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(post("/patents/{patentId}/reports", pendingPatent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reports", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(get("/patents/{patentId}/reports", pendingPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(post("/patents/{patentId}/legal-status", pendingPatent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/legal-status", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -786,12 +786,12 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(get("/patents/{patentId}/legal-status", pendingPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/legal-status", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(post("/patents/{patentId}/annuities", pendingPatent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/annuities", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -803,12 +803,12 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(get("/patents/{patentId}/annuities", pendingPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/annuities", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", pendingPatent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", pendingPatent.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
@@ -834,31 +834,31 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String businessToken = createActiveUserToken("business-patent-reader", "business-patent-reader@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("keyword", "assigned"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
 
-        mockMvc.perform(get("/patents/assigned")
+        mockMvc.perform(get("/api/v1/patents/assigned")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedPatent.getId()));
 
-        mockMvc.perform(get("/patents/{patentId}", assignedPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}", assignedPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(assignedPatent.getId()));
 
-        mockMvc.perform(get("/patents/{patentId}", otherPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}", otherPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(otherPatent.getId()))
@@ -911,13 +911,13 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-patent-summary", "legal-patent-summary@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-patent-summary", "business-patent-summary@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/patents/summary")
+        mockMvc.perform(get("/api/v1/patents/summary")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.active").value(2))
                 .andExpect(jsonPath("$.data.inactive").value(2));
 
-        mockMvc.perform(get("/patents/summary")
+        mockMvc.perform(get("/api/v1/patents/summary")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.active").value(1))
@@ -954,7 +954,7 @@ class AuthApprovalFlowIntegrationTest {
         review.submit(BusinessOpinion.MAINTAIN, "유지", Instant.now());
         String legalToken = createActiveUserToken("legal-patent-list", "legal-patent-list@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(get("/patents")
+        mockMvc.perform(get("/api/v1/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("departmentId", department.getId().toString())
                         .param("status", "REGISTERED")
@@ -986,7 +986,7 @@ class AuthApprovalFlowIntegrationTest {
     void patentApisReturnValidationDuplicateAndNotFoundErrors() throws Exception {
         String legalToken = createActiveUserToken("legal-errors", "legal-errors@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(post("/patents")
+        mockMvc.perform(post("/api/v1/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1000,7 +1000,7 @@ class AuthApprovalFlowIntegrationTest {
 
         Long patentId = createPatent(legalToken, "Existing Patent", "APP-EXISTING");
 
-        mockMvc.perform(post("/patents")
+        mockMvc.perform(post("/api/v1/patents")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1012,7 +1012,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_APPLICATION_NUMBER"));
 
-        mockMvc.perform(put("/patents/{patentId}", patentId)
+        mockMvc.perform(put("/api/v1/patents/{patentId}", patentId)
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1024,12 +1024,12 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(get("/patents/{patentId}", 999999L)
+        mockMvc.perform(get("/api/v1/patents/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(put("/patents/{patentId}", 999999L)
+        mockMvc.perform(put("/api/v1/patents/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1041,7 +1041,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(delete("/patents/{patentId}", 999999L)
+        mockMvc.perform(delete("/api/v1/patents/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
@@ -1059,7 +1059,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(delete("/patents/{patentId}", patent.getId())
+        mockMvc.perform(delete("/api/v1/patents/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
@@ -1093,21 +1093,21 @@ class AuthApprovalFlowIntegrationTest {
         String businessToken = createActiveUserToken("business-opinion", "business-opinion@example.com", UserRole.BUSINESS);
         String legalToken = createActiveUserToken("legal-opinion", "legal-opinion@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(get("/business-reviews"))
+        mockMvc.perform(get("/api/v1/business-reviews"))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/business-reviews/summary")
+        mockMvc.perform(get("/api/v1/business-reviews/summary")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
                 .andExpect(jsonPath("$.data.kpi.submitted").value(0))
                 .andExpect(jsonPath("$.data.kpi.notSubmitted").value(1));
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
@@ -1122,7 +1122,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].valueGrade").value("S"))
                 .andExpect(jsonPath("$.data.items[0].reviewRequestedAt").isNotEmpty());
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("status", "PENDING"))
                 .andExpect(status().isOk())
@@ -1130,13 +1130,13 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(review.getId()))
                 .andExpect(jsonPath("$.data.items[0].patentId").value(patent.getId()));
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("status", "SUBMITTED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(0));
 
-        mockMvc.perform(get("/business-reviews/{patentId}", patent.getId())
+        mockMvc.perform(get("/api/v1/business-reviews/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.patent.id").value(patent.getId()))
@@ -1144,7 +1144,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.status").value("PENDING"))
                 .andExpect(jsonPath("$.data.reviewRequestedAt").isNotEmpty());
 
-        mockMvc.perform(post("/business-reviews/{patentId}/opinions", patent.getId())
+        mockMvc.perform(post("/api/v1/business-reviews/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1163,13 +1163,13 @@ class AuthApprovalFlowIntegrationTest {
         assertThat(submitted.getStatus()).isEqualTo(ReviewStatus.SUBMITTED);
         assertThat(submitted.getSubmittedAt()).isNotNull();
 
-        mockMvc.perform(get("/business-reviews/summary")
+        mockMvc.perform(get("/api/v1/business-reviews/summary")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.kpi.submitted").value(1))
                 .andExpect(jsonPath("$.data.kpi.notSubmitted").value(0));
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("status", "SUBMITTED")
                         .param("opinion", "MAINTAIN")
@@ -1181,13 +1181,13 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].patentId").value(patent.getId()))
                 .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"));
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("opinion", "HOLD"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(post("/business-reviews/{patentId}/opinions", patent.getId())
+        mockMvc.perform(post("/api/v1/business-reviews/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1216,12 +1216,12 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String businessToken = createActiveUserToken("business-other", "business-other@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/business-reviews/{patentId}", patent.getId())
+        mockMvc.perform(get("/api/v1/business-reviews/{patentId}", patent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(get("/business-reviews/{patentId}", 999999L)
+        mockMvc.perform(get("/api/v1/business-reviews/{patentId}", 999999L)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
@@ -1233,7 +1233,7 @@ class AuthApprovalFlowIntegrationTest {
                 .reviewCycle(reviewCycle)
                 .build());
 
-        mockMvc.perform(post("/business-reviews/{patentId}/opinions", patent.getId())
+        mockMvc.perform(post("/api/v1/business-reviews/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1255,16 +1255,16 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-review", "legal-review@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review", "business-review@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
@@ -1297,7 +1297,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String legalToken = createActiveUserToken("legal-review-due-date", "legal-review-due-date@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.dueDate").value(reviewCycle.getDeadline().toString()));
@@ -1324,13 +1324,13 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String legalToken = createActiveUserToken("legal-review-error", "legal-review-error@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", 999999L)
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", 999999L)
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("PATENT_NOT_FOUND"));
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", unassignedPatent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", unassignedPatent.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isConflict())
@@ -1342,7 +1342,7 @@ class AuthApprovalFlowIntegrationTest {
                 .reviewCycle(reviewCycle)
                 .build());
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isConflict())
@@ -1372,7 +1372,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String legalToken = createActiveUserToken("legal-review-bulk", "legal-review-bulk@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(post("/reviews/bulk")
+        mockMvc.perform(post("/api/v1/reviews/bulk")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1431,14 +1431,14 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-review-repeat", "legal-review-repeat@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review-repeat", "business-review-repeat@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("PENDING"));
 
         assertThat(reviewRepository.findAll()).hasSize(2);
 
-        mockMvc.perform(get("/business-reviews")
+        mockMvc.perform(get("/api/v1/business-reviews")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(1))
@@ -1472,7 +1472,7 @@ class AuthApprovalFlowIntegrationTest {
         latestReview.submit(BusinessOpinion.MAINTAIN, "최신 의견", Instant.now());
         String businessToken = createActiveUserToken("business-latest-review", "business-latest-review@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(post("/business-reviews/{patentId}/opinions", patent.getId())
+        mockMvc.perform(post("/api/v1/business-reviews/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1504,7 +1504,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String businessToken = createActiveUserToken("business-expired-review", "business-expired-review@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(post("/business-reviews/{patentId}/opinions", patent.getId())
+        mockMvc.perform(post("/api/v1/business-reviews/{patentId}/opinions", patent.getId())
                         .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1607,7 +1607,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String businessToken = createActiveUserToken("business-review-history", "business-review-history@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/business-reviews/history")
+        mockMvc.perform(get("/api/v1/business-reviews/history")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
@@ -1618,7 +1618,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].valueGrade").value("S"))
                 .andExpect(jsonPath("$.data.items[1].patentId").value(olderPastPatent.getId()));
 
-        mockMvc.perform(get("/business-reviews/history")
+        mockMvc.perform(get("/api/v1/business-reviews/history")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("year", "2025"))
                 .andExpect(status().isOk())
@@ -1626,7 +1626,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].patentId").value(olderPastPatent.getId()))
                 .andExpect(jsonPath("$.data.items[0].reviewCycle.year").value(2025));
 
-        mockMvc.perform(get("/business-reviews/history")
+        mockMvc.perform(get("/api/v1/business-reviews/history")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("year", "2025")
                         .param("quarter", "4"))
@@ -1634,7 +1634,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].reviewCycle.quarter").value(4));
 
-        mockMvc.perform(get("/business-reviews/history")
+        mockMvc.perform(get("/api/v1/business-reviews/history")
                         .header("Authorization", "Bearer " + businessToken)
                         .param("quarter", "4"))
                 .andExpect(status().isBadRequest())
@@ -1658,20 +1658,20 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         String businessToken = createActiveUserToken("business-history", "business-history@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/patents/{patentId}/annuities", assignedPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/annuities", assignedPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/patents/{patentId}/legal-status", assignedPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/legal-status", assignedPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/patents/{patentId}/annuities", otherPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/annuities", otherPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(get("/patents/{patentId}/legal-status", otherPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/legal-status", otherPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
@@ -1705,33 +1705,33 @@ class AuthApprovalFlowIntegrationTest {
         when(reportStorageService.generatePresignedUrl("reports/assigned/report.html"))
                 .thenReturn("https://minio.example.com/reports/assigned/report.html?signature=abc");
 
-        mockMvc.perform(get("/patents/{patentId}/reports", assignedPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports", assignedPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].id").value(assignedReport.getId()));
 
-        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", assignedPatent.getId(), assignedReport.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports/{reportId}", assignedPatent.getId(), assignedReport.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(assignedReport.getId()))
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/assigned/report.html?signature=abc"));
 
-        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", assignedPatent.getId(), assignedReport.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports/{reportId}/status", assignedPatent.getId(), assignedReport.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(assignedReport.getId()));
 
-        mockMvc.perform(get("/patents/{patentId}/reports", otherPatent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports", otherPatent.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", otherPatent.getId(), otherReport.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports/{reportId}", otherPatent.getId(), otherReport.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", otherPatent.getId(), otherReport.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports/{reportId}/status", otherPatent.getId(), otherReport.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
@@ -1771,11 +1771,11 @@ class AuthApprovalFlowIntegrationTest {
         String legalToken = createActiveUserToken("legal-review-read", "legal-review-read@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-review-read", "business-review-read@example.com", UserRole.BUSINESS);
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
@@ -1784,7 +1784,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].businessField").value("Energy"))
                 .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("sort", "title,asc"))
                 .andExpect(status().isOk())
@@ -1792,7 +1792,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(firstReview.getId()))
                 .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "SUBMITTED")
                         .param("checked", "false")
@@ -1808,7 +1808,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].businessField").value("Memory"))
                 .andExpect(jsonPath("$.data.items[0].checked").value(false));
 
-        mockMvc.perform(get("/review-targets/{reviewId}", secondReview.getId())
+        mockMvc.perform(get("/api/v1/review-targets/{reviewId}", secondReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(secondReview.getId()))
@@ -1820,29 +1820,29 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.checked").value(false))
                 .andExpect(jsonPath("$.data.submittedAt").isNotEmpty());
 
-        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}/confirm", secondReview.getId())
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}/confirm", secondReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(secondReview.getId()))
                 .andExpect(jsonPath("$.data.checked").value(true));
 
-        mockMvc.perform(patch("/reviews/{reviewId}/confirm", secondReview.getId())
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}/confirm", secondReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.checked").value(true));
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "SUBMITTED")
                         .param("checked", "false"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(0));
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "SUBMITTED")
                         .param("checked", "true"))
@@ -1850,7 +1850,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items.length()").value(1))
                 .andExpect(jsonPath("$.data.items[0].checked").value(true));
 
-        mockMvc.perform(patch("/reviews/{reviewId}/confirm", firstReview.getId())
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}/confirm", firstReview.getId())
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REVIEW_STATUS"));
@@ -1860,24 +1860,24 @@ class AuthApprovalFlowIntegrationTest {
     void legalReviewQueriesRejectInvalidStatusAndMissingId() throws Exception {
         String legalToken = createActiveUserToken("legal-review-query-error", "legal-review-query-error@example.com", UserRole.LEGAL);
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("status", "대기"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + legalToken)
                         .param("sort", "inventor,asc"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(get("/review-targets/{reviewId}", 999999L)
+        mockMvc.perform(get("/api/v1/review-targets/{reviewId}", 999999L)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
 
-        mockMvc.perform(patch("/reviews/{reviewId}/confirm", 999999L)
+        mockMvc.perform(patch("/api/v1/reviews/{reviewId}/confirm", 999999L)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
@@ -1905,40 +1905,40 @@ class AuthApprovalFlowIntegrationTest {
         when(reportStorageService.generatePresignedUrl("reports/admin/report.html"))
                 .thenReturn("https://minio.example.com/reports/admin/report.html?signature=abc");
 
-        mockMvc.perform(get("/patents/{patentId}/legal-status", patent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/legal-status", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/patents/{patentId}/annuities", patent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/annuities", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/patents/{patentId}/reports", patent.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}", patent.getId(), report.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports/{reportId}", patent.getId(), report.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.url").value("https://minio.example.com/reports/admin/report.html?signature=abc"));
 
-        mockMvc.perform(get("/patents/{patentId}/reports/{reportId}/status", patent.getId(), report.getId())
+        mockMvc.perform(get("/api/v1/patents/{patentId}/reports/{reportId}/status", patent.getId(), report.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/review-cycles")
+        mockMvc.perform(get("/api/v1/review-cycles")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycle.getId())
+        mockMvc.perform(get("/api/v1/review-cycles/{reviewCycleId}", reviewCycle.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/review-targets")
+        mockMvc.perform(get("/api/v1/review-targets")
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/review-targets/{reviewId}", review.getId())
+        mockMvc.perform(get("/api/v1/review-targets/{reviewId}", review.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
     }
@@ -1952,7 +1952,7 @@ class AuthApprovalFlowIntegrationTest {
                 .currentDepartment(department)
                 .build());
 
-        mockMvc.perform(post("/patents/{patentId}/legal-status", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/legal-status", patent.getId())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1963,7 +1963,7 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/patents/{patentId}/annuities", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/annuities", patent.getId())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -1974,15 +1974,15 @@ class AuthApprovalFlowIntegrationTest {
                                 """))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/patents/{patentId}/reports", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reports", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/patents/{patentId}/reviews", patent.getId())
+        mockMvc.perform(post("/api/v1/patents/{patentId}/reviews", patent.getId())
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(post("/reviews/bulk")
+        mockMvc.perform(post("/api/v1/reviews/bulk")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2002,16 +2002,16 @@ class AuthApprovalFlowIntegrationTest {
         LocalDate startDate = LocalDate.now().plusMonths(1);
         LocalDate endDate = LocalDate.now().plusMonths(2);
 
-        mockMvc.perform(get("/review-cycles")
+        mockMvc.perform(get("/api/v1/review-cycles")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/review-cycles/current")
+        mockMvc.perform(get("/api/v1/review-cycles/current")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(reviewCycle.getId()));
 
-        mockMvc.perform(post("/review-cycles")
+        mockMvc.perform(post("/api/v1/review-cycles")
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2025,7 +2025,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        MvcResult createResult = mockMvc.perform(post("/review-cycles")
+        MvcResult createResult = mockMvc.perform(post("/api/v1/review-cycles")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2048,20 +2048,20 @@ class AuthApprovalFlowIntegrationTest {
                 .path("id")
                 .asLong();
 
-        mockMvc.perform(get("/review-cycles")
+        mockMvc.perform(get("/api/v1/review-cycles")
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items.length()").value(2))
                 .andExpect(jsonPath("$.data.items[0].id").value(reviewCycleId));
 
-        mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycleId)
+        mockMvc.perform(get("/api/v1/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.id").value(reviewCycleId));
 
         LocalDate updatedStartDate = LocalDate.now().plusMonths(3);
         LocalDate updatedEndDate = LocalDate.now().plusMonths(4);
-        mockMvc.perform(put("/review-cycles/{reviewCycleId}", reviewCycleId)
+        mockMvc.perform(put("/api/v1/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2075,7 +2075,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(put("/review-cycles/{reviewCycleId}", reviewCycleId)
+        mockMvc.perform(put("/api/v1/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2092,16 +2092,16 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.startDate").value(updatedStartDate.toString()))
                 .andExpect(jsonPath("$.data.endDate").value(updatedEndDate.toString()));
 
-        mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycleId)
+        mockMvc.perform(delete("/api/v1/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("FORBIDDEN"));
 
-        mockMvc.perform(delete("/review-cycles/{reviewCycleId}", reviewCycleId)
+        mockMvc.perform(delete("/api/v1/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(get("/review-cycles/{reviewCycleId}", reviewCycleId)
+        mockMvc.perform(get("/api/v1/review-cycles/{reviewCycleId}", reviewCycleId)
                         .header("Authorization", "Bearer " + businessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_CYCLE_NOT_FOUND"));
@@ -2109,7 +2109,7 @@ class AuthApprovalFlowIntegrationTest {
 
     @Test
     void registrationRejectsUnsupportedRoleAsInvalidRole() throws Exception {
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2129,7 +2129,7 @@ class AuthApprovalFlowIntegrationTest {
     void registrationReturnsDuplicateAndValidationErrors() throws Exception {
         registerBusinessUser();
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2143,7 +2143,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_LOGIN_ID"));
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2157,7 +2157,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("DUPLICATE_EMAIL"));
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2171,7 +2171,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_ROLE"));
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2188,7 +2188,7 @@ class AuthApprovalFlowIntegrationTest {
 
     @Test
     void registrationRejectsFieldValuesLongerThanPersistenceLimits() throws Exception {
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2202,7 +2202,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2216,7 +2216,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2236,7 +2236,7 @@ class AuthApprovalFlowIntegrationTest {
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
         String longName = "d".repeat(101);
 
-        mockMvc.perform(post("/departments")
+        mockMvc.perform(post("/api/v1/departments")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2247,7 +2247,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
 
-        mockMvc.perform(put("/departments/{departmentId}", department.getId())
+        mockMvc.perform(put("/api/v1/departments/{departmentId}", department.getId())
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2317,7 +2317,7 @@ class AuthApprovalFlowIntegrationTest {
 
     @Test
     void malformedJsonReturnsInvalidRequestErrorResponse() throws Exception {
-        mockMvc.perform(post("/auth/register")
+        mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                                 {
@@ -2333,7 +2333,7 @@ class AuthApprovalFlowIntegrationTest {
     void nonNumericApprovalUserIdReturnsInvalidRequestErrorResponse() throws Exception {
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
 
-        mockMvc.perform(patch("/admin/users/not-a-number/approve")
+        mockMvc.perform(patch("/api/v1/admin/users/not-a-number/approve")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2347,7 +2347,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     private Long registerBusinessUser() throws Exception {
-        MvcResult result = mockMvc.perform(post("/auth/register")
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -2370,7 +2370,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     private Long createPatent(String token, String title, String applicationNumber) throws Exception {
-        MvcResult result = mockMvc.perform(post("/patents")
+        MvcResult result = mockMvc.perform(post("/api/v1/patents")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -2389,7 +2389,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     private String loginAndGetAccessToken(String loginId, String password) throws Exception {
-        MvcResult result = mockMvc.perform(post("/auth/login")
+        MvcResult result = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
