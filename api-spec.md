@@ -3151,6 +3151,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 **헤더**: `Authorization: Bearer {accessToken}`
 
 평가 등급, 기술 분야, 출원국, 담당 부서별 포트폴리오 분포를 조회합니다.
+기술 분야별(`byTechField`) 및 담당 부서별(`byDepartment`) 분포는 특허 수 내림차순으로 정렬하며, 상위 4개를 초과하는 항목은 `기타`로 합산해 최대 5개 항목만 반환합니다.
 
 요청 Body 없음.
 
@@ -3166,15 +3167,15 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 | byGrade[].b | long | B등급 특허 수 |
 | byGrade[].c | long | C등급 특허 수 |
 | byGrade[].d | long | D등급 특허 수 |
-| byTechField | array | 기술 분야별 특허 수 |
+| byTechField | array | 기술 분야별 특허 수. 특허 수 내림차순, 최대 5개(상위 4개 + 기타) |
 | byTechField[].name | string | 기술 분야명 |
 | byTechField[].count | long | 특허 수 |
 | byFilingCountry | array | 출원국별 특허 수 |
 | byFilingCountry[].country | string | 출원국 코드 |
 | byFilingCountry[].count | long | 특허 수 |
-| byDepartment | array | 담당 부서별 특허 수 |
-| byDepartment[].departmentId | long | 부서 ID |
-| byDepartment[].departmentName | string | 부서명 |
+| byDepartment | array | 담당 부서별 특허 수. 특허 수 내림차순, 최대 5개(상위 4개 + 기타) |
+| byDepartment[].departmentId | long | 부서 ID. `기타` 항목은 `null` |
+| byDepartment[].departmentName | string | 부서명. 합산 항목은 `기타` |
 | byDepartment[].count | long | 특허 수 |
 
 **응답 예시**
@@ -3195,14 +3196,18 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
       }
     ],
     "byTechField": [
-      { "name": "배터리", "count": 26 }
+      { "name": "배터리", "count": 26 },
+      { "name": "반도체", "count": 18 },
+      { "name": "기타", "count": 9 }
     ],
     "byFilingCountry": [
       { "country": "KR", "count": 18 },
       { "country": "US", "count": 8 }
     ],
     "byDepartment": [
-      { "departmentId": 3, "departmentName": "에너지솔루션 사업부", "count": 26 }
+      { "departmentId": 3, "departmentName": "에너지솔루션 사업부", "count": 26 },
+      { "departmentId": 4, "departmentName": "반도체 사업부", "count": 18 },
+      { "departmentId": null, "departmentName": "기타", "count": 9 }
     ]
   }
 }
