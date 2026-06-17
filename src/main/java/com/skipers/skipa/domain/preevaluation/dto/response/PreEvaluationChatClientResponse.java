@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.preevaluation.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.skipers.skipa.domain.chat.domain.ChatSourceCard;
 import com.skipers.skipa.domain.chat.dto.ChatClientResult;
@@ -7,6 +8,7 @@ import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import java.util.List;
 import java.util.Map;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record PreEvaluationChatClientResponse(
         String query,
         @JsonProperty("patent_id")
