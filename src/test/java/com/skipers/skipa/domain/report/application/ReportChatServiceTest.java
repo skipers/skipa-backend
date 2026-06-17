@@ -1,10 +1,12 @@
 package com.skipers.skipa.domain.report.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skipers.skipa.domain.chat.dao.ChatMessageRepository;
 import com.skipers.skipa.domain.chat.domain.ChatMessage;
 import com.skipers.skipa.domain.chat.domain.ChatRole;
 import com.skipers.skipa.domain.chat.domain.ChatSourceCard;
 import com.skipers.skipa.domain.chat.domain.ChatTargetType;
+import com.skipers.skipa.domain.chat.application.ChatStreamEvent;
 import com.skipers.skipa.domain.chat.dto.ChatClientResult;
 import com.skipers.skipa.domain.patent.application.ApprovedPatentValidator;
 import com.skipers.skipa.domain.patent.application.BusinessPatentAccessValidator;
@@ -26,16 +28,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +63,12 @@ class ReportChatServiceTest {
 
     @Mock
     private ReportChatClient chatClient;
+
+    @Mock
+    private ReportChatStreamClient chatStreamClient;
+
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @InjectMocks
     private ReportChatService chatService;
@@ -187,6 +200,48 @@ class ReportChatServiceTest {
     }
 
     @Test
+    void streamMessageProxiesEventsAndStoresAssistantMessageOnDone() throws Exception {
+        ChatMessage previousQuestion = message(998L, ChatRole.USER, "previous question");
+        ChatMessage previousAnswer = message(999L, ChatRole.ASSISTANT, "previous answer");
+        when(approvedPatentValidator.getApprovedPatent(100L)).thenReturn(patent);
+        when(reportRepository.findByIdAndPatentId(1L, 100L)).thenReturn(Optional.of(report));
+        when(chatMessageRepository.findByTargetTypeAndTargetIdOrderByCreatedAtAsc(ChatTargetType.REPORT, 100L))
+                .thenReturn(List.of(previousQuestion, previousAnswer));
+        when(chatMessageRepository.save(any(ChatMessage.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doAnswer(invocation -> {
+            ReportChatClientRequest request = invocation.getArgument(0);
+            @SuppressWarnings("unchecked")
+            Consumer<ChatStreamEvent> consumer = invocation.getArgument(1);
+            consumer.accept(streamEvent("metadata", "{\"query\":\"" + request.question() + "\",\"patent_id\":\"100\",\"stream\":true}"));
+            consumer.accept(streamEvent("delta", "{\"text\":\"assistant \"}"));
+            consumer.accept(streamEvent("done", "{\"query\":\"current question\",\"patent_id\":\"100\",\"answer\":\"assistant answer\",\"source_cards\":[],\"metrics\":{\"stream\":true},\"stream\":true}"));
+            return null;
+        }).when(chatStreamClient).stream(any(ReportChatClientRequest.class), any());
+
+        StreamingResponseBody responseBody = chatService.streamMessage(
+                user,
+                100L,
+                1L,
+                new ReportChatMessageRequest("current question")
+        );
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        responseBody.writeTo(outputStream);
+
+        String streamed = outputStream.toString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(streamed).contains("event: metadata");
+        assertThat(streamed).contains("event: delta");
+        assertThat(streamed).contains("event: done");
+
+        ArgumentCaptor<ChatMessage> messageCaptor = ArgumentCaptor.forClass(ChatMessage.class);
+        verify(chatMessageRepository, org.mockito.Mockito.times(2)).save(messageCaptor.capture());
+        assertThat(messageCaptor.getAllValues().get(0).getRole()).isEqualTo(ChatRole.USER);
+        ChatMessage assistantMessage = messageCaptor.getAllValues().get(1);
+        assertThat(assistantMessage.getRole()).isEqualTo(ChatRole.ASSISTANT);
+        assertThat(assistantMessage.getContent()).isEqualTo("assistant answer");
+    }
+
+    @Test
     void sendMessageRejectsGeneratingReport() {
         Report generatingReport = Report.builder()
                 .patent(patent)
@@ -221,6 +276,14 @@ class ReportChatServiceTest {
                 .build();
         ReflectionTestUtils.setField(message, "id", id);
         return message;
+    }
+
+    private ChatStreamEvent streamEvent(String event, String data) throws Exception {
+        return new ChatStreamEvent(
+                event,
+                objectMapper.readTree(data),
+                "event: " + event + "\n" + "data: " + data + "\n\n"
+        );
     }
 
     private void assertReportError(Runnable action, ErrorCode errorCode) {

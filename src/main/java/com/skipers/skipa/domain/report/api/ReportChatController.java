@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.util.List;
 
@@ -57,6 +59,28 @@ public class ReportChatController {
                         reportId,
                         request
                 )));
+    }
+
+    @Operation(summary = "[Common] 평가 보고서 채팅 스트리밍 전송", description = "사용자 메시지를 저장하고 AI 서버 SSE 스트리밍 응답을 중계한 뒤 최종 응답을 저장합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public ResponseEntity<StreamingResponseBody> streamMessage(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId,
+            @PathVariable Long reportId,
+            @Valid @RequestBody ReportChatMessageRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.OK)
+                .contentType(MediaType.TEXT_EVENT_STREAM)
+                .header("Cache-Control", "no-cache")
+                .header("Connection", "keep-alive")
+                .header("X-Accel-Buffering", "no")
+                .body(reportChatService.streamMessage(
+                        userDetails.getUser(),
+                        patentId,
+                        reportId,
+                        request
+                ));
     }
 
     @Operation(summary = "[Common] 평가 보고서 채팅 초기화", description = "평가 보고서 채팅 메시지를 모두 삭제합니다.")

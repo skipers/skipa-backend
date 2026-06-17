@@ -38,7 +38,7 @@ public class Report extends BaseTimeEntity {
     @JoinColumn(name = "patent_id", nullable = false)
     private Patent patent;
 
-    @Column(name = "report_key", length = 500) // 보고서 키(S3 key)
+    @Column(name = "report_key", length = 500) // 보고서 MinIO object key
     private String reportKey;
 
     @Column(name = "total_score", precision = 5, scale = 2) // AI 평가 총점
