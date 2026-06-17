@@ -30,6 +30,7 @@ public abstract class AiChatStreamClientSupport<T> {
             ObjectMapper objectMapper
     ) {
         this.httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .build();
         this.baseUrl = trimTrailingSlash(baseUrl);
@@ -48,7 +49,10 @@ public abstract class AiChatStreamClientSupport<T> {
 
             HttpResponse<java.io.InputStream> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException("AI stream server returned status " + response.statusCode());
+                String errorBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
+                throw new IllegalStateException(
+                        "AI stream server returned status " + response.statusCode() + ": " + errorBody
+                );
             }
 
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
