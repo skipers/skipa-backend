@@ -857,7 +857,7 @@
 | inventor | string | 발명자명 |
 | citationCount | integer | 피인용 수 |
 | examinationClaimCount | integer | 심사청구항 수 |
-| originalPdfKey | string | 특허 원문 S3 키 |
+| originalPdfKey | string | 특허 원문 MinIO object key |
 | parsedJsonKey | string | AI 서버가 저장한 추출 결과 JSON object key |
 | approvalStatus | string | 승인 상태. `APPROVED`, `PENDING_APPROVAL`, `REJECTED` |
 | rejectionReason | string | 반려 사유. 없으면 `null` |
