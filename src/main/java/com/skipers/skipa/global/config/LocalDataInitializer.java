@@ -107,10 +107,6 @@ public class LocalDataInitializer implements ApplicationRunner {
     }
 
     private void ensureBusinessSampleData(List<Department> departments) {
-        if (patentRepository.count() > 0) {
-            return;
-        }
-
         Department semiconductor = departments.get(0);
         Department telecom = departments.get(1);
         Department manufacturing = departments.get(2);
@@ -124,41 +120,38 @@ public class LocalDataInitializer implements ApplicationRunner {
 
         List<Patent> patents = new ArrayList<>();
         for (int index = 1; index <= 50; index++) {
-            patents.add(samplePatent(index, reviewDepartments.get((index - 1) % reviewDepartments.size())));
+            patents.add(ensureSamplePatent(index, reviewDepartments.get((index - 1) % reviewDepartments.size())));
         }
-        patents = patentRepository.saveAll(patents);
 
-        List<Report> reports = new ArrayList<>();
         List<PatentLegalStatus> legalStatuses = new ArrayList<>();
         List<PatentAnnuity> annuities = new ArrayList<>();
         List<Review> reviews = new ArrayList<>();
         for (int index = 1; index <= patents.size(); index++) {
             Patent patent = patents.get(index - 1);
             Department department = patent.getCurrentDepartment();
+            Report report = ensureSampleReport(index, patent);
 
-            reports.add(sampleReport(index, patent));
-            legalStatuses.add(legalStatus(patent, PatentLegalStatusType.APPLIED, LocalDate.of(2023, 1, 1).plusDays(index * 9L)));
-            legalStatuses.add(legalStatus(
-                    patent,
-                    index % 2 == 0 ? PatentLegalStatusType.REGISTERED : PatentLegalStatusType.PUBLISHED,
-                    LocalDate.of(2025, 1, 1).plusDays(index * 5L)
-            ));
-            PatentLegalStatusType inactiveStatus = inactiveLegalStatus(index);
-            if (inactiveStatus != null) {
-                legalStatuses.add(legalStatus(patent, inactiveStatus, inactiveChangedAt(index)));
+            if (patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(patent.getId()).isEmpty()) {
+                legalStatuses.add(legalStatus(patent, PatentLegalStatusType.APPLIED, LocalDate.of(2023, 1, 1).plusDays(index * 9L)));
+                legalStatuses.add(legalStatus(
+                        patent,
+                        index % 2 == 0 ? PatentLegalStatusType.REGISTERED : PatentLegalStatusType.PUBLISHED,
+                        LocalDate.of(2025, 1, 1).plusDays(index * 5L)
+                ));
+                PatentLegalStatusType inactiveStatus = inactiveLegalStatus(index);
+                if (inactiveStatus != null) {
+                    legalStatuses.add(legalStatus(patent, inactiveStatus, inactiveChangedAt(index)));
+                }
             }
-            annuities.add(annuity(
-                    patent,
-                    1,
-                    index % 3 == 0 ? 3 : null,
-                    LocalDate.of(2026, 5, 15).plusDays(index % 75),
-                    index % 3 == 0 ? LocalDate.of(2026, 5, 1).plusDays(index % 20) : null,
-                    index % 3 == 0 ? PatentAnnuityStatus.PAID : PatentAnnuityStatus.UNPAID,
-                    160000 + index * 12000
-            ));
+            PatentAnnuity annuity = ensureSampleAnnuity(index, patent, annuities);
 
-            if (hasCurrentReview(index)) {
-                reviews.add(currentReview(index, patent, department, currentCycle));
+            if (hasCurrentReview(index)
+                    && !reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
+                    currentCycle.getId(),
+                    patent.getId(),
+                    department.getId()
+            )) {
+                reviews.add(currentReview(index, patent, department, currentCycle, report, annuity));
             }
         }
         for (int cycleIndex = 0; cycleIndex < pastCycles.size(); cycleIndex++) {
@@ -166,11 +159,22 @@ public class LocalDataInitializer implements ApplicationRunner {
             for (int offset = 0; offset < 3; offset++) {
                 int patentIndex = cycleIndex * 3 + offset + 1;
                 Patent patent = patents.get((patentIndex - 1) % patents.size());
-                reviews.add(previousSubmittedReview(patentIndex, patent, patent.getCurrentDepartment(), pastCycle));
+                Department department = patent.getCurrentDepartment();
+                if (!reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(
+                        pastCycle.getId(),
+                        patent.getId(),
+                        department.getId()
+                )) {
+                    Report report = reportRepository.findFirstByPatentIdAndStatusInOrderByIdDesc(
+                                    patent.getId(),
+                                    List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)
+                            )
+                            .orElseGet(() -> ensureSampleReport(patentIndex, patent));
+                    reviews.add(previousSubmittedReview(patentIndex, patent, department, pastCycle, report));
+                }
             }
         }
 
-        reportRepository.saveAll(reports);
         patentLegalStatusRepository.saveAll(legalStatuses);
         patentAnnuityRepository.saveAll(annuities);
         reviewRepository.saveAll(reviews);
@@ -276,20 +280,55 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .build();
     }
 
-    private Report sampleReport(int index, Patent patent) {
-        if (index % 15 == 0) {
-            return Report.builder()
-                    .patent(patent)
-                    .status(ReportStatus.FAILED)
-                    .build();
-        }
-        if (index % 10 == 0) {
-            return Report.builder()
-                    .patent(patent)
-                    .status(ReportStatus.GENERATING)
-                    .build();
-        }
+    private Patent ensureSamplePatent(int index, Department department) {
+        Patent sample = samplePatent(index, department);
+        return patentRepository.findByApplicationNumber(sample.getApplicationNumber())
+                .map(existing -> {
+                    existing.update(
+                            sample.getTitle(),
+                            sample.getApplicationNumber(),
+                            sample.getRegistrationNumber(),
+                            sample.getPublicationNumber(),
+                            sample.getAnnouncementNumber(),
+                            sample.getApplicationDate(),
+                            sample.getRegistrationDate(),
+                            sample.getPublicationDate(),
+                            sample.getAnnouncementDate(),
+                            sample.getIpcCodes(),
+                            sample.getCpcCodes(),
+                            sample.getApplicant(),
+                            sample.getInventor(),
+                            sample.getExpiryDate(),
+                            sample.getCitationCount(),
+                            sample.getExaminationClaimCount(),
+                            sample.getOriginalPdfKey(),
+                            sample.getManagementNumber(),
+                            sample.getBusinessField(),
+                            sample.getTechField(),
+                            sample.getRelatedProducts(),
+                            sample.getFilingCountry(),
+                            sample.getIsJointApplication(),
+                            sample.getJointApplicant(),
+                            sample.getInitialDepartment(),
+                            sample.getKeywords(),
+                            sample.getSummary()
+                    );
+                    existing.changeCurrentDepartment(department);
+                    existing.approve();
+                    return existing;
+                })
+                .orElseGet(() -> patentRepository.save(sample));
+    }
 
+    private Report ensureSampleReport(int index, Patent patent) {
+        return reportRepository.findFirstByPatentIdAndStatusInOrderByIdDesc(
+                        patent.getId(),
+                        List.of(ReportStatus.REPORT_COMPLETED, ReportStatus.EMBEDDING_COMPLETED)
+                )
+                .orElseGet(() -> reportRepository.save(sampleCompletedReport(index, patent)));
+    }
+
+    private Report sampleCompletedReport(int index, Patent patent) {
         String grade = index % 5 == 0 ? "S" : index % 3 == 0 ? "A" : index % 3 == 1 ? "B" : "C";
         BigDecimal score = BigDecimal.valueOf(60 + index % 35).setScale(2);
         return Report.builder()
@@ -305,12 +344,41 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .build();
     }
 
-    private Review currentReview(int index, Patent patent, Department department, ReviewCycle currentCycle) {
+    private PatentAnnuity ensureSampleAnnuity(int index, Patent patent, List<PatentAnnuity> pendingAnnuities) {
+        return patentAnnuityRepository.findFirstByPatentIdAndStatusOrderByStartYearDescIdDesc(
+                        patent.getId(),
+                        PatentAnnuityStatus.UNPAID
+                )
+                .orElseGet(() -> {
+                    PatentAnnuity sample = annuity(
+                            patent,
+                            1,
+                            index % 3 == 0 ? 3 : null,
+                            LocalDate.of(2026, 5, 15).plusDays(index % 75),
+                            index % 3 == 0 ? LocalDate.of(2026, 5, 1).plusDays(index % 20) : null,
+                            index % 3 == 0 ? PatentAnnuityStatus.PAID : PatentAnnuityStatus.UNPAID,
+                            160000 + index * 12000
+                    );
+                    pendingAnnuities.add(sample);
+                    return sample;
+                });
+    }
+
+    private Review currentReview(
+            int index,
+            Patent patent,
+            Department department,
+            ReviewCycle currentCycle,
+            Report report,
+            PatentAnnuity annuity
+    ) {
         ReviewStatus status = currentReviewStatus(index);
         return Review.builder()
                 .patent(patent)
                 .department(department)
                 .reviewCycle(currentCycle)
+                .report(report)
+                .patentAnnuity(annuity)
                 .status(status)
                 .opinion(status == ReviewStatus.SUBMITTED ? submittedOpinion(index) : null)
                 .comment(status == ReviewStatus.SUBMITTED ? submittedComment(index) : null)
@@ -325,12 +393,19 @@ public class LocalDataInitializer implements ApplicationRunner {
                 .build();
     }
 
-    private Review previousSubmittedReview(int index, Patent patent, Department department, ReviewCycle previousCycle) {
+    private Review previousSubmittedReview(
+            int index,
+            Patent patent,
+            Department department,
+            ReviewCycle previousCycle,
+            Report report
+    ) {
         LocalDate submittedDate = previousCycle.getEndDate().minusDays(15 - index % 10);
         return Review.builder()
                 .patent(patent)
                 .department(department)
                 .reviewCycle(previousCycle)
+                .report(report)
                 .status(ReviewStatus.SUBMITTED)
                 .opinion(index % 2 == 0 ? BusinessOpinion.MAINTAIN : BusinessOpinion.ABANDON)
                 .comment("%d년 %d분기 이력 확인용 제출 의견입니다.".formatted(previousCycle.getYear(), previousCycle.getQuarter()))

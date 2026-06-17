@@ -6,8 +6,10 @@ import com.skipers.skipa.domain.patent.dao.PatentAnnuityRepository;
 import com.skipers.skipa.domain.patent.dao.PatentLegalStatusRepository;
 import com.skipers.skipa.domain.patent.dao.PatentRepository;
 import com.skipers.skipa.domain.report.dao.ReportRepository;
+import com.skipers.skipa.domain.report.domain.Report;
 import com.skipers.skipa.domain.review.dao.ReviewCycleRepository;
 import com.skipers.skipa.domain.review.dao.ReviewRepository;
+import com.skipers.skipa.domain.review.domain.ReviewCycle;
 import com.skipers.skipa.domain.user.dao.UserRepository;
 import com.skipers.skipa.domain.user.domain.User;
 import com.skipers.skipa.domain.user.domain.UserRole;
@@ -20,11 +22,13 @@ import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -80,13 +84,13 @@ class LocalDataInitializerTest {
     @Test
     void createsDepartmentsAndTenEncodedSampleUsersWhenLocalDatabaseHasNoUsers() {
         when(userRepository.count()).thenReturn(0L);
-        when(patentRepository.count()).thenReturn(1L);
         when(passwordEncoder.encode("1234")).thenReturn("encoded-password");
 
         when(departmentRepository.findByName("반도체")).thenReturn(Optional.empty());
         when(departmentRepository.findByName("통신")).thenReturn(Optional.empty());
         when(departmentRepository.findByName("제조")).thenReturn(Optional.empty());
         when(departmentRepository.save(any(Department.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        stubBusinessSampleDataRepositories();
 
         initializer.run(new DefaultApplicationArguments());
 
@@ -109,21 +113,41 @@ class LocalDataInitializerTest {
     }
 
     @Test
-    void doesNotCreateSeedDataWhenLocalDatabaseAlreadyHasUsersAndPatents() {
+    void doesNotCreateUsersAgainButRepairsBusinessSampleDataWhenDatabaseAlreadyHasUsers() {
         when(userRepository.count()).thenReturn(1L);
-        when(patentRepository.count()).thenReturn(1L);
         Department semiconductor = Department.builder().name("반도체").build();
         Department telecom = Department.builder().name("통신").build();
         Department manufacturing = Department.builder().name("제조").build();
         when(departmentRepository.findByName("반도체")).thenReturn(Optional.of(semiconductor));
         when(departmentRepository.findByName("통신")).thenReturn(Optional.of(telecom));
         when(departmentRepository.findByName("제조")).thenReturn(Optional.of(manufacturing));
+        stubBusinessSampleDataRepositories();
 
         initializer.run(new DefaultApplicationArguments());
 
         verify(passwordEncoder, never()).encode(anyString());
         verify(departmentRepository, never()).save(any());
         verify(userRepository, never()).saveAll(anyList());
-        verify(patentRepository, never()).saveAll(anyList());
+        verify(patentRepository, atLeastOnce()).save(any());
+        verify(reportRepository, atLeastOnce()).save(any(Report.class));
+    }
+
+    private void stubBusinessSampleDataRepositories() {
+        when(reviewCycleRepository.findByYearAndQuarter(anyInt(), anyInt())).thenReturn(Optional.empty());
+        when(reviewCycleRepository.save(any(ReviewCycle.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(patentRepository.findByApplicationNumber(anyString())).thenReturn(Optional.empty());
+        when(patentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reportRepository.findFirstByPatentIdAndStatusInOrderByIdDesc(any(), anyCollection()))
+                .thenReturn(Optional.empty());
+        when(reportRepository.save(any(Report.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(patentLegalStatusRepository.findFirstByPatentIdOrderByChangedAtDescIdDesc(any()))
+                .thenReturn(Optional.empty());
+        when(patentAnnuityRepository.findFirstByPatentIdAndStatusOrderByStartYearDescIdDesc(any(), any()))
+                .thenReturn(Optional.empty());
+        when(reviewRepository.existsByReviewCycleIdAndPatentIdAndDepartmentId(any(), any(), any()))
+                .thenReturn(false);
+        when(patentLegalStatusRepository.saveAll(any())).thenReturn(Collections.emptyList());
+        when(patentAnnuityRepository.saveAll(any())).thenReturn(Collections.emptyList());
+        when(reviewRepository.saveAll(any())).thenReturn(Collections.emptyList());
     }
 }
