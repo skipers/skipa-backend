@@ -4,6 +4,7 @@ import com.skipers.skipa.global.security.CustomAccessDeniedHandler;
 import com.skipers.skipa.global.security.CustomAuthenticationEntryPoint;
 import com.skipers.skipa.global.security.InternalApiKeyFilter;
 import com.skipers.skipa.global.security.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -61,6 +62,7 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(WHITE_LIST).permitAll()
                         .requestMatchers(WebConfig.API_PREFIX + "/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
