@@ -10,7 +10,7 @@ public class PatentLegalStatusUpdateScheduler {
 
     private final PatentLegalStatusUpdateService patentLegalStatusUpdateService;
 
-    @Scheduled(cron = "0 10 9 * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 3/5 * * * *", zone = "Asia/Seoul")
     public void updateAdministrativeStatuses() {
         patentLegalStatusUpdateService.updateAdministrativeStatuses();
     }
