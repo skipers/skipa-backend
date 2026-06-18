@@ -37,8 +37,8 @@ public class DepartmentController {
      * @param request 생성 요청
      * @return 생성된 부서
      */
-    @Operation(summary = "[Admin] 부서 생성", description = "새로운 부서를 생성합니다.")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "[Admin, Legal] 부서 생성", description = "관리자 또는 Legal 팀이 새로운 부서를 생성합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(@Valid @RequestBody DepartmentCreateRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(departmentService.create(request)));
@@ -86,8 +86,8 @@ public class DepartmentController {
      * @param request 수정 요청
      * @return 수정된 부서
      */
-    @Operation(summary = "[Admin] 부서 수정", description = "부서 ID에 해당하는 부서 정보를 수정합니다.")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "[Admin, Legal] 부서 수정", description = "관리자 또는 Legal 팀이 부서 ID에 해당하는 부서 정보를 수정합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PutMapping("/{departmentId}")
     public ApiResponse<DepartmentResponse> update(
             @PathVariable Long departmentId,
@@ -102,8 +102,8 @@ public class DepartmentController {
      * @param departmentId 부서 ID
      * @return 성공 응답
      */
-    @Operation(summary = "[Admin] 부서 비활성화", description = "부서 ID에 해당하는 부서를 비활성화합니다.")
-    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "[Admin, Legal] 부서 비활성화", description = "관리자 또는 Legal 팀이 부서 ID에 해당하는 부서를 비활성화합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @DeleteMapping("/{departmentId}")
     public ApiResponse<Void> delete(@PathVariable Long departmentId) {
         departmentService.delete(departmentId);

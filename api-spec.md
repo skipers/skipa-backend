@@ -57,7 +57,7 @@
 | Role | 설명 |
 | --- | --- |
 | `ADMIN` | 사용자 승인, 부서 관리, 전체 조회, 특허 기본 정보 관리 |
-| `LEGAL` | 특허 관리, 검토 요청, 검토 현황 조회, 보고서 관리 |
+| `LEGAL` | 부서 관리, 특허 관리, 검토 요청, 검토 현황 조회, 보고서 관리 |
 | `BUSINESS` | 본인 부서 담당 특허 조회, 요청받은 검토 확인 및 의견 제출 |
 
 ## Enum
@@ -250,9 +250,9 @@
 | --- | --- | --- | --- | --- |
 | 부서 목록 조회 | `GET` | `/api/v1/departments` | 활성 부서 목록 조회. `page`, `size` 사용 가능 | `ADMIN`, `LEGAL` |
 | 부서 단일 조회 | `GET` | `/api/v1/departments/{departmentId}` | 부서 정보 조회. 비활성 부서도 조회 가능 | `ADMIN`, `LEGAL` |
-| 부서 생성 | `POST` | `/api/v1/departments` | 활성 부서 생성 | `ADMIN` |
-| 부서 수정 | `PUT` | `/api/v1/departments/{departmentId}` | 부서명 수정 | `ADMIN` |
-| 부서 비활성화 | `DELETE` | `/api/v1/departments/{departmentId}` | 삭제 대신 상태를 `INACTIVE`로 변경 | `ADMIN` |
+| 부서 생성 | `POST` | `/api/v1/departments` | 활성 부서 생성 | `ADMIN`, `LEGAL` |
+| 부서 수정 | `PUT` | `/api/v1/departments/{departmentId}` | 부서명 수정 | `ADMIN`, `LEGAL` |
+| 부서 비활성화 | `DELETE` | `/api/v1/departments/{departmentId}` | 삭제 대신 상태를 `INACTIVE`로 변경 | `ADMIN`, `LEGAL` |
 
 비활성 부서는 기존 사용자, 특허, 검토 이력의 참조를 유지합니다.
 비활성 부서는 신규 사용자 승인, 특허 담당 부서 변경, 신규 검토 요청에 사용할 수 없습니다.

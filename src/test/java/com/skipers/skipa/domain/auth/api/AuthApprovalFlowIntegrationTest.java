@@ -409,7 +409,7 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
-    void departmentWriteApisAllowOnlyAdmin() throws Exception {
+    void departmentWriteApisAllowAdminAndLegalButRejectBusinessAndUnauthenticatedUser() throws Exception {
         String legalToken = createActiveUserToken("legal-active", "legal-active@example.com", UserRole.LEGAL);
         String businessToken = createActiveUserToken("business-active", "business-active@example.com", UserRole.BUSINESS);
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
@@ -446,11 +446,11 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(put("/api/v1/departments/{departmentId}", department.getId())
-                        .header("Authorization", "Bearer " + legalToken)
+                        .header("Authorization", "Bearer " + businessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "name": "Legal Update"
+                                  "name": "Business Update"
                                 }
                                 """))
                 .andExpect(status().isForbidden());
@@ -460,7 +460,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(status().isForbidden());
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/departments")
-                        .header("Authorization", "Bearer " + adminToken)
+                        .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -477,7 +477,7 @@ class AuthApprovalFlowIntegrationTest {
                 .longValue();
 
         mockMvc.perform(put("/api/v1/departments/{departmentId}", createdDepartmentId)
-                        .header("Authorization", "Bearer " + adminToken)
+                        .header("Authorization", "Bearer " + legalToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -488,7 +488,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.name").value("Updated Department"));
 
         mockMvc.perform(delete("/api/v1/departments/{departmentId}", createdDepartmentId)
-                        .header("Authorization", "Bearer " + adminToken))
+                        .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
