@@ -168,6 +168,40 @@ class PreEvaluationFlowIntegrationTest {
     }
 
     @Test
+    void businessUserCreatesPreEvaluationWithoutClaimsAndTargetCountries() throws Exception {
+        User businessUser = saveActiveUser(
+                "business-pre-evaluation-optional",
+                "business-pre-evaluation-optional@example.com",
+                UserRole.BUSINESS
+        );
+        String businessToken = jwtProvider.createAccessToken(businessUser.getId(), UserRole.BUSINESS);
+
+        MvcResult createResult = mockMvc.perform(post("/api/v1/pre-evaluations")
+                        .header("Authorization", "Bearer " + businessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "title": "Battery safety system",
+                                  "technicalDescription": "Detects battery thermal runaway early.",
+                                  "relatedBusiness": "EV battery"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.userId").value(businessUser.getId()))
+                .andExpect(jsonPath("$.data.status").value("PROCESSING"))
+                .andReturn();
+
+        Long preEvaluationId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .longValue();
+        PreEvaluation created = preEvaluationRepository.findById(preEvaluationId).orElseThrow();
+        assertThat(created.getClaims()).isNull();
+        assertThat(created.getTargetCountries()).isNull();
+        verify(generationPublisher).publish(created);
+    }
+
+    @Test
     void preEvaluationApisAllowOnlyBusinessUsers() throws Exception {
         String legalToken = jwtProvider.createAccessToken(
                 saveActiveUser("legal-pre-evaluation", "legal-pre-evaluation@example.com", UserRole.LEGAL).getId(),

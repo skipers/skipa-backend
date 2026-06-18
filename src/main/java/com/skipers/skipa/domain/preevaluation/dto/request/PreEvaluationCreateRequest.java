@@ -2,7 +2,6 @@ package com.skipers.skipa.domain.preevaluation.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -17,7 +16,6 @@ public record PreEvaluationCreateRequest(
         @Schema(description = "기술 설명", example = "센서 데이터를 기반으로 배터리 열폭주 가능성을 조기에 감지하는 기술")
         String technicalDescription,
 
-        @NotEmpty(message = "청구항은 필수입니다.")
         @Schema(description = "청구항 목록", example = "[\"센서부를 포함하는 배터리 열폭주 감지 시스템\", \"분석부가 센서 데이터를 기반으로 위험도를 산출하는 시스템\"]")
         List<@NotBlank(message = "청구항은 빈 값일 수 없습니다.") String> claims,
 

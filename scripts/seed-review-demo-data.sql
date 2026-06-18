@@ -114,7 +114,7 @@ where not exists (
 with desired_reports as (
     select
         patents.id as patent_id,
-        'reports/seed/review-demo/patent-' || lpad(patents.id::text, 3, '0') || '.html' as report_key,
+        'patents/' || patents.id || '/reports/' || patents.id || '/report.json' as report_key,
         case
             when patents.id between 131 and 145 then 'GENERATING'
             when patents.id between 146 and 155 then 'FAILED'
@@ -156,6 +156,7 @@ inserted_reports as (
         from reports existing
         where existing.report_key = desired_reports.report_key
     )
+    order by desired_reports.patent_id
     returning report_key
 )
 update reports
@@ -220,7 +221,7 @@ desired_reviews as (
     left join department_pool
       on department_pool.department_index = ((patents.id - 1) % department_pool.department_count) + 1
     left join reports
-      on reports.report_key = 'reports/seed/review-demo/patent-' || lpad(patents.id::text, 3, '0') || '.html'
+      on reports.report_key = 'patents/' || patents.id || '/reports/' || patents.id || '/report.json'
     left join patent_annuities
       on patent_annuities.patent_id = patents.id
      and patent_annuities.start_year = 1

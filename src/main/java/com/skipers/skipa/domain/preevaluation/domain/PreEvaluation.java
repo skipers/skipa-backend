@@ -47,7 +47,7 @@ public class PreEvaluation extends BaseTimeEntity {
     private String technicalDescription;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "claims", nullable = false)
+    @Column(name = "claims")
     private List<String> claims;
 
     @Column(name = "related_business", length = 500)
