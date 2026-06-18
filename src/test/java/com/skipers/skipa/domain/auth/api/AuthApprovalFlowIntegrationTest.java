@@ -595,8 +595,7 @@ class AuthApprovalFlowIntegrationTest {
                   "applicationNumber": "BUSINESS-1"
                 }
                 """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.approvalStatus").value("PENDING_APPROVAL"));
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(put("/api/v1/patents/{patentId}", 1L)
                         .header("Authorization", "Bearer " + businessToken)

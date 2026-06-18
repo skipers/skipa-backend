@@ -1,28 +1,42 @@
 # skipa-backend
 
-SKIPA의 특허 관리 기능과 핵심 비즈니스 로직을 담당하는 백엔드 API 서버입니다.
+SKIPA는 사내 특허 데이터와 관련 업무를 통합 관리하기 위한 특허 관리 시스템입니다. 주요 관리 대상은 특허 등록 정보, 권리 상태, 연차료 이력, 사업부 검토, 평가 보고서, 사전 평가, 포트폴리오 통계입니다.
 
-## 프로젝트 소개
+`skipa-backend`는 해당 시스템의 백엔드 애플리케이션으로, 도메인별 비즈니스 로직, 인증 및 인가, 데이터 영속화, 비동기 작업 처리, 외부 시스템 연동을 담당합니다. 애플리케이션은 Java 17과 Spring Boot를 기반으로 구성되며, 상세 API 계약은 `api-spec.md`에서 관리합니다.
 
-SKIPA(SK IP Agent)는 사내 특허의 가치 평가와 Life Cycle 관리를 지원하는 AI 기반 특허 관리 서비스입니다.
+## 주요 기능
 
-`skipa-backend`는 다음 기능을 담당합니다.
+| 구분 | 내용 |
+| --- | --- |
+| 인증 및 인가 | 회원가입, 로그인, 토큰 재발급, 로그아웃, 내 정보 조회 |
+| 사용자 및 부서 관리 | 관리자 승인, 부서 생성·조회·수정·비활성화 |
+| 특허 운영 관리 | 특허 생성, 조회, 수정, 삭제, 담당 부서 변경 |
+| 검토 및 평가 | 검토 주기 관리, 사업부 검토 요청·회신, 평가 보고서 생성·조회·채팅 |
+| AI 연계 기능 | 특허 PDF 추출 작업, 사전 평가 생성, 포트폴리오 인사이트 생성 |
 
-- 회원가입, 로그인, 관리자 가입 승인
-- 부서 생성, 조회, 수정, 비활성화
-- 특허 정보 등록, 조회, 수정, 삭제, 담당 부서 변경
-- 권리 상태 이력 및 연차료 납부 이력 관리
-- 검토 주기 관리와 사업부 단건·일괄 검토 요청
-- Legal 팀의 검토 현황 조회
-- 사업부의 요청받은 검토 조회와 의견 제출
-- 특허 평가 보고서 생성 요청과 조회
-- 로그아웃, 토큰 갱신, 내 정보 조회
-- 관리자 사용자 관리
-- 특허 원문 PDF 업로드와 AI 기반 특허 등록 초안 추출
-- RabbitMQ 기반 AI Worker 연동, MinIO 특허 원문·보고서 파일 연동, KIPRIS 연동
-- Legal 팀 대시보드
+## 역할 정책
 
-API의 상세 내용은 [api-spec.md](api-spec.md)를 참고해 주세요.
+| 역할 | 주요 권한 |
+| --- | --- |
+| `ADMIN` | 사용자 승인, 부서 및 특허 관리, 검토 주기 관리, 전체 조회 |
+| `LEGAL` | 특허 운영, 권리 상태 및 연차료 관리, 검토 요청, 평가 보고서 생성, 포트폴리오·대시보드 조회 |
+| `BUSINESS` | 승인 완료 특허 조회, 담당 특허 및 검토 현황 조회, 검토 의견 제출, 사전 평가 |
+
+특허 생성 API(`POST /api/v1/patents`)는 `ADMIN`과 `LEGAL`에만 허용되며, 생성된 특허는 즉시 `APPROVED` 상태로 저장됩니다.
+
+## 주요 업무 정책
+
+### 부서 비활성화 정책
+
+부서는 물리 삭제하지 않고 `INACTIVE` 상태로 전환합니다. 비활성 부서는 신규 사용자 승인, 특허 담당 부서 변경, 신규 검토 요청의 대상으로 사용할 수 없습니다.
+
+### 사업부 접근 범위
+
+`BUSINESS` 사용자의 사업부 검토 화면과 일부 집계는 본인 소속 부서 범위로 제한됩니다.
+
+### 관리자 조회 범위
+
+`ADMIN`은 전체 조회와 관리 기능에 접근하며, 검토 요청·권리 상태 관리·연차료 관리·평가 보고서 생성 등 실무 운영 기능은 `LEGAL`이 담당합니다.
 
 ## Tech Stack
 
@@ -35,6 +49,7 @@ API의 상세 내용은 [api-spec.md](api-spec.md)를 참고해 주세요.
 | Production Database | PostgreSQL |
 | ORM | Spring Data JPA |
 | Security | Spring Security, JWT |
+| Cache | Redis |
 | Message Queue | RabbitMQ |
 | Object Storage | MinIO |
 | API Docs | springdoc-openapi |
@@ -42,104 +57,291 @@ API의 상세 내용은 [api-spec.md](api-spec.md)를 참고해 주세요.
 
 ## Database Profile
 
-로컬 개발 환경에서는 H2 Database를 사용하고, 배포 환경에서는 PostgreSQL을 사용합니다.
-
-| Profile | Database | Description |
+| Profile | Database | Purpose |
 | --- | --- | --- |
-| `local` | H2 Database (TCP) | 로컬 개발용 |
-| `prod` | PostgreSQL | 배포 환경용 |
+| `local` | H2 Database (TCP) | 로컬 개발 및 빠른 기능 검증 |
+| `prod` | PostgreSQL | 운영 및 통합 검증 환경 |
 
-리소스 파일은 다음과 같이 구성됩니다.
+- `local`: H2 파일 DB, `ddl-auto: update`, Redis 자동 구성 제외, Flyway 비활성화, 샘플 데이터 자동 주입
+- `prod`: PostgreSQL, `ddl-auto: validate`, Flyway 기반 스키마 관리
+
+## 아키텍처 개요
+
+기능 중심 도메인 구조를 기준으로 `api`, `application`, `dao`/`domain`, `infra` 계층을 분리합니다.
+
+- 기능 단위 응집도 유지
+- 비즈니스 로직과 외부 연동 구현의 분리
+- 테스트 용이성 및 변경 영향 범위 최소화
+- 권한 검증과 예외 처리를 계층별로 명확히 분리
+
+### 요청 처리 흐름
+
+```text
+Client
+  ↓
+API Controller
+  ↓
+Application Service
+  ↓
+Domain / Repository
+  ↓
+Database
+```
+
+- `api`: 요청 수신, 입력 검증, 인증 사용자 전달
+- `application`: 권한 확인, 업무 규칙 수행, 트랜잭션 처리
+- `domain` / `dao`: 엔티티 상태 변경 및 데이터 조회
+- `infra`: RabbitMQ, MinIO, AI 서버 등 외부 연동 처리
+
+### 외부 연계 포함 흐름
+
+```text
+Client
+  ↓
+API Controller
+  ↓
+Application Service
+  ├─ Repository → Database
+  └─ Infra → RabbitMQ / MinIO / AI Server
+```
+
+## 프로젝트 구조
+
+```text
+src/main/java/com/skipers/skipa
+├── global      # 공통 설정, 보안, 예외, 응답
+└── domain      # 기능별 비즈니스 도메인
+```
+
+```text
+src/main/java/com/skipers/skipa
+├── global                  # 공통 설정, 보안, 예외, 응답
+└── domain
+    ├── auth                # 인증/토큰
+    ├── user                # 관리자 승인
+    ├── department          # 부서 관리
+    ├── patent              # 특허, 권리 상태, 연차료, 사업부 검토 화면
+    ├── review              # 검토 주기, 검토 요청, 회신 확인
+    ├── report              # 평가 보고서/채팅
+    ├── preevaluation       # 사전 평가/채팅
+    ├── patentextract       # 특허 PDF 추출 작업
+    ├── portfolio           # 포트폴리오 통계/AI 인사이트
+    └── dashboard           # Legal/Business 대시보드
+```
+
+외부 시스템 연동 구현은 별도 최상위 `infra` 패키지 대신 각 도메인 하위 `infra` 패키지에 배치합니다.
+
+```text
+global
+├── common/entity          # 공통 엔티티(BaseTimeEntity 등)
+├── config                 # Security, OpenAPI, Jackson, JPA, MinIO, RabbitMQ 설정
+├── exception              # 공통 예외, 에러 코드, 전역 예외 처리
+├── response               # 표준 API 응답 래퍼
+└── security               # JWT 인증 필터, UserDetails, 인증/인가 처리
+
+domain/<feature>
+├── api                    # Controller 계층
+├── application            # Service 및 비즈니스 로직
+├── dao                    # Repository 인터페이스
+├── domain                 # Entity, Enum 등 핵심 도메인 모델
+├── dto                    # 요청/응답 DTO
+├── exception              # 기능별 예외
+└── infra                  # 외부 시스템 연동 구현
+```
+
+```text
+domain/patent
+├── api                    # PatentController, PatentAnnuityController 등
+├── application            # PatentService, BusinessReviewService 등
+├── dao                    # PatentRepository, PatentAnnuityRepository 등
+├── domain                 # Patent, PatentAnnuity, PatentApprovalStatus 등
+├── dto
+│   ├── request            # PatentCreateRequest, PatentUpdateRequest 등
+│   └── response           # PatentDetailResponse, PatentListResponse 등
+├── exception              # PatentException
+└── infra                  # PDF 저장소 구현 등
+
+domain/report
+├── api                    # ReportController, InternalReportController, ReportChatController
+├── application            # 보고서 생성·조회·채팅 서비스
+├── dao                    # ReportRepository
+├── domain                 # Report, ReportStatus
+├── dto
+│   ├── request
+│   └── response
+├── exception              # ReportException
+└── infra                  # RabbitMQ 발행, MinIO 저장소, AI 채팅 클라이언트
+```
 
 ```text
 src/main/resources
 ├── application.yaml
 ├── application-local.yaml
-└── application-prod.yaml
+├── application-prod.yaml
+└── db/migration          # Flyway 마이그레이션
 ```
 
-`local` profile은 `ddl-auto: update`를 사용합니다. `users` 테이블이 비어 있으면 관리자 1명, Legal 사용자 4명, 사업부 사용자 5명의 샘플 계정을 생성합니다.
-
-초기 샘플 계정의 기본 비밀번호는 `1234`이며 `LOCAL_SEED_PASSWORD`로 변경할 수 있습니다.
-
-| Role | Login ID |
-| --- | --- |
-| `ADMIN` | `admin` |
-| `LEGAL` | `legal01`, `legal02`, `legal03`, `legal04` |
-| `BUSINESS` | `biz01`, `biz02`, `biz03`, `biz04`, `biz05` |
-
-`prod` profile은 PostgreSQL과 `ddl-auto: validate`를 사용합니다. 스키마 변경은 배포 전에 DB에 별도로 반영해야 합니다.
-
-## Project Structure
+테스트 코드는 운영 코드의 패키지 구조를 기준으로 동일하게 구성합니다.
 
 ```text
-src/main/java/com/skipers/skipa
-├── global
-│   ├── common/entity          # 생성·수정 시각 공통 엔티티
-│   ├── config                 # 보안, JPA auditing, Jackson, OpenAPI, 로컬 seed 설정
-│   ├── exception              # 공통 예외 처리
-│   ├── response               # 공통 API 응답
-│   └── security               # JWT 인증 필터와 사용자 인증 정보
-└── domain
-    ├── auth                   # 회원가입과 로그인
-    ├── user                   # 관리자 사용자 승인
-    ├── department             # 부서 관리
-    ├── patent                 # 특허, 권리 상태, 연차료, 사업부 검토 화면
-    ├── review                 # 검토 주기, 검토 요청, Legal 모니터링
-    ├── patentextract          # 특허 원문 PDF 업로드, AI 추출 작업, RabbitMQ 발행
-    └── report                 # 평가 보고서 생성 요청, RabbitMQ 발행, MinIO URL 조회
-```
-
-확장 구조는 다음과 같습니다.
-
-```text
-src/main/java/com/skipers/skipa
+src/test/java/com/skipers/skipa
 ├── domain
-│   └── dashboard             # Legal 팀 대시보드 통계
-└── infra
-    ├── ai                    # AI 서버 연동
-    ├── storage               # MinIO 등 파일 저장소 연동
-    └── kipris                # KIPRIS API 연동
+└── global
 ```
 
-| 패키지 | 역할 |
+## 실행 방법
+
+1. `.env.example`을 복사하여 `.env` 파일을 생성합니다.
+2. 최소 필수 환경 변수인 `SPRING_PROFILES_ACTIVE`, `JWT_SECRET`, `INTERNAL_API_KEY`를 설정합니다.
+3. 필요 시 로컬 H2 데이터베이스를 초기화합니다.
+
+```bash
+cp .env.example .env
+./gradlew h2CreateLocalDb
+./gradlew bootRun
+```
+
+| 명령어 | 설명 |
 | --- | --- |
-| `domain.user` 확장 | 관리자 사용자 목록 조회, 생성, 수정, 삭제 |
-| `domain.patentextract` | 특허 원문 PDF 업로드, AI 추출 작업 상태·결과 관리 |
-| `domain.dashboard` | Legal 팀 대시보드 통계 |
-| `infra.ai` | AI 서버 연동 |
-| `infra.storage` | MinIO 등 파일 저장소 연동 |
-| `infra.kipris` | KIPRIS API 연동 |
+| `./gradlew bootRun` | 로컬 서버 실행 |
+| `./gradlew test` | 테스트 실행 |
+| `./gradlew clean bootJar` | 배포용 JAR 빌드 |
+| `./gradlew h2Server` | H2 TCP 서버 및 웹 콘솔 실행 |
 
-## 주요 정책
+API prefix는 `/api/v1`이며, Swagger UI는 `http://localhost:8080/swagger-ui/index.html`에서 확인할 수 있습니다.
+OpenAPI JSON은 `http://localhost:8080/v3/api-docs`에서 제공합니다.
 
-### 부서 비활성화
+## 인증 및 인가 방식
 
-부서는 삭제하지 않고 `INACTIVE` 상태로 변경합니다. 기존 사용자, 특허, 검토 이력의 참조는 유지됩니다.
+- JWT 기반 인증을 사용합니다.
+- 컨트롤러 계층: `@PreAuthorize`를 통해 역할 기반 접근 제어 수행
+- 서비스 계층: 부서 범위, 승인 상태, 리소스 소유 여부 등 세부 업무 규칙 검증
+- 내부 콜백 API: `INTERNAL_API_KEY` 헤더 기반 보호
 
-비활성 부서는 신규 사용자 승인, 특허 담당 부서 변경, 신규 검토 요청에 사용할 수 없습니다.
+## 로컬 확인 순서
 
-### 사업부 접근 범위
+1. `.env` 구성 후 `./gradlew bootRun`을 실행합니다.
+2. `http://localhost:8080/swagger-ui/index.html`에 접속합니다.
+3. `POST /api/v1/auth/login`으로 샘플 계정에 로그인합니다.
+4. 발급받은 JWT를 Swagger `Authorize`에 입력합니다.
+5. 역할별 API를 호출하여 권한 및 응답 형식을 검증합니다.
 
-`BUSINESS` 사용자는 현재 담당 부서가 본인 소속 부서와 같은 특허만 조회할 수 있습니다. 특허의 권리 상태, 연차료, 보고서 조회에도 동일한 제한이 적용됩니다.
+| 항목 | 값 |
+| --- | --- |
+| `ADMIN` 계정 | ID: `admin`, PWD: `1234` |
+| `LEGAL` 계정 | ID: `legal01`, PWD: `1234` |
+| `BUSINESS` 계정 | ID: `biz01`, PWD: `1234` |
+| H2 웹 콘솔 URL | `http://localhost:8082` |
 
-`/assigned-patents`는 사업부 화면의 검토 현황 API입니다. 각 특허와 부서의 가장 최근 검토 요청을 기준으로 목록과 상세 정보를 반환합니다.
+H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니다.
 
-### 관리자 조회 범위
+| 항목 | 값 |
+| --- | --- |
+| JDBC URL | `jdbc:h2:tcp://localhost/~/skipa` |
+| 사용자명 | `sa` |
+| 비밀번호 | 빈 값 |
 
-`ADMIN` 사용자는 전체 조회 API를 사용할 수 있습니다. 권리 상태, 연차료, 보고서 생성, 검토 요청, 검토 주기 변경과 같은 실무 변경 작업은 `LEGAL` 사용자만 수행합니다.
+## 로컬 개발 메모
+
+- `local` 프로필에서는 샘플 부서, 사용자, 특허 및 검토 데이터가 자동 주입됩니다.
+- 샘플 계정 비밀번호 기본값은 `LOCAL_SEED_PASSWORD=1234`입니다.
+- 일부 AI 및 RabbitMQ 연동은 로컬에서 대체 구현으로 동작합니다.
+
+## 환경 변수 가이드
+
+| 구분 | 변수 |
+| --- | --- |
+| 필수 | `SPRING_PROFILES_ACTIVE`, `JWT_SECRET`, `INTERNAL_API_KEY` |
+| 로컬 편의 | `LOCAL_SEED_PASSWORD` |
+| DB 연동 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` |
+| 캐시 연동 | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
+| 메시지 큐 | `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USERNAME`, `RABBITMQ_PASSWORD` |
+| AI 서버 | `AI_SERVER_BASE_URL` 및 기능별 path |
+| 파일 저장소 | `MINIO_ENDPOINT`, `MINIO_PUBLIC_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
+
+`JWT_SECRET`은 충분한 길이의 안전한 비밀값을 사용해야 하며, 내부 콜백 보호용 `INTERNAL_API_KEY` 역시 별도의 공유 비밀값으로 관리해야 합니다.
+
+## 주요 API 도메인
+
+| Domain | Base Path | 설명 |
+| --- | --- | --- |
+| Auth | `/api/v1/auth` | 회원가입, 로그인, 토큰 재발급, 로그아웃 |
+| Admin Users | `/api/v1/admin/users` | 관리자 승인 |
+| Departments | `/api/v1/departments` | 부서 생성·조회·수정·비활성화 |
+| Patents | `/api/v1/patents` | 특허 생성·조회·수정·삭제 및 담당 부서 변경 |
+| Patent Extract Jobs | `/api/v1/patent-extract-jobs` | 특허 PDF 업로드 URL 발급 및 추출 작업 상태 관리 |
+| Reviews | `/api/v1/reviews`, `/api/v1/review-targets`, `/api/v1/patents/{patentId}/reviews` | 검토 요청 및 Legal 검토 현황 |
+| Business Reviews | `/api/v1/business-reviews` | 사업부 검토 현황 조회 및 의견 제출 |
+| Reports | `/api/v1/patents/{patentId}/reports` | 평가 보고서 생성·조회 |
+| Pre-Evaluations | `/api/v1/pre-evaluations` | 사전 평가 생성·조회·삭제 |
+| Portfolio | `/api/v1/portfolio` | 포트폴리오 통계 및 AI 인사이트 |
+| Dashboard | `/api/v1/dashboard` | Legal 및 Business 대시보드 |
+
+## 데이터 관리 및 마이그레이션 정책
+
+| 항목 | 정책 |
+| --- | --- |
+| 스키마 변경 | Flyway 마이그레이션으로 관리 |
+| `local` 환경 | H2 기반 로컬 개발 환경, 샘플 데이터 자동 주입 |
+| `prod` 환경 | PostgreSQL 기반 운영 환경, `validate` 중심 검증 |
+| 부서 삭제 | 물리 삭제보다 비활성화 상태 전환 우선 적용 |
+
+## 비동기 처리 흐름
+
+- 평가 보고서 생성: Backend → RabbitMQ → AI Worker → 내부 콜백 API
+- 특허 추출 작업: Presigned URL 업로드 → RabbitMQ → AI Worker → 내부 콜백 API
+- 사전 평가: 요청 저장 → RabbitMQ 또는 AI 서버 연동 → 상태 polling/채팅
+
+내부 콜백 API는 `INTERNAL_API_KEY`를 기반으로 보호합니다.
+
+## 비동기 연계 원칙
+
+| 항목 | 원칙 |
+| --- | --- |
+| 상태 저장 | 요청 수신 시 작업 상태를 우선 저장 |
+| 작업 위임 | RabbitMQ를 통해 AI Worker 또는 후속 처리 컴포넌트에 작업 위임 |
+| 결과 반영 | 내부 콜백 API를 통해 상태 반영 |
+| 파일 관리 | 파일 자체가 아닌 MinIO object key 기준으로 위치 관리 |
+| 진행 조회 | 클라이언트는 상태 조회 API로 진행 상황 확인 |
+
+### 비동기 처리 흐름도
+
+```text
+[Client]
+   │
+   │ 1. 작업 요청
+   ▼
+[Backend API]
+   │
+   │ 2. 작업 상태 저장
+   ▼
+[Database]
+   ▲
+   │
+[Backend API]
+   │
+   │ 3. 메시지 발행 또는 외부 호출
+   ▼
+[RabbitMQ / AI Server / MinIO]
+   │
+   │ 4. 처리 결과 반환
+   ▼
+[Internal Callback API]
+   │
+   │ 5. 상태 갱신
+   ▼
+[Database]
+   │
+   │ 6. 클라이언트 polling 조회
+   ▼
+[Client]
+```
+
+- 평가 보고서 생성: 보고서 상태 저장 → RabbitMQ 발행 → AI Worker 처리 → 내부 완료 콜백
+- 특허 추출: 업로드 URL 발급 → MinIO 업로드 → RabbitMQ 발행 → AI 추출 결과 콜백
+- 사전 평가: 요청 저장 → 비동기 생성 처리 → 상태 조회 및 채팅 연계
 
 ### 평가 보고서 생성 흐름
-
-프론트는 백엔드의 `POST /patents/{patentId}/reports`만 호출합니다. 백엔드는 인증과 `LEGAL` 권한을 확인한 뒤 보고서를 `GENERATING` 상태로 저장하고 RabbitMQ에 생성 메시지를 발행합니다.
-
-AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 저장합니다. 저장 후 백엔드 내부 API를 호출해 완료 또는 실패 상태를 전달합니다.
-
-```text
-Frontend -> Backend -> RabbitMQ -> AI Worker -> MinIO -> Backend internal API -> Frontend polling
-```
-
-RabbitMQ 메시지 payload는 다음 형식입니다.
 
 ```json
 {
@@ -149,54 +351,7 @@ RabbitMQ 메시지 payload는 다음 형식입니다.
 }
 ```
 
-AI Worker는 보고서 생성 완료 시 MinIO 전체 URL이 아니라 object key만 백엔드에 전달합니다.
-
-```http
-PATCH /internal/reports/{reportId}/report-complete
-X-Internal-Api-Key: <secret>
-```
-
-```json
-{
-  "reportKey": "reports/8001/report.html",
-  "totalScore": 82.5,
-  "valueGrade": "A"
-}
-```
-
-보고서 임베딩까지 완료되면 다음 내부 API를 호출합니다.
-
-```http
-PATCH /internal/reports/{reportId}/embedding-complete
-X-Internal-Api-Key: <secret>
-```
-
-실패 시에는 다음 내부 API를 호출합니다.
-
-```http
-PATCH /internal/reports/{reportId}/fail
-X-Internal-Api-Key: <secret>
-```
-
-```json
-{
-  "errorMessage": "AI report generation failed"
-}
-```
-
-프론트는 `GET /patents/{patentId}/reports/{reportId}/status`를 polling합니다. `REPORT_COMPLETED`가 되면 `GET /patents/{patentId}/reports/{reportId}`로 백엔드가 생성한 MinIO presigned URL을 받을 수 있고, `EMBEDDING_COMPLETED`가 되면 임베딩까지 완료된 상태입니다. 프론트 응답에는 MinIO object key를 직접 노출하지 않습니다.
-
 ### 특허 원문 PDF 추출 흐름
-
-프론트는 `POST /patent-extract-jobs/upload-url`로 업로드 URL을 발급받습니다. 백엔드는 `patent_extract_jobs`를 `UPLOAD_PENDING` 상태로 생성하고, `patents/extract-jobs/{extractJobId}/patent.pdf` 경로의 MinIO PUT presigned URL을 반환합니다.
-
-프론트가 presigned URL로 PDF를 업로드한 뒤 `POST /patent-extract-jobs/{extractJobId}/upload-complete`를 호출하면, 백엔드는 MinIO object 존재 여부를 확인하고 RabbitMQ에 추출 메시지를 발행합니다.
-
-```text
-Frontend -> Backend presigned URL -> MinIO upload -> Backend upload-complete -> RabbitMQ -> AI Worker -> Backend internal API -> Frontend polling -> Patent create
-```
-
-RabbitMQ 메시지 payload는 다음 형식입니다.
 
 ```json
 {
@@ -206,30 +361,16 @@ RabbitMQ 메시지 payload는 다음 형식입니다.
 }
 ```
 
-AI Worker는 완료 시 추출 결과 JSON을 백엔드 내부 API에 전달합니다.
+## 보안 및 운영 유의사항
 
-```http
-PATCH /internal/patent-extract-jobs/{extractJobId}/complete
-X-Internal-Api-Key: <secret>
-```
+| 항목 | 내용 |
+| --- | --- |
+| 민감 정보 | `JWT_SECRET`, `INTERNAL_API_KEY`, DB 비밀번호, MinIO 자격 정보는 저장소에 커밋하지 않음 |
+| Swagger | 개발 및 검증 용도로 사용하며 운영 접근 제어 정책과 함께 적용 |
+| Presigned URL | 한시적 접근을 전제로 사용하며 장기 고정 URL로 취급하지 않음 |
+| 외부 장애 대응 | API, 메시지 큐, 파일 저장소, AI 서버 연계 구간을 분리 운영 |
 
-```json
-{
-  "result": {
-    "title": "반도체 패키지 구조",
-    "applicationNumber": "10-2026-0000000",
-    "keywords": ["패키지", "반도체"],
-    "overview": "특허 개요",
-    "coreContent": "특허 핵심 내용"
-  }
-}
-```
-
-프론트는 `GET /patent-extract-jobs/{extractJobId}/status`를 polling하고, `COMPLETED`가 되면 `GET /patent-extract-jobs/{extractJobId}/result`로 특허 등록 폼에 자동 입력할 결과를 받습니다. 사용자가 검토 후 `POST /patents`에 `extractJobId`를 포함해 최종 생성하면, 백엔드는 임시 PDF를 `patents/{applicationNumber}/patent.pdf`로 복사하고 `patents.originalPdfKey`에 최종 object key를 저장합니다.
-
-### Enum
-
-API와 DB에 저장되는 enum 문자열은 영어 대문자로 통일합니다.
+## 상태값 및 Enum 원칙
 
 | 구분 | 값 |
 | --- | --- |
@@ -241,124 +382,31 @@ API와 DB에 저장되는 enum 문자열은 영어 대문자로 통일합니다.
 | 검토 제출 상태 | `PENDING`, `SUBMITTED` |
 | 사업부 의견 | `MAINTAIN`, `ABANDON` |
 
-## API Domain
+## 문서 운영 규칙
 
-| Domain | Base Path | Description |
-| --- | --- | --- |
-| Auth | `/auth` | 회원가입과 로그인 |
-| Admin Users | `/admin/users` | 관리자 사용자 승인 |
-| Users | `/users` | 관리자 사용자 관리 |
-| Departments | `/departments` | 부서 관리 |
-| Patents | `/patents` | 특허 관리와 담당 부서 변경 |
-| Patent Extract Jobs | `/patent-extract-jobs` | 특허 원문 PDF 업로드와 AI 추출 작업 |
-| Patent Legal Status | `/patents/{patentId}/legal-status` | 권리 상태 이력 관리 |
-| Patent Annuities | `/patents/{patentId}/annuities` | 연차료 납부 이력 관리 |
-| Review Cycles | `/review-cycles` | 검토 주기 관리 |
-| Reviews | `/reviews`, `/patents/{patentId}/reviews` | Legal 팀 검토 요청과 현황 조회 |
-| Business Reviews | `/assigned-patents` | 사업부 검토 현황과 의견 제출 |
-| Reports | `/patents/{patentId}/reports` | 평가 보고서 관리 |
-| Dashboard | `/dashboard` | Legal 팀 대시보드 |
+- API 경로, 요청/응답 DTO, 권한 정책이 변경되면 `api-spec.md`를 함께 갱신합니다.
+- README는 시스템 개요, 구조, 실행 방법 중심으로 유지하고, `api-spec.md`는 엔드포인트 상세 계약 문서로 관리합니다.
+- 권한 정책 설명은 컨트롤러의 `@PreAuthorize`와 서비스 계층의 검증 로직을 기준으로 작성합니다.
 
-Swagger UI는 서버 실행 후 `http://localhost:8080/swagger-ui/index.html`에서 확인할 수 있습니다.
-OpenAPI JSON은 `http://localhost:8080/v3/api-docs`에서 제공됩니다.
+## 테스트 및 검증 원칙
 
-## Getting Started
-
-### 1. 환경 변수 준비
-
-루트 디렉터리의 `.env.example`을 참고하여 `.env` 파일을 생성합니다. `JWT_SECRET`은 Base64 인코딩된 32 byte 이상의 랜덤 키를 사용합니다. `INTERNAL_API_KEY`는 AI Worker가 백엔드 내부 API를 호출할 때 사용하는 공유 secret입니다.
-
-```properties
-JWT_SECRET=your-base64-encoded-secret
-INTERNAL_API_KEY=your-internal-api-key
-SPRING_PROFILES_ACTIVE=local
-LOCAL_SEED_PASSWORD=1234
-```
-
-### 2. 로컬 실행
-
-`local` profile은 Redis, RabbitMQ, MinIO 없이 실행하는 것을 기본으로 합니다. 로컬에서 보고서 생성 요청과 특허 추출 업로드 URL 발급은 외부 연동 없이 동작하며, 실제 AI Worker/MinIO 연동 검증은 배포 또는 별도 연동 환경에서 확인합니다.
-
-처음 한 번, 또는 로컬 DB 파일을 삭제한 뒤 다시 시작할 때 파일 DB를 생성합니다.
-
-```bash
-./gradlew h2CreateLocalDb
-```
-
-H2 TCP 서버를 실행합니다.
-
-```bash
-./gradlew h2Server
-```
-
-다른 터미널에서 애플리케이션을 실행합니다.
-
-```bash
-./gradlew bootRun
-```
-
-H2 웹 콘솔은 `http://localhost:8082`에서 접속할 수 있습니다.
-
-| 항목 | 값 |
+| 항목 | 내용 |
 | --- | --- |
-| JDBC URL | `jdbc:h2:tcp://localhost/~/skipa` |
-| 사용자명 | `sa` |
-| 비밀번호 | 빈 값 |
+| 자동 테스트 | `./gradlew test`로 전체 테스트 실행 |
+| 수동 검증 | Swagger 기반으로 인증, 권한, 요청/응답 계약 확인 |
+| 통합 검증 | 필요 시 H2, MinIO, RabbitMQ, AI 서버 연계 확인 |
 
-#### IntelliJ IDEA 실행 설정
+## 개발 도구 참고
 
-IntelliJ를 사용하는 경우에는 다음과 같이 세 개의 Run Configuration을 만들 수 있습니다.
+IntelliJ IDEA에서는 `H2 Create DB`, `H2 Server`, `SkipaBackendApplication (local)` 형태로 실행 구성을 분리하는 방식을 권장합니다.
 
-| Name | Type / Main class | Program arguments / Settings |
-| --- | --- | --- |
-| `H2 Create DB` | Application / `org.h2.tools.Shell` | `-url jdbc:h2:file:~/skipa -user sa -password "" -sql "SELECT 1;"` |
-| `H2 Server (tcp)` | Application / `org.h2.tools.Server` | `-tcp -tcpPort 9092 -web -webPort 8082` |
-| `SkipaBackendApplication (local)` | Spring Boot / `com.skipers.skipa.SkipaBackendApplication` | Working directory: project root |
-
-애플리케이션은 project root의 `.env`를 직접 불러옵니다. IDE에서 별도로 active profile이나 환경 변수 파일을 등록할 필요는 없습니다.
-
-### 3. 배포 환경 실행
+## 배포 실행 예시
 
 ```bash
 java -jar build/libs/skipa-backend.jar --spring.profiles.active=prod
 ```
 
-배포 환경에서는 아래 환경 변수를 설정해야 합니다.
-
-```text
-DB_HOST=<host>
-DB_PORT=5432
-DB_NAME=<database>
-DB_USERNAME=<username>
-DB_PASSWORD=<password>
-
-REDIS_HOST=<host>
-REDIS_PORT=6379
-REDIS_PASSWORD=<password>
-
-RABBITMQ_HOST=<host>
-RABBITMQ_PORT=5672
-RABBITMQ_USERNAME=<username>
-RABBITMQ_PASSWORD=<password>
-REPORT_EXCHANGE=skipa.report.exchange
-REPORT_GENERATE_QUEUE=skipa.report.generate
-REPORT_GENERATE_ROUTING_KEY=report.generate
-
-MINIO_ENDPOINT=<endpoint>
-MINIO_ACCESS_KEY=<access-key>
-MINIO_SECRET_KEY=<secret-key>
-MINIO_BUCKET=skipa
-MINIO_REGION=us-east-1
-MINIO_PRESIGNED_URL_EXPIRY_SECONDS=600
-
-INTERNAL_API_KEY=<shared-secret-for-ai-worker>
-```
-
-### 4. 테스트 실행
-
-```bash
-./gradlew test
-```
+운영 환경에서는 데이터베이스, Redis, RabbitMQ, MinIO, 내부 API 키 구성이 선행되어야 합니다.
 
 ## Convention
 
