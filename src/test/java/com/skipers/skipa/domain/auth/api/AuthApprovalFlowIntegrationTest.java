@@ -1755,6 +1755,7 @@ class AuthApprovalFlowIntegrationTest {
                 .applicationNumber("APP-REVIEW-FIRST")
                 .techField("Battery")
                 .businessField("Energy")
+                .initialDepartment("Initial Review Department")
                 .currentDepartment(department)
                 .build());
         Patent secondPatent = patentRepository.save(Patent.builder()
@@ -1766,7 +1767,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         Review firstReview = reviewRepository.save(Review.builder()
                 .patent(firstPatent)
-                .department(department)
+                .department(otherDepartment)
                 .reviewCycle(reviewCycle)
                 .build());
         Review secondReview = reviewRepository.save(Review.builder()
@@ -1790,6 +1791,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(firstReview.getId()))
                 .andExpect(jsonPath("$.data.items[0].techField").value("Battery"))
                 .andExpect(jsonPath("$.data.items[0].businessField").value("Energy"))
+                .andExpect(jsonPath("$.data.items[0].departmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.items[0].departmentName").value(department.getName()))
                 .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
 
         mockMvc.perform(get("/api/v1/review-targets")
