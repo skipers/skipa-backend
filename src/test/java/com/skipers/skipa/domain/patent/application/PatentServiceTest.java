@@ -148,18 +148,15 @@ class PatentServiceTest {
     }
 
     @Test
-    void createByBusinessUserCreatesPendingApprovalPatent() {
+    void createByBusinessUserIsForbidden() {
         Department department = department("Business", 1L);
-        when(patentRepository.save(any(Patent.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        PatentDetailResponse response = patentService.create(businessUser(department), createRequest("Patent", "APP-1"));
+        assertPatentError(
+                () -> patentService.create(businessUser(department), createRequest("Patent", "APP-1")),
+                ErrorCode.FORBIDDEN
+        );
 
-        assertThat(response.approvalStatus()).isEqualTo("PENDING_APPROVAL");
-        assertThat(response.currentDepartmentId()).isEqualTo(1L);
-        verify(patentRepository).save(org.mockito.ArgumentMatchers.argThat(saved ->
-                saved.getApprovalStatus().name().equals("PENDING_APPROVAL")
-                        && saved.getCurrentDepartment().getId().equals(1L)
-        ));
+        verify(patentRepository, never()).save(any(Patent.class));
     }
 
     @Test
@@ -833,42 +830,6 @@ class PatentServiceTest {
 
         assertThat(response.title()).isEqualTo("Updated Title");
         verify(patentRepository, never()).existsByApplicationNumber(any());
-    }
-
-    @Test
-    void approveChangesPendingApprovalPatentToApproved() {
-        Patent patent = patent(
-                1L,
-                "Pending Patent",
-                "APP-PENDING",
-                null,
-                null,
-                null,
-                null,
-                PatentApprovalStatus.PENDING_APPROVAL
-        );
-        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
-
-        PatentDetailResponse response = patentService.approve(1L);
-
-        assertThat(response.approvalStatus()).isEqualTo("APPROVED");
-        assertThat(patent.getApprovalStatus()).isEqualTo(PatentApprovalStatus.APPROVED);
-    }
-
-    @Test
-    void approveRejectsAlreadyApprovedPatent() {
-        Patent patent = patent(
-                1L,
-                "Approved Patent",
-                "APP-APPROVED",
-                null,
-                null,
-                null,
-                null
-        );
-        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
-
-        assertPatentError(() -> patentService.approve(1L), ErrorCode.PATENT_APPROVAL_NOT_PENDING);
     }
 
     @Test

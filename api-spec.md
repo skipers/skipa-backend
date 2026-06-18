@@ -318,10 +318,9 @@
 | 승인 대기 특허 목록 조회 | `GET` | `/api/v1/patents/pending-approval` | 사업부 등록 요청 중 승인 대기 특허 목록 조회 | `ADMIN`, `LEGAL` |
 | 특허 등록 신청 목록 조회 | `GET` | `/api/v1/patents/applications` | 등록 신청 목록 조회. BUSINESS는 본인 부서 신청만 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 특허 단일 조회 | `GET` | `/api/v1/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 등록 | `POST` | `/api/v1/patents` | `ADMIN`/`LEGAL`은 즉시 등록, `BUSINESS`는 승인 대기 등록 요청 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 등록 | `POST` | `/api/v1/patents` | `ADMIN`과 `LEGAL`이 특허를 즉시 등록 | `ADMIN`, `LEGAL` |
 | 특허 수정 | `PUT` | `/api/v1/patents/{patentId}` | 특허 정보 수정 | `ADMIN`, `LEGAL` |
 | 담당 부서 변경 | `PATCH` | `/api/v1/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
-| 특허 등록 신청 승인 | `PATCH` | `/api/v1/patents/{patentId}/approve` | 승인 대기 특허 등록 신청 승인 | `ADMIN`, `LEGAL` |
 | 특허 등록 신청 거절 | `PATCH` | `/api/v1/patents/{patentId}/reject` | 승인 대기 특허 등록 신청 거절 | `ADMIN`, `LEGAL` |
 | 특허 등록 신청 철회 | `PATCH` | `/api/v1/patents/{patentId}/withdraw` | BUSINESS 사용자가 본인 부서의 승인 대기 신청 철회 | `BUSINESS` |
 | 특허 삭제 | `DELETE` | `/api/v1/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
@@ -735,35 +734,6 @@
 
 ---
 
-#### `PATCH /api/v1/patents/{patentId}/approve`
-
-**헤더**: `Authorization: Bearer {accessToken}`
-
-**권한**: `ADMIN`, `LEGAL`
-
-승인 대기 특허 등록 신청을 승인합니다. 요청 Body 없음.
-
-**응답**: `GET /api/v1/patents/{patentId}`와 동일한 `PatentDetailResponse`
-
-**응답 예시**
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 42,
-    "title": "반도체 패키지 구조",
-    "applicationNumber": "10-2026-0000000",
-    "approvalStatus": "APPROVED",
-    "rejectionReason": null
-  }
-}
-```
-
-**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `INVALID_REQUEST`(400 — 승인 대기 상태가 아님)
-
----
-
 #### `PATCH /api/v1/patents/{patentId}/reject`
 
 **헤더**: `Authorization: Bearer {accessToken}`
@@ -935,7 +905,7 @@
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
-`ADMIN`과 `LEGAL` 사용자가 생성한 특허는 `APPROVED`로 즉시 저장되고, `BUSINESS` 사용자가 생성한 특허는 `PENDING_APPROVAL`로 저장됩니다.
+`ADMIN`과 `LEGAL` 사용자가 생성한 특허는 `APPROVED`로 즉시 저장됩니다.
 
 **요청**
 
