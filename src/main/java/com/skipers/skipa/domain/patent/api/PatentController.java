@@ -7,6 +7,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
+import com.skipers.skipa.domain.patent.dto.response.PatentOriginalPdfUrlResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentSummaryResponse;
 import com.skipers.skipa.global.response.ApiResponse;
 import com.skipers.skipa.global.response.PageResponse;
@@ -90,6 +91,16 @@ public class PatentController {
             @PathVariable Long patentId
     ) {
         return ApiResponse.ok(patentService.get(userDetails.getUser(), patentId));
+    }
+
+    @Operation(summary = "[Common] 특허 원문 PDF 접근 URL 발급", description = "특허 원문 PDF 조회용 presigned URL을 발급합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @GetMapping("/{patentId}/original-pdf-url")
+    public ApiResponse<PatentOriginalPdfUrlResponse> getOriginalPdfUrl(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long patentId
+    ) {
+        return ApiResponse.ok(patentService.getOriginalPdfUrl(userDetails.getUser(), patentId));
     }
 
     @Operation(

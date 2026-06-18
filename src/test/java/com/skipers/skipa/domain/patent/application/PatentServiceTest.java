@@ -16,6 +16,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentDepartmentChangeRequest
 import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
+import com.skipers.skipa.domain.patent.dto.response.PatentOriginalPdfUrlResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
 import com.skipers.skipa.domain.patentextract.domain.PatentExtractJob;
@@ -305,6 +306,49 @@ class PatentServiceTest {
         assertThat(response.latestLegalStatus()).isEqualTo("REGISTERED");
         assertThat(response.latestReportScore()).isNull();
         verify(reportRepository, never()).findFirstByPatentIdAndStatusInOrderByIdDesc(any(), any());
+    }
+
+    @Test
+    void getOriginalPdfUrlReturnsPresignedUrl() {
+        Patent patent = patent(
+                1L,
+                "Patent",
+                "APP-PDF",
+                "반도체",
+                "KR",
+                LocalDate.now().plusYears(1),
+                department("통신", 1L)
+        );
+        ReflectionTestUtils.setField(patent, "originalPdfKey", "patents/1/original.pdf");
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+        when(patentOriginalPdfStorageService.generatePresignedUrl("patents/1/original.pdf"))
+                .thenReturn("https://example.com/presigned.pdf");
+
+        PatentOriginalPdfUrlResponse response = patentService.getOriginalPdfUrl(legalUser(), 1L);
+
+        assertThat(response.patentId()).isEqualTo(1L);
+        assertThat(response.originalPdfKey()).isEqualTo("patents/1/original.pdf");
+        assertThat(response.url()).isEqualTo("https://example.com/presigned.pdf");
+    }
+
+    @Test
+    void getOriginalPdfUrlRejectsPatentWithoutOriginalPdfKey() {
+        Patent patent = patent(
+                1L,
+                "Patent",
+                "APP-NO-PDF",
+                "반도체",
+                "KR",
+                LocalDate.now().plusYears(1),
+                department("통신", 1L)
+        );
+        when(patentRepository.findById(1L)).thenReturn(Optional.of(patent));
+
+        assertPatentError(
+                () -> patentService.getOriginalPdfUrl(legalUser(), 1L),
+                ErrorCode.PATENT_DOCUMENT_NOT_FOUND
+        );
+        verify(patentOriginalPdfStorageService, never()).generatePresignedUrl(any());
     }
 
     @Test

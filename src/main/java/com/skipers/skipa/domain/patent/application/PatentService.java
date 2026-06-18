@@ -16,6 +16,7 @@ import com.skipers.skipa.domain.patent.dto.request.PatentRejectRequest;
 import com.skipers.skipa.domain.patent.dto.request.PatentUpdateRequest;
 import com.skipers.skipa.domain.patent.dto.response.PatentDetailResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentListResponse;
+import com.skipers.skipa.domain.patent.dto.response.PatentOriginalPdfUrlResponse;
 import com.skipers.skipa.domain.patent.dto.response.PatentSummaryResponse;
 import com.skipers.skipa.domain.patent.exception.PatentException;
 import com.skipers.skipa.domain.patentextract.dao.PatentExtractJobRepository;
@@ -191,6 +192,20 @@ public class PatentService {
                 .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
 
         return toDetailResponse(patent);
+    }
+
+    public PatentOriginalPdfUrlResponse getOriginalPdfUrl(User user, Long patentId) {
+        Patent patent = patentRepository.findById(patentId)
+                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
+        validateReadablePatent(user, patent);
+
+        String originalPdfKey = patent.getOriginalPdfKey();
+        if (originalPdfKey == null || originalPdfKey.isBlank()) {
+            throw new PatentException(ErrorCode.PATENT_DOCUMENT_NOT_FOUND);
+        }
+
+        String url = patentOriginalPdfStorageService.generatePresignedUrl(originalPdfKey);
+        return new PatentOriginalPdfUrlResponse(patent.getId(), originalPdfKey, url);
     }
 
     public Page<PatentListResponse> getAll(User user, String keyword, Pageable pageable) {
