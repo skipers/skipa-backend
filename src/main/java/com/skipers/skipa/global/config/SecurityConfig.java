@@ -34,6 +34,7 @@ public class SecurityConfig {
             "/swagger-ui.html",
             "/v3/api-docs/**",
             "/h2-console/**",
+            "/actuator/prometheus",
             WebConfig.API_PREFIX + "/auth/login",
             WebConfig.API_PREFIX + "/auth/refresh",
             WebConfig.API_PREFIX + "/auth/register",
