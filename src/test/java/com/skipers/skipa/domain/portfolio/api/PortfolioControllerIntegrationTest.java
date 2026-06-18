@@ -284,7 +284,7 @@ class PortfolioControllerIntegrationTest {
     }
 
     @Test
-    void portfolioDistributionLimitsTechFieldAndDepartmentToTopFourPlusOthers() throws Exception {
+    void portfolioDistributionLimitsTechFieldAndDepartmentToTopFivePlusOthers() throws Exception {
         saveDistributionPatents("AI", 6);
         saveDistributionPatents("Cloud", 5);
         saveDistributionPatents("Display", 4);
@@ -295,7 +295,7 @@ class PortfolioControllerIntegrationTest {
         mockMvc.perform(get("/api/v1/portfolio/distribution")
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.byTechField.length()").value(5))
+                .andExpect(jsonPath("$.data.byTechField.length()").value(6))
                 .andExpect(jsonPath("$.data.byTechField[0].name").value("AI"))
                 .andExpect(jsonPath("$.data.byTechField[0].count").value(6))
                 .andExpect(jsonPath("$.data.byTechField[1].name").value("Cloud"))
@@ -304,9 +304,11 @@ class PortfolioControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.byTechField[2].count").value(4))
                 .andExpect(jsonPath("$.data.byTechField[3].name").value("Energy"))
                 .andExpect(jsonPath("$.data.byTechField[3].count").value(3))
-                .andExpect(jsonPath("$.data.byTechField[4].name").value("기타"))
-                .andExpect(jsonPath("$.data.byTechField[4].count").value(6))
-                .andExpect(jsonPath("$.data.byDepartment.length()").value(5))
+                .andExpect(jsonPath("$.data.byTechField[4].name").value("Factory"))
+                .andExpect(jsonPath("$.data.byTechField[4].count").value(2))
+                .andExpect(jsonPath("$.data.byTechField[5].name").value("기타"))
+                .andExpect(jsonPath("$.data.byTechField[5].count").value(4))
+                .andExpect(jsonPath("$.data.byDepartment.length()").value(6))
                 .andExpect(jsonPath("$.data.byDepartment[0].departmentName").value("AI 사업부"))
                 .andExpect(jsonPath("$.data.byDepartment[0].count").value(6))
                 .andExpect(jsonPath("$.data.byDepartment[1].departmentName").value("Cloud 사업부"))
@@ -315,9 +317,11 @@ class PortfolioControllerIntegrationTest {
                 .andExpect(jsonPath("$.data.byDepartment[2].count").value(4))
                 .andExpect(jsonPath("$.data.byDepartment[3].departmentName").value("Energy 사업부"))
                 .andExpect(jsonPath("$.data.byDepartment[3].count").value(3))
-                .andExpect(jsonPath("$.data.byDepartment[4].departmentId").value(nullValue()))
-                .andExpect(jsonPath("$.data.byDepartment[4].departmentName").value("기타"))
-                .andExpect(jsonPath("$.data.byDepartment[4].count").value(6));
+                .andExpect(jsonPath("$.data.byDepartment[4].departmentName").value("Factory 사업부"))
+                .andExpect(jsonPath("$.data.byDepartment[4].count").value(2))
+                .andExpect(jsonPath("$.data.byDepartment[5].departmentId").value(nullValue()))
+                .andExpect(jsonPath("$.data.byDepartment[5].departmentName").value("기타"))
+                .andExpect(jsonPath("$.data.byDepartment[5].count").value(4));
     }
 
     @Test
