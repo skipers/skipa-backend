@@ -220,7 +220,10 @@ public class PortfolioService {
 
     private List<PortfolioDistributionResponse.CountryCount> countryCounts(Map<String, Long> counts) {
         return counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
+                .sorted(Comparator.comparingInt((Map.Entry<String, Long> entry) ->
+                                distributionGroupRank(entry.getKey()))
+                        .thenComparing(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+                        .thenComparing(Map.Entry.comparingByKey()))
                 .map(entry -> new PortfolioDistributionResponse.CountryCount(entry.getKey(), entry.getValue()))
                 .toList();
     }
