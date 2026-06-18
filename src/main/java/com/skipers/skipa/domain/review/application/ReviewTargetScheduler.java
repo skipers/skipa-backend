@@ -10,7 +10,7 @@ public class ReviewTargetScheduler {
 
     private final ReviewTargetSchedulingService reviewTargetSchedulingService;
 
-    @Scheduled(cron = "0 */10 * * * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 */5 * * * *", zone = "Asia/Seoul")
     public void scheduleNextQuarterReviewTargets() {
         reviewTargetSchedulingService.scheduleNextQuarterReviewTargets();
     }
