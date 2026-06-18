@@ -1895,6 +1895,55 @@ class AuthApprovalFlowIntegrationTest {
     }
 
     @Test
+    void legalUserCanFilterReviewTargetsByOpinion() throws Exception {
+        Patent maintainPatent = patentRepository.save(Patent.builder()
+                .title("Maintain Review Patent")
+                .applicationNumber("APP-REV-OP-M")
+                .currentDepartment(department)
+                .build());
+        Patent abandonPatent = patentRepository.save(Patent.builder()
+                .title("Abandon Review Patent")
+                .applicationNumber("APP-REV-OP-A")
+                .currentDepartment(department)
+                .build());
+        Review maintainReview = reviewRepository.save(Review.builder()
+                .patent(maintainPatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.MAINTAIN)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now())
+                .build());
+        Review abandonReview = reviewRepository.save(Review.builder()
+                .patent(abandonPatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.ABANDON)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now())
+                .build());
+        String legalToken = createActiveUserToken("legal-review-opinion", "legal-review-opinion@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(get("/api/v1/review-targets")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("opinion", "ABANDON"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(abandonReview.getId()))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("ABANDON"));
+
+        mockMvc.perform(get("/api/v1/review-targets")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("opinion", "MAINTAIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(maintainReview.getId()))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"));
+    }
+
+    @Test
     void adminCanReadOperationalData() throws Exception {
         String adminToken = loginAndGetAccessToken("admin", "admin-password");
         Patent patent = patentRepository.save(Patent.builder()

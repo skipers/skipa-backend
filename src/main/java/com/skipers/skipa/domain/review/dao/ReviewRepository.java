@@ -83,6 +83,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             from Review review
             where review.reviewCycle.id = :reviewCycleId
               and (:status is null or review.status = :status)
+              and (:opinion is null or review.opinion = :opinion)
               and (:departmentId is null or review.department.id = :departmentId)
               and (:patentId is null or review.patent.id = :patentId)
               and (:checked is null or review.checked = :checked)
@@ -90,6 +91,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Page<Review> findAllByFilters(
             @Param("reviewCycleId") Long reviewCycleId,
             @Param("status") ReviewStatus status,
+            @Param("opinion") BusinessOpinion opinion,
             @Param("departmentId") Long departmentId,
             @Param("patentId") Long patentId,
             @Param("checked") Boolean checked,

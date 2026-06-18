@@ -160,6 +160,7 @@ public class ReviewService {
 
     public Page<ReviewResponse> getAll(
             String status,
+            String opinion,
             Long departmentId,
             Long patentId,
             Boolean checked,
@@ -167,6 +168,7 @@ public class ReviewService {
             Pageable pageable
     ) {
         ReviewStatus parsedStatus = parseStatus(status);
+        BusinessOpinion parsedOpinion = parseOpinion(opinion);
         ReviewCycle reviewCycle = getActiveReviewCycle();
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
@@ -177,6 +179,7 @@ public class ReviewService {
         return reviewRepository.findAllByFilters(
                         reviewCycle.getId(),
                         parsedStatus,
+                        parsedOpinion,
                         departmentId,
                         patentId,
                         checked,
@@ -211,6 +214,18 @@ public class ReviewService {
 
         try {
             return ReviewStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new ReviewException(ErrorCode.INVALID_REQUEST);
+        }
+    }
+
+    private BusinessOpinion parseOpinion(String opinion) {
+        if (opinion == null) {
+            return null;
+        }
+
+        try {
+            return BusinessOpinion.valueOf(opinion);
         } catch (IllegalArgumentException e) {
             throw new ReviewException(ErrorCode.INVALID_REQUEST);
         }

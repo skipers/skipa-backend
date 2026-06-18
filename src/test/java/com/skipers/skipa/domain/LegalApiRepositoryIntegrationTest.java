@@ -86,6 +86,7 @@ class LegalApiRepositoryIntegrationTest {
         Page<Review> result = reviewRepository.findAllByFilters(
                 reviewCycle.getId(),
                 ReviewStatus.SUBMITTED,
+                BusinessOpinion.MAINTAIN,
                 department.getId(),
                 patent.getId(),
                 true,

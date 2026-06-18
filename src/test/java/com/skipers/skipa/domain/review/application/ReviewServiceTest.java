@@ -344,13 +344,13 @@ class ReviewServiceTest {
         Review review = review();
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(reviewCycle));
-        when(reviewRepository.findAllByFilters(1L, ReviewStatus.PENDING, 1L, 10L, false, sortedPageable))
+        when(reviewRepository.findAllByFilters(1L, ReviewStatus.PENDING, null, 1L, 10L, false, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll("PENDING", 1L, 10L, false, null, pageable).getContent())
+        assertThat(reviewService.getAll("PENDING", null, 1L, 10L, false, null, pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
-        verify(reviewRepository).findAllByFilters(1L, ReviewStatus.PENDING, 1L, 10L, false, sortedPageable);
+        verify(reviewRepository).findAllByFilters(1L, ReviewStatus.PENDING, null, 1L, 10L, false, sortedPageable);
     }
 
     @Test
@@ -365,23 +365,23 @@ class ReviewServiceTest {
         Review review = review();
         when(reviewCycleRepository.findFirstByStartDateLessThanEqualAndEndDateGreaterThanEqualOrderByStartDateDesc(any(), any()))
                 .thenReturn(Optional.of(reviewCycle));
-        when(reviewRepository.findAllByFilters(1L, null, null, null, null, sortedPageable))
+        when(reviewRepository.findAllByFilters(1L, null, null, null, null, null, sortedPageable))
                 .thenReturn(new PageImpl<>(List.of(review), sortedPageable, 1));
 
-        assertThat(reviewService.getAll(null, null, null, null, "title,asc", pageable).getContent())
+        assertThat(reviewService.getAll(null, null, null, null, null, "title,asc", pageable).getContent())
                 .extracting(ReviewResponse::id)
                 .containsExactly(100L);
-        verify(reviewRepository).findAllByFilters(1L, null, null, null, null, sortedPageable);
+        verify(reviewRepository).findAllByFilters(1L, null, null, null, null, null, sortedPageable);
     }
 
     @Test
     void getAllRejectsInvalidStatus() {
         assertError(
-                () -> reviewService.getAll("대기", null, null, null, null, PageRequest.of(0, 20)),
+                () -> reviewService.getAll("대기", null, null, null, null, null, PageRequest.of(0, 20)),
                 ReviewException.class,
                 ErrorCode.INVALID_REQUEST
         );
-        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any(), any(), any());
+        verify(reviewRepository, never()).findAllByFilters(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

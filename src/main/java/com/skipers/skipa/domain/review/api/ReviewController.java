@@ -63,6 +63,7 @@ public class ReviewController {
      * 이번 분기 검토 대상 특허 목록을 조회한다(page/size 기반).
      *
      * @param status 제출 상태(선택)
+     * @param opinion 사업부 의견(선택)
      * @param departmentId 부서 ID(선택)
      * @param patentId 특허 ID(선택)
      * @param checked 회신 확인 여부(선택)
@@ -73,7 +74,7 @@ public class ReviewController {
     @Operation(
             summary = "[Legal] 이번 분기 검토 대상 특허 목록 조회",
             description = "관리자와 Legal 팀이 현재 활성 검토 주기에 포함된 검토 대상 특허 목록을 조회합니다. "
-                    + "필터: status(SCHEDULED, PENDING, OVERDUE, SUBMITTED), departmentId, patentId, checked(true/false). "
+                    + "필터: status(SCHEDULED, PENDING, OVERDUE, SUBMITTED), opinion(MAINTAIN, ABANDON), departmentId, patentId, checked(true/false). "
                     + "정렬: sort=title,asc|desc, applicationNumber,asc|desc, applicationDate,asc|desc, expiryDate,asc|desc, citationCount,asc|desc. "
                     + "미지정 시 출원번호 오름차순(applicationNumber ASC)입니다."
     )
@@ -81,6 +82,7 @@ public class ReviewController {
     @GetMapping("/review-targets")
     public ApiResponse<PageResponse<ReviewResponse>> getAll(
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String opinion,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long patentId,
             @RequestParam(required = false) Boolean checked,
@@ -89,6 +91,7 @@ public class ReviewController {
     ) {
         return ApiResponse.ok(PageResponse.from(reviewService.getAll(
                 status,
+                opinion,
                 departmentId,
                 patentId,
                 checked,
