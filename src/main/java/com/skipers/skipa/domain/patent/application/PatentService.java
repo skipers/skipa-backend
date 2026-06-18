@@ -67,6 +67,10 @@ public class PatentService {
 
     @Transactional
     public PatentDetailResponse create(User user, PatentCreateRequest request) {
+        if (user.getRole() == UserRole.BUSINESS) {
+            throw new PatentException(ErrorCode.FORBIDDEN);
+        }
+
         String applicationNumber = request.applicationNumber();
 
         if (patentRepository.existsByApplicationNumber(applicationNumber)) {
@@ -94,8 +98,8 @@ public class PatentService {
                 .citationCount(request.citationCount())
                 .examinationClaimCount(request.examinationClaimCount())
                 .originalPdfKey(originalPdfKey)
-                .approvalStatus(initialApprovalStatus(user))
-                .currentDepartment(initialDepartment(user))
+                .approvalStatus(PatentApprovalStatus.APPROVED)
+                .currentDepartment(null)
                 .managementNumber(request.managementNumber())
                 .businessField(request.businessField())
                 .techField(request.techField())
@@ -111,21 +115,6 @@ public class PatentService {
         if (extractJob != null) {
             assignExtractedStorageKeys(patent, extractJob);
         }
-
-        portfolioInsightCacheInvalidator.evict();
-        return toDetailResponse(patent);
-    }
-
-    @Transactional
-    public PatentDetailResponse approve(Long patentId) {
-        Patent patent = patentRepository.findById(patentId)
-                .orElseThrow(() -> new PatentException(ErrorCode.PATENT_NOT_FOUND));
-
-        if (patent.getApprovalStatus() != PatentApprovalStatus.PENDING_APPROVAL) {
-            throw new PatentException(ErrorCode.PATENT_APPROVAL_NOT_PENDING);
-        }
-
-        patent.approve();
 
         portfolioInsightCacheInvalidator.evict();
         return toDetailResponse(patent);
@@ -652,16 +641,6 @@ public class PatentService {
         }
 
         return extractJob;
-    }
-
-    private PatentApprovalStatus initialApprovalStatus(User user) {
-        return user.getRole() == UserRole.BUSINESS
-                ? PatentApprovalStatus.PENDING_APPROVAL
-                : PatentApprovalStatus.APPROVED;
-    }
-
-    private Department initialDepartment(User user) {
-        return user.getRole() == UserRole.BUSINESS ? user.getDepartment() : null;
     }
 
     private void assignExtractedStorageKeys(Patent patent, PatentExtractJob extractJob) {

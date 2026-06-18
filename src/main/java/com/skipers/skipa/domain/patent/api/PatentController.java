@@ -47,8 +47,8 @@ public class PatentController {
      * @param request 생성 요청
      * @return 생성된 특허
      */
-    @Operation(summary = "[Common] 특허 생성/등록 요청", description = "LEGAL 사용자는 특허를 즉시 등록하고, BUSINESS 사용자는 승인 대기 상태로 등록 요청합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL', 'BUSINESS')")
+    @Operation(summary = "[Legal] 특허 생성", description = "관리자와 Legal 팀이 특허를 즉시 등록합니다.")
+    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
     @PostMapping
     public ResponseEntity<ApiResponse<PatentDetailResponse>> create(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -253,13 +253,6 @@ public class PatentController {
             @Valid @RequestBody PatentDepartmentChangeRequest request
     ) {
         return ApiResponse.ok(patentService.changeDepartment(patentId, request));
-    }
-
-    @Operation(summary = "[Legal] 특허 승인", description = "승인 대기 상태의 특허를 승인합니다.")
-    @PreAuthorize("hasAnyRole('ADMIN', 'LEGAL')")
-    @PatchMapping("/{patentId}/approve")
-    public ApiResponse<PatentDetailResponse> approve(@PathVariable Long patentId) {
-        return ApiResponse.ok(patentService.approve(patentId));
     }
 
     @Operation(summary = "[Legal] 특허 등록 신청 거절", description = "승인 대기 상태의 특허 등록 신청을 거절하고 거절 사유를 저장합니다.")

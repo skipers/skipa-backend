@@ -1,13 +1,13 @@
 # API 명세서
 
-변경 날짜: 2026-06-10
+변경 날짜: 2026-06-18
 
 ## 기본 정보
 
 | 항목 | 내용 |
 | --- | --- |
 | Base URL | `https://api.skipa.internal` |
-| URL 버전 prefix | 없음 |
+| URL 버전 prefix | `/api/v1` |
 | 인증 방식 | JWT Bearer Token (`Authorization: Bearer <token>`) |
 | 내부 API 인증 방식 | Internal API Key (`X-Internal-Api-Key: <secret>`) |
 | 토큰 발급 | `POST /api/v1/auth/login` |
@@ -50,6 +50,7 @@
 | 404 | `NOT_FOUND` | 리소스 없음 |
 | 409 | `CONFLICT` | 중복 또는 상태 충돌 |
 | 502 | `EXTERNAL_SERVICE_ERROR` | 외부 시스템 연동 실패 |
+| 500 | `AI_SERVER_ERROR` | AI 서버 연동 실패 |
 | 500 | `INTERNAL_ERROR` | 서버 내부 오류 |
 
 ## 역할
@@ -120,7 +121,6 @@
 | --- | --- | --- |
 | accessToken | string | 유효기간 10분. 만료 시 `/api/v1/auth/refresh` 호출 |
 | refreshToken | string | 유효기간 7일 |
-| user.id | long | 사용자 DB ID |
 | user.loginId | string | 로그인 ID |
 | user.role | string | `ADMIN` / `LEGAL` / `BUSINESS` |
 | user.departmentId | long | 소속 부서 ID. `BUSINESS`만 해당, 나머지 `null` |
@@ -147,8 +147,8 @@
 
 | HTTP | code | 설명 |
 | --- | --- | --- |
-| 401 | `UNAUTHORIZED` | 아이디 또는 비밀번호 불일치 |
-| 403 | `FORBIDDEN` | 미승인 계정 (`status = PENDING`) |
+| 401 | `INVALID_LOGIN_REQUEST` | 아이디 또는 비밀번호 불일치 |
+| 403 | `PENDING_USER` | 미승인 계정 (`status = PENDING`) |
 
 ---
 
@@ -267,6 +267,7 @@
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
+| keyword | string | N | 부서명 부분 검색 |
 | page | integer | N | 페이지 번호 (기본값 0) |
 | size | integer | N | 페이지 크기 (기본값 50) |
 
@@ -276,7 +277,9 @@
 | --- | --- | --- |
 | id | long | 부서 ID |
 | name | string | 부서명 |
-| status | string | `ACTIVE` / `INACTIVE` |
+| status | string | 부서 상태. `ACTIVE` / `INACTIVE` |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -315,10 +318,9 @@
 | 승인 대기 특허 목록 조회 | `GET` | `/api/v1/patents/pending-approval` | 사업부 등록 요청 중 승인 대기 특허 목록 조회 | `ADMIN`, `LEGAL` |
 | 특허 등록 신청 목록 조회 | `GET` | `/api/v1/patents/applications` | 등록 신청 목록 조회. BUSINESS는 본인 부서 신청만 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 특허 단일 조회 | `GET` | `/api/v1/patents/{patentId}` | 특허 상세 정보 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 특허 등록 | `POST` | `/api/v1/patents` | 특허 정보 수동 등록 또는 등록 요청 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 특허 등록 | `POST` | `/api/v1/patents` | `ADMIN`과 `LEGAL`이 특허를 즉시 등록 | `ADMIN`, `LEGAL` |
 | 특허 수정 | `PUT` | `/api/v1/patents/{patentId}` | 특허 정보 수정 | `ADMIN`, `LEGAL` |
 | 담당 부서 변경 | `PATCH` | `/api/v1/patents/{patentId}/department` | 현재 담당 부서를 활성 부서로 변경 | `ADMIN`, `LEGAL` |
-| 특허 등록 신청 승인 | `PATCH` | `/api/v1/patents/{patentId}/approve` | 승인 대기 특허 등록 신청 승인 | `ADMIN`, `LEGAL` |
 | 특허 등록 신청 거절 | `PATCH` | `/api/v1/patents/{patentId}/reject` | 승인 대기 특허 등록 신청 거절 | `ADMIN`, `LEGAL` |
 | 특허 등록 신청 철회 | `PATCH` | `/api/v1/patents/{patentId}/withdraw` | BUSINESS 사용자가 본인 부서의 승인 대기 신청 철회 | `BUSINESS` |
 | 특허 삭제 | `DELETE` | `/api/v1/patents/{patentId}` | 특허와 권리 상태, 연차료, 검토, 보고서 삭제 | `ADMIN`, `LEGAL` |
@@ -336,13 +338,13 @@
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| keyword | string | N | 특허명 키워드 검색 |
-| status | string (복수) | N | 권리 상태 필터. `PUBLISHED` / `REGISTERED` / `REJECTED` / `ABANDONED` / `EXPIRED` / `INVALIDATED` / `WITHDRAWN`. 복수 지정 가능 (`?status=EXPIRED&status=ABANDONED`) |
-| filingCountry | string | N | 출원국 코드. `KR` / `US` / `EP` / `JP` / `CN` |
+| keyword | string | N | 특허명, 출원번호, 발명자, 출원인 검색 |
+| status | string (복수) | N | 권리 상태 필터. `APPLIED` / `PUBLISHED` / `REGISTERED` / `REJECTED` / `ABANDONED` / `EXPIRED` / `INVALIDATED` / `WITHDRAWN`. 복수 지정 가능 (`?status=EXPIRED&status=ABANDONED`) |
+| filingCountry | string | N | 출원국. `KR` / `US` / `EP` / `JP` / `CN` |
 | departmentId | long | N | 현재 담당 사업부 ID. `-1` 지정 시 미배정 특허만 조회 |
-| sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
+| sort | string | N | 정렬 기준. `title`, `applicationNumber`, `expiryDate`, `applicationDate`, `citationCount`, `id`. `field,asc` 또는 `field,desc` |
 | page | integer | N | 페이지 번호 (기본값 0) |
-| size | integer | N | 페이지 크기 (기본값 20) |
+| size | integer | N | 페이지 크기 (기본값 50) |
 
 **응답 items[] 필드**
 
@@ -352,26 +354,26 @@
 | title | string | 특허명 |
 | applicationNumber | string | 출원번호 |
 | registrationNumber | string | 등록번호 |
-| applicationDate | string | 출원일 (`yyyy-MM-dd`) |
+| applicationDate | string | 출원일자 (`yyyy-MM-dd`) |
 | expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
 | ipcCodes | array | IPC 코드 목록 |
 | cpcCodes | array | CPC 코드 목록 |
 | applicant | string | 출원인명 |
 | inventor | string | 발명자명 |
 | latestLegalStatus | string | 최신 권리 상태 |
-| techField | string | 기술 분야 |
+| techField | string | 관련기술 분야 |
 | businessField | string | 관련사업 분야 |
-| keywords | array | 주요 키워드 목록 |
-| summary | string | 특허 요약 |
+| keywords | array | 키워드 |
+| summary | string | 요약 |
 | citationCount | integer | 피인용 수 |
 | examinationClaimCount | integer | 심사청구항 수 |
-| filingCountry | string | 출원국 코드 |
+| filingCountry | string | 출원국 |
 | approvalStatus | string | 승인 상태 |
-| rejectionReason | string | 반려 사유. 없으면 `null` |
+| rejectionReason | string | 거절 사유. 없으면 `null` |
 | currentDepartmentId | long | 현재 담당 부서 ID. 미배정이면 `null` |
 | currentDepartmentName | string | 현재 담당 부서명. 미배정이면 `null` |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -433,10 +435,10 @@
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| keyword | string | N | 특허명 키워드 검색 |
-| sort | string | N | 정렬 기준. `title` / `applicationNumber` / `expiryDate` / `applicationDate` / `citationCount` |
+| keyword | string | N | 특허명, 출원번호, 발명자, 출원인 검색 |
+| sort | string | N | 정렬 기준. `title`, `applicationNumber`, `expiryDate`, `applicationDate`, `citationCount`, `id`. `field,asc` 또는 `field,desc` |
 | page | integer | N | 페이지 번호 (기본값 0) |
-| size | integer | N | 페이지 크기 (기본값 20) |
+| size | integer | N | 페이지 크기 (기본값 50) |
 
 **응답 items[] 필드**: `GET /api/v1/patents`와 동일
 
@@ -541,7 +543,7 @@
 | id | long | 특허 ID |
 | title | string | 특허명 |
 | applicationNumber | string | 출원번호 |
-| techField | string | 기술 분야 |
+| techField | string | 관련기술 분야 |
 | departmentId | long | 현재 담당 부서 ID. 미배정이면 `null` |
 | departmentName | string | 현재 담당 부서명. 미배정이면 `null` |
 | expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
@@ -602,7 +604,7 @@
 | months[].patents[].title | string | 특허명 |
 | months[].patents[].applicationNumber | string | 출원번호 |
 | months[].patents[].expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
-| months[].patents[].techField | string | 기술 분야 |
+| months[].patents[].techField | string | 관련기술 분야 |
 
 **응답 예시**
 
@@ -732,35 +734,6 @@
 
 ---
 
-#### `PATCH /api/v1/patents/{patentId}/approve`
-
-**헤더**: `Authorization: Bearer {accessToken}`
-
-**권한**: `ADMIN`, `LEGAL`
-
-승인 대기 특허 등록 신청을 승인합니다. 요청 Body 없음.
-
-**응답**: `GET /api/v1/patents/{patentId}`와 동일한 `PatentDetailResponse`
-
-**응답 예시**
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 42,
-    "title": "반도체 패키지 구조",
-    "applicationNumber": "10-2026-0000000",
-    "approvalStatus": "APPROVED",
-    "rejectionReason": null
-  }
-}
-```
-
-**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `INVALID_REQUEST`(400 — 승인 대기 상태가 아님)
-
----
-
 #### `PATCH /api/v1/patents/{patentId}/reject`
 
 **헤더**: `Authorization: Bearer {accessToken}`
@@ -846,10 +819,10 @@
 | publicationNumber | string | 공개번호 |
 | announcementNumber | string | 공고번호 |
 | managementNumber | string | 관리번호 |
-| applicationDate | string | 출원일 (`yyyy-MM-dd`) |
-| registrationDate | string | 등록일 (`yyyy-MM-dd`) |
-| publicationDate | string | 공개일 (`yyyy-MM-dd`) |
-| announcementDate | string | 공고일 (`yyyy-MM-dd`) |
+| applicationDate | string | 출원일자 (`yyyy-MM-dd`) |
+| registrationDate | string | 등록일자 (`yyyy-MM-dd`) |
+| publicationDate | string | 공개일자 (`yyyy-MM-dd`) |
+| announcementDate | string | 공고일자 (`yyyy-MM-dd`) |
 | expiryDate | string | 예상 소멸일 (`yyyy-MM-dd`) |
 | ipcCodes | array | IPC 코드 목록 |
 | cpcCodes | array | CPC 코드 목록 |
@@ -858,24 +831,24 @@
 | citationCount | integer | 피인용 수 |
 | examinationClaimCount | integer | 심사청구항 수 |
 | originalPdfKey | string | 특허 원문 MinIO object key |
-| parsedJsonKey | string | AI 서버가 저장한 추출 결과 JSON object key |
+| parsedJsonKey | string | 파싱 결과 JSON 파일 키 |
 | approvalStatus | string | 승인 상태. `APPROVED`, `PENDING_APPROVAL`, `REJECTED` |
-| rejectionReason | string | 반려 사유. 없으면 `null` |
+| rejectionReason | string | 거절 사유. 없으면 `null` |
 | businessField | string | 관련사업 분야 |
 | techField | string | 관련기술 분야 |
 | relatedProducts | array | 관련 제품 목록 |
-| filingCountry | string | 출원국 코드 |
+| filingCountry | string | 출원국 |
 | isJointApplication | boolean | 공동출원 여부 |
 | jointApplicant | string | 공동출원인명. 없으면 `null` |
 | initialDepartment | string | 최초 담당 부서명 |
 | currentDepartmentId | long | 현재 담당 부서 ID |
 | currentDepartmentName | string | 현재 담당 부서명 |
 | latestLegalStatus | string | 최신 권리 상태 |
-| latestReportScore | number | 최신 평가 보고서 점수. 없으면 `null` |
-| keywords | array | AI 추출 주요 키워드 목록 |
-| summary | string | 특허 요약 |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| latestReportScore | number | 최신 AI 평가 총점. 없으면 `null` |
+| keywords | array | 키워드 |
+| summary | string | 요약 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -932,6 +905,8 @@
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
+`ADMIN`과 `LEGAL` 사용자가 생성한 특허는 `APPROVED`로 즉시 저장됩니다.
+
 **요청**
 
 | Name | Type | Required | Description |
@@ -954,11 +929,11 @@
 | businessField | string | N | 관련사업 분야 |
 | techField | string | N | 관련기술 분야 |
 | relatedProducts | array | N | 관련 제품 목록 |
-| filingCountry | string | N | 출원국 코드 |
+| filingCountry | string | N | 출원국 |
 | isJointApplication | boolean | N | 공동출원 여부 |
 | jointApplicant | string | N | 공동출원인명 |
-| keywords | array | N | 주요 키워드 목록 |
-| summary | string | N | 특허 요약 |
+| keywords | array | N | 키워드 |
+| summary | string | N | 요약 |
 | originalPdfKey | string | N | 기존 원문 PDF object key. `extractJobId`가 없을 때 그대로 저장 |
 | extractJobId | long | N | 완료된 특허 추출 작업 ID. 값이 있으면 임시 PDF를 `patents/{patentId}/original.pdf`로 복사하고, AI 서버가 전달한 `parsedJsonKey`의 JSON을 `patents/{patentId}/parsed.json`로 복사 |
 
@@ -1070,8 +1045,8 @@
 | uploadUrl | string | MinIO PUT presigned URL |
 | expiresInSeconds | integer | URL 만료 시간(초) |
 | status | string | `UPLOAD_PENDING` |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -1152,8 +1127,8 @@
 | errorMessage | string | 실패 사유. 실패가 아니면 `null` |
 | uploadedAt | datetime | 업로드 완료 처리 시각 |
 | completedAt | datetime | 완료 또는 실패 처리 시각 |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
 
@@ -1261,6 +1236,8 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 **헤더**: `X-Internal-Api-Key: {secret}`
 
+요청 Body는 선택 사항입니다.
+
 **요청**
 
 | Name | Type | Required | Description |
@@ -1310,7 +1287,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 권리 상태 이력 조회 | `GET` | `/api/v1/patents/{patentId}/legal-status` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 권리 상태 이력 추가 | `POST` | `/api/v1/patents/{patentId}/legal-status` | 권리 상태 수동 추가 | `LEGAL` |
+| 권리 상태 이력 생성 | `POST` | `/api/v1/patents/{patentId}/legal-status` | 권리 상태 수동 추가 | `LEGAL` |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 이력만 조회할 수 있습니다.
 
@@ -1321,7 +1298,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 연차료 납부 이력 조회 | `GET` | `/api/v1/patents/{patentId}/annuities` | 납부 완료(`PAID`) 이력 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 연차료 납부 이력 추가 | `POST` | `/api/v1/patents/{patentId}/annuities` | 납부 이력 수동 추가 | `LEGAL` |
+| 연차료 납부 처리 | `POST` | `/api/v1/patents/{patentId}/annuities` | 최신 미납 연차료를 납부 처리하고 다음 미납 연차료를 생성 | `LEGAL` |
 | 연차료 납부 이력 수정 | `PUT` | `/api/v1/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력의 납부 연수, 금액, 납부일자 수정 | `LEGAL` |
 | 연차료 납부 이력 삭제 | `DELETE` | `/api/v1/patents/{patentId}/annuities/{annuityId}` | 납부 완료(`PAID`) 이력 삭제 | `LEGAL` |
 
@@ -1358,7 +1335,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 검토 주기 목록 조회 | `GET` | `/api/v1/review-cycles` | 최근 시작일 순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 검토 주기 단일 조회 | `GET` | `/api/v1/review-cycles/{reviewCycleId}` | 검토 주기 상세 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 검토 주기 수정 | `PUT` | `/api/v1/review-cycles/{reviewCycleId}` | 검토 주기 정보 수정 | `ADMIN` |
-| 검토 주기 마감일 설정 | `PATCH` | `/api/v1/review-cycles/{reviewCycleId}/deadline` | 검토 요청 발송에 사용할 마감일 설정 | `LEGAL` |
+| 검토 주기 마감일자 설정 | `PATCH` | `/api/v1/review-cycles/{reviewCycleId}/deadline` | 검토 요청 발송에 사용할 마감일 설정 | `LEGAL` |
 | 검토 주기 삭제 | `DELETE` | `/api/v1/review-cycles/{reviewCycleId}` | 미사용 검토 주기 삭제 | `ADMIN` |
 
 검토 주기의 기간은 서로 겹칠 수 없습니다. 검토 요청에서 사용 중인 주기는 삭제할 수 없습니다.
@@ -1369,10 +1346,10 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 검토 요청 전송 | `POST` | `/api/v1/patents/{patentId}/api/v1/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성. 최신 평가 보고서가 있으면 `reportId`로 함께 연결 | `LEGAL` |
+| 검토 요청 전송 | `POST` | `/api/v1/patents/{patentId}/reviews` | 현재 담당 부서와 현재 날짜가 포함된 검토 주기로 요청 생성. 최신 평가 보고서가 있으면 `reportId`로 함께 연결 | `LEGAL` |
 | 검토 일괄 요청 전송 | `POST` | `/api/v1/reviews/bulk` | 여러 특허에 검토 요청 생성. 생성 불가 특허는 사유와 함께 건너뜀 | `LEGAL` |
 
-검토 요청의 회신 기한은 현재 활성 검토 주기의 `deadline`으로 서버에서 자동 설정합니다.
+검토 요청의 회신기한은 현재 활성 검토 주기의 `deadline`으로 서버에서 자동 설정합니다.
 동일한 검토 주기, 특허, 부서 조합은 중복 요청할 수 없습니다.
 일괄 요청은 최대 100건까지 처리하며, 특허별 결과를 `CREATED` 또는 `SKIPPED`로 반환합니다.
 
@@ -1453,34 +1430,34 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | departmentId | long | N | 담당 사업부 ID |
 | patentId | long | N | 특허 ID |
 | checked | boolean | N | 회신 확인 여부 |
-| sort | string | N | `title`, `applicationNumber`, `applicationDate`, `expiryDate`, `citationCount` 정렬 |
-| page | integer | N | 페이지 번호 |
-| size | integer | N | 페이지 크기 |
+| sort | string | N | `title,asc|desc`, `applicationNumber,asc|desc`, `applicationDate,asc|desc`, `expiryDate,asc|desc`, `citationCount,asc|desc`. 미지정 시 `applicationNumber ASC` |
+| page | integer | N | 페이지 번호 (기본값 0) |
+| size | integer | N | 페이지 크기 (기본값 50) |
 
 **응답 items[] 필드**
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 검토 ID |
+| id | long | 사업부 의견 검토 ID |
 | patentId | long | 특허 ID |
 | title | string | 특허명 |
 | applicationNumber | string | 출원번호 |
-| techField | string | 기술 분야 |
+| techField | string | 관련기술 분야 |
 | businessField | string | 관련사업 분야 |
 | reportId | long | 참고 보고서 ID. 없으면 `null` |
-| departmentId | long | 담당 사업부 ID |
+| departmentId | long | 사업부 ID |
 | departmentName | string | 담당 사업부명 |
 | reviewCycleId | long | 검토 주기 ID |
 | reviewCycleYear | integer | 검토 주기 연도 |
 | reviewCycleQuarter | integer | 검토 주기 분기 |
-| opinion | string | `MAINTAIN` / `ABANDON` / `null` |
+| opinion | string | 사업부 의견. `MAINTAIN` / `ABANDON` / `null` |
 | comment | string | 상세 의견 |
-| status | string | `SCHEDULED` / `PENDING` / `OVERDUE` / `SUBMITTED` |
-| checked | boolean | Legal 확인 여부 |
-| submittedAt | datetime | 제출 일시 |
-| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| status | string | 검토 상태. `SCHEDULED` / `PENDING` / `OVERDUE` / `SUBMITTED` |
+| checked | boolean | Legal 팀 확인 여부 |
+| submittedAt | datetime | 제출일시 |
+| dueDate | string | 회신기한 (`yyyy-MM-dd`) |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -1568,9 +1545,9 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | 검토 현황 목록 조회 | `GET` | `/api/v1/business-reviews` | 본인 부서에 요청된 최신 검토 현황 목록 조회 | `BUSINESS` |
 | 과거 제출 이력 조회 | `GET` | `/api/v1/business-reviews/history` | 본인 부서 기준 과거 검토 제출 이력 조회 | `BUSINESS` |
 | 검토 현황 단일 조회 | `GET` | `/api/v1/business-reviews/{patentId}` | 특허 상세 정보와 최신 검토 현황 조회 | `BUSINESS` |
-| 의견 제출 | `POST` | `/api/v1/business-reviews/{patentId}/opinions` | 현재 검토 주기 요청에 `MAINTAIN` 또는 `ABANDON` 제출 | `BUSINESS` |
+| 사업부 검토 의견 제출 | `POST` | `/api/v1/business-reviews/{patentId}/opinions` | 현재 검토 주기 요청에 `MAINTAIN` 또는 `ABANDON` 제출 | `BUSINESS` |
 
-회신 기한이 지난 요청과 이미 제출한 요청에는 의견을 제출할 수 없습니다.
+회신기한이 지난 요청과 이미 제출한 요청에는 의견을 제출할 수 없습니다.
 
 ---
 
@@ -1592,7 +1569,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | reviewCycle.quarter | integer | 검토 주기 분기 |
 | reviewCycle.startDate | string | 시작일 (`yyyy-MM-dd`) |
 | reviewCycle.endDate | string | 종료일 (`yyyy-MM-dd`) |
-| reviewCycle.deadline | string | 회신 기한 (`yyyy-MM-dd`) |
+| reviewCycle.deadline | string | 회신기한 (`yyyy-MM-dd`) |
 | kpi | object | 제출 현황 KPI |
 | kpi.submitted | long | 제출 완료 건수 |
 | kpi.notSubmitted | long | 미제출 건수 |
@@ -1645,22 +1622,22 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 검토 ID |
+| id | long | 사업부 의견 검토 ID |
 | patentId | long | 특허 ID |
 | title | string | 특허명 |
 | applicationNumber | string | 출원번호 |
-| keywords | array | 주요 키워드 목록 |
-| summary | string | 특허 요약 |
-| opinion | string | `MAINTAIN` / `ABANDON` / `null` |
+| keywords | array | 키워드 |
+| summary | string | 요약 |
+| opinion | string | 사업부 의견. `MAINTAIN` / `ABANDON` / `null` |
 | comment | string | 상세 의견 |
-| status | string | `PENDING` / `OVERDUE` / `SUBMITTED` |
-| submittedAt | datetime | 제출 시각 |
-| createdAt | datetime | 특허 생성 시각 |
-| updatedAt | datetime | 특허 수정 시각 |
-| reviewRequestedAt | datetime | 검토 요청 생성 시각 |
-| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
-| totalScore | number | 최신 완료 평가 점수. 없으면 `null` |
-| valueGrade | string | 최신 완료 평가 등급. 없으면 `null` |
+| status | string | 검토 상태. `PENDING` / `OVERDUE` / `SUBMITTED` |
+| submittedAt | datetime | 제출일시 |
+| createdAt | datetime | 특허 생성일시 |
+| updatedAt | datetime | 특허 수정일시 |
+| reviewRequestedAt | datetime | 검토 요청 생성일시 |
+| dueDate | string | 회신기한 (`yyyy-MM-dd`) |
+| totalScore | number | AI 평가 총점. 없으면 `null` |
+| valueGrade | string | AI 평가 등급. 없으면 `null` |
 
 **응답 예시**
 
@@ -1722,7 +1699,7 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 검토 ID |
+| id | long | 사업부 의견 검토 ID |
 | patentId | long | 특허 ID |
 | reviewCycle | object | 검토 주기 정보 |
 | reviewCycle.id | long | 검토 주기 ID |
@@ -1730,17 +1707,17 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | reviewCycle.quarter | integer | 검토 주기 분기 |
 | reviewCycle.startDate | string | 시작일 (`yyyy-MM-dd`) |
 | reviewCycle.endDate | string | 종료일 (`yyyy-MM-dd`) |
-| reviewCycle.deadline | string | 회신 기한 (`yyyy-MM-dd`) |
+| reviewCycle.deadline | string | 회신기한 (`yyyy-MM-dd`) |
 | title | string | 특허명 |
 | applicationNumber | string | 출원번호 |
-| opinion | string | `MAINTAIN` / `ABANDON` |
+| opinion | string | 사업부 의견. `MAINTAIN` / `ABANDON` |
 | comment | string | 상세 의견 |
-| status | string | `SUBMITTED` |
-| submittedAt | datetime | 제출 시각 |
-| reviewRequestedAt | datetime | 검토 요청 생성 시각 |
-| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
-| totalScore | number | 최신 완료 평가 점수. 없으면 `null` |
-| valueGrade | string | 최신 완료 평가 등급. 없으면 `null` |
+| status | string | 검토 상태. `SUBMITTED` |
+| submittedAt | datetime | 제출일시 |
+| reviewRequestedAt | datetime | 검토 요청 생성일시 |
+| dueDate | string | 회신기한 (`yyyy-MM-dd`) |
+| totalScore | number | AI 평가 총점. 없으면 `null` |
+| valueGrade | string | AI 평가 등급. 없으면 `null` |
 
 **응답 예시**
 
@@ -1806,9 +1783,9 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 | opinion | string | `MAINTAIN` / `ABANDON` / `null` |
 | comment | string | 상세 의견 |
 | status | string | `PENDING` / `OVERDUE` / `SUBMITTED` |
-| submittedAt | datetime | 제출 시각 |
-| reviewRequestedAt | datetime | 검토 요청 생성 시각 |
-| dueDate | string | 회신 기한 (`yyyy-MM-dd`) |
+| submittedAt | datetime | 제출일시 |
+| reviewRequestedAt | datetime | 검토 요청 생성일시 |
+| dueDate | string | 회신기한 (`yyyy-MM-dd`) |
 
 **응답 예시**
 
@@ -1894,18 +1871,19 @@ AI Worker가 PDF 분석 실패 후 호출합니다.
 
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
-| 보고서 목록 조회 | `GET` | `/api/v1/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 요청 | `POST` | `/api/v1/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 후 RabbitMQ 메시지 발행 | `LEGAL` |
-| 최신 보고서 조회 | `GET` | `/api/v1/patents/{patentId}/reports/latest` | 가장 최근 생성된 평가 보고서 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 목록 조회 | `GET` | `/api/v1/patents/{patentId}/reports` | 최신 등록순 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 생성 요청 | `POST` | `/api/v1/patents/{patentId}/reports` | `GENERATING` 상태의 보고서 생성 요청 등록 후 RabbitMQ 메시지 발행 | `LEGAL` |
+| 최신 평가 보고서 조회 | `GET` | `/api/v1/patents/{patentId}/reports/latest` | 가장 최근 생성된 평가 보고서 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 과거 평가 이력 조회 | `GET` | `/api/v1/patents/{patentId}/reports/history` | 최신 완료 보고서 1건을 제외한 과거 평가 이력 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 단일 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}` | 완료된 보고서 상세 및 MinIO presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 단일 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}` | 완료된 보고서 상세 및 MinIO presigned URL 반환 | `ADMIN`, `LEGAL`, `BUSINESS` |
 | 평가 처리 상태 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}/status` | 보고서 생성 및 임베딩 상태 polling용 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 채팅 이력 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 채팅 메시지 전송 | `POST` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 채팅 초기화 | `DELETE` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 전체 삭제 | `ADMIN`, `LEGAL`, `BUSINESS` |
-| 보고서 생성 완료 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달. `/api/v1/internal/reports/{reportId}/complete`도 동일 처리 | Internal API Key |
+| 평가 보고서 채팅 이력 조회 | `GET` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 목록 조회 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 채팅 메시지 전송 | `POST` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 채팅 스트리밍 전송 | `POST` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages/stream` | 사용자 메시지 저장 후 AI 서버 SSE 스트리밍 응답 중계 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 채팅 초기화 | `DELETE` | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 보고서별 채팅 메시지 전체 삭제 | `ADMIN`, `LEGAL`, `BUSINESS` |
+| 평가 보고서 생성 완료 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/report-complete` | AI Worker가 생성 완료 및 `reportKey` 전달. `/api/v1/internal/reports/{reportId}/complete`도 동일 처리 | Internal API Key |
 | 임베딩 완료 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/embedding-complete` | AI Worker가 임베딩 완료 전달 | Internal API Key |
-| 보고서 생성 실패 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
+| 평가 보고서 생성 실패 콜백 | `PATCH` | `/api/v1/internal/reports/{reportId}/fail` | AI Worker가 생성 실패 전달 | Internal API Key |
 
 `BUSINESS` 사용자는 본인 부서 담당 특허의 보고서만 조회할 수 있습니다.
 프론트는 MinIO object key를 직접 받지 않고, 백엔드가 생성한 presigned URL만 사용합니다.
@@ -1928,14 +1906,14 @@ AI Worker는 RabbitMQ 메시지를 소비해 보고서를 생성하고 MinIO에 
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 보고서 ID |
+| id | long | 평가 보고서 ID |
 | patentId | long | 특허 ID |
-| status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
-| totalScore | number | 평가 점수. 완료 전에는 `null` |
-| valueGrade | string | 평가 등급. 완료 전에는 `null` |
-| evaluatedAt | datetime | 평가 기준 일시. `REPORT_COMPLETED` 이후 값 있음 |
-| createdAt | datetime | 생성 요청 일시 |
-| updatedAt | datetime | 수정 시각 |
+| status | string | 생성 상태. `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
+| totalScore | number | AI 평가 총점. 완료 전에는 `null` |
+| valueGrade | string | AI 평가 등급. 완료 전에는 `null` |
+| evaluatedAt | datetime | 평가 완료 시각. `REPORT_COMPLETED` 이후 값 있음 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2011,7 +1989,7 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 **헤더**: `Authorization: Bearer {accessToken}`
 
-가장 최근 생성된 평가 보고서 1건을 조회합니다. 완료된 보고서는 presigned URL과 평가 점수/등급을 함께 반환하고, 아직 생성 중이면 `url`, `totalScore`, `valueGrade`, `evaluatedAt`이 `null`일 수 있습니다.
+가장 최근 생성된 평가 보고서 1건을 조회합니다. 완료된 보고서는 presigned URL과 AI 평가 총점/등급을 함께 반환하고, 아직 생성 중이면 `url`, `totalScore`, `valueGrade`, `evaluatedAt`이 `null`일 수 있습니다.
 
 **Path Parameter**
 
@@ -2023,18 +2001,18 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 보고서 ID |
+| id | long | 평가 보고서 ID |
 | patentId | long | 특허 ID |
 | status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
 | url | string | MinIO presigned URL. 완료 전이면 `null` |
-| totalScore | number | 평가 점수. 완료 전이면 `null` |
-| valueGrade | string | 평가 등급. 완료 전이면 `null` |
+| totalScore | number | AI 평가 총점. 완료 전이면 `null` |
+| valueGrade | string | AI 평가 등급. 완료 전이면 `null` |
 | evaluatedAt | datetime | 평가 완료 시각. 완료 전이면 `null` |
 | opinion | string | 해당 보고서에 대한 사업부 제출 의견. 없으면 `null` |
 | comment | string | 해당 보고서에 대한 사업부 제출 코멘트. 없으면 `null` |
-| submittedAt | datetime | 사업부 의견 제출 시각. 없으면 `null` |
-| createdAt | datetime | 보고서 생성 요청 시각 |
-| updatedAt | datetime | 보고서 수정 시각 |
+| submittedAt | datetime | 사업부 의견 제출일시. 없으면 `null` |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2079,10 +2057,10 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 | Name | Type | Description |
 | --- | --- | --- |
 | items | array | 과거 평가 이력 목록 |
-| items[].id | long | 보고서 ID |
+| items[].id | long | 평가 보고서 ID |
 | items[].patentId | long | 특허 ID |
-| items[].totalScore | number | 평가 점수 |
-| items[].valueGrade | string | 평가 등급 |
+| items[].totalScore | number | AI 평가 총점 |
+| items[].valueGrade | string | AI 평가 등급 |
 | items[].evaluatedAt | datetime | 평가 완료 시각 |
 | items[].opinion | string | 사업부 제출 의견. 없으면 `null` |
 | items[].comment | string | 사업부 제출 코멘트. 없으면 `null` |
@@ -2120,18 +2098,18 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 보고서 ID |
+| id | long | 평가 보고서 ID |
 | patentId | long | 특허 ID |
 | status | string | `GENERATING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
 | url | string | MinIO presigned URL. `REPORT_COMPLETED` 또는 `EMBEDDING_COMPLETED` 상태에서만 포함 |
-| totalScore | number | 평가 점수 |
-| valueGrade | string | 평가 등급 |
-| evaluatedAt | datetime | 평가 기준 일시 |
+| totalScore | number | AI 평가 총점 |
+| valueGrade | string | AI 평가 등급 |
+| evaluatedAt | datetime | 평가 완료 시각 |
 | opinion | string | 해당 보고서에 대한 사업부 제출 의견. 없으면 `null` |
 | comment | string | 해당 보고서에 대한 사업부 제출 코멘트. 없으면 `null` |
-| submittedAt | datetime | 사업부 의견 제출 시각. 없으면 `null` |
-| createdAt | datetime | 생성 요청 일시 |
-| updatedAt | datetime | 수정 시각 |
+| submittedAt | datetime | 사업부 의견 제출일시. 없으면 `null` |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2171,11 +2149,11 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 보고서 ID |
+| id | long | 평가 보고서 ID |
 | patentId | long | 특허 ID |
 | status | string | `GENERATING` (polling 계속) / `REPORT_COMPLETED` (보고서 조회 가능) / `EMBEDDING_COMPLETED` (임베딩 완료) / `FAILED` (재시도) |
-| totalScore | number | 평가 점수. 완료 전에는 `null` |
-| valueGrade | string | 평가 등급. 완료 전에는 `null` |
+| totalScore | number | AI 평가 총점. 완료 전에는 `null` |
+| valueGrade | string | AI 평가 등급. 완료 전에는 `null` |
 | evaluatedAt | datetime | 완료 일시. 완료 전에는 `null` |
 | updatedAt | datetime | 마지막 상태 변경 일시 |
 
@@ -2218,11 +2196,11 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 | Name | Type | Description |
 | --- | --- | --- |
 | id | long | 채팅 메시지 ID |
-| patentId | long | 응답 필드명은 `patentId`이나, 현재 구현상 보고서 채팅 target ID가 들어갑니다 |
-| role | string | `USER` / `ASSISTANT` |
+| patentId | long | 대상 ID. 응답 필드명은 `patentId`이나, 현재 구현상 보고서 채팅 target ID가 들어갑니다 |
+| role | string | 메시지 역할. `USER` / `ASSISTANT` |
 | content | string | 메시지 내용 |
-| sourceCards | array | AI 응답 출처 카드 목록. 없으면 빈 배열 |
-| createdAt | datetime | 메시지 생성 시각 |
+| sourceCards | array | 답변 근거 카드. 없으면 빈 배열 |
+| createdAt | datetime | 생성일시 |
 
 **응답 예시**
 
@@ -2314,7 +2292,29 @@ RabbitMQ 메시지 발행에 실패하면 생성 요청은 실패 처리되며 �
 }
 ```
 
-**에러**: `INVALID_REQUEST`(400 — message 누락), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `CONFLICT`(409 — 보고서 생성 미완료), `EXTERNAL_SERVICE_ERROR`(502 — AI 서버 호출 실패)
+**에러**: `INVALID_REQUEST`(400 — message 누락), `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `CONFLICT`(409 — 보고서 생성 미완료), `AI_SERVER_ERROR`(500 — AI 서버 호출 실패)
+
+---
+
+#### `POST /api/v1/patents/{patentId}/reports/{reportId}/chat/messages/stream`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+응답 Content-Type은 `text/event-stream`입니다. 사용자 메시지를 저장하고 AI 서버 SSE 스트리밍 응답을 클라이언트에 그대로 중계한 뒤, `done` 이벤트 수신 시 최종 AI 응답 메시지를 저장합니다.
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | * | 사용자 채팅 메시지. 빈 문자열 불가 |
+
+**요청 예시**
+
+```json
+{ "message": "이 평가 보고서에서 가장 중요한 리스크는 무엇인가요?" }
+```
+
+**에러**: 스트림 내부 에러 이벤트 또는 `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404), `CONFLICT`(409 — 보고서 생성 미완료)
 
 ---
 
@@ -2425,7 +2425,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| errorMessage | string | N | 실패 사유. 저장 또는 로그 용도 |
+| errorMessage | string | N | 선택 입력. 현재 서버 상태 응답에는 반영되지 않음 |
 
 **요청 예시**
 
@@ -2438,7 +2438,7 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 **처리**
 
 - 보고서 상태를 `FAILED`로 변경
-- 실패 사유는 서버 로그 또는 별도 저장 필드가 있는 경우 저장
+- 요청 Body는 선택 사항이며, 현재 구현은 `errorMessage` 값을 별도로 반영하지 않음
 
 **응답 예시**
 
@@ -2464,14 +2464,15 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | 이름 | Method | URL | 설명 | 권한 |
 | --- | --- | --- | --- | --- |
 | 사전 평가 시작 | `POST` | `/api/v1/pre-evaluations` | 임시 특허 정보를 저장하고 AI 서버에 사전 평가 보고서 생성을 요청 | `BUSINESS` |
-| 사전 평가 목록 조회 | `GET` | `/api/v1/pre-evaluations` | 현재 사용자의 사전 평가 이력 목록 조회 | `BUSINESS` |
+| 사전 평가 이력 목록 조회 | `GET` | `/api/v1/pre-evaluations` | 현재 사용자의 사전 평가 이력 목록 조회 | `BUSINESS` |
 | 사전 평가 상세 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}` | 사전 평가 입력 정보, 상태, 보고서 URL 조회 | `BUSINESS` |
 | 사전 평가 처리 상태 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}/status` | 보고서 생성 및 임베딩 상태 polling | `BUSINESS` |
 | 사전 평가 이력 삭제 | `DELETE` | `/api/v1/pre-evaluations/{preEvaluationId}` | 사전 평가와 관련 채팅 메시지 삭제 | `BUSINESS` |
-| 채팅 이력 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가별 채팅 메시지 목록 조회 | `BUSINESS` |
-| 채팅 메시지 전송 | `POST` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `BUSINESS` |
-| 채팅 초기화 | `DELETE` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 해당 사전 평가의 채팅 메시지 전체 삭제 | `BUSINESS` |
-| 사전 평가 보고서 생성 완료 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete` | AI 서버가 보고서 생성 완료 후 호출 | Internal API Key |
+| 사전 평가 채팅 이력 조회 | `GET` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가별 채팅 메시지 목록 조회 | `BUSINESS` |
+| 사전 평가 채팅 메시지 전송 | `POST` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사용자 메시지 저장, AI 서버 채팅 API 호출, 응답 저장 | `BUSINESS` |
+| 사전 평가 채팅 스트리밍 전송 | `POST` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages/stream` | 사용자 메시지 저장 후 AI 서버 SSE 스트리밍 응답 중계 | `BUSINESS` |
+| 사전 평가 채팅 초기화 | `DELETE` | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 해당 사전 평가의 채팅 메시지 전체 삭제 | `BUSINESS` |
+| 사전 평가 보고서 생성 완료 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/report-complete` | AI 서버가 보고서 생성 완료 후 호출. `/api/v1/internal/pre-evaluations/{preEvaluationId}/complete`도 동일 처리 | Internal API Key |
 | 사전 평가 임베딩 완료 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete` | AI 서버가 임베딩 완료 후 호출 | Internal API Key |
 | 사전 평가 실패 callback | `PATCH` | `/api/v1/internal/pre-evaluations/{preEvaluationId}/fail` | AI 서버가 보고서 생성 실패 후 호출 | Internal API Key |
 
@@ -2545,8 +2546,8 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | id | long | 사전 평가 ID |
 | userId | long | 생성 사용자 ID |
 | status | string | `PROCESSING` |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2585,12 +2586,12 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | Name | Type | Description |
 | --- | --- | --- |
 | id | long | 사전 평가 ID |
-| title | string | 특허명 |
-| status | string | `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
-| reportUrl | string | 보고서 URL. 완료 전에는 `null` |
-| completedAt | datetime | 완료 또는 실패 시각. 처리 중에는 `null` |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| title | string | 평가 제목 |
+| status | string | 평가 상태. `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
+| reportUrl | string | 결과 보고서 URL. 완료 전에는 `null` |
+| completedAt | datetime | 완료 시각. 처리 중에는 `null` |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2633,16 +2634,16 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | --- | --- | --- |
 | id | long | 사전 평가 ID |
 | userId | long | 생성 사용자 ID |
-| title | string | 특허명 |
+| title | string | 평가 제목 |
 | technicalDescription | string | 기술 설명 |
 | claims | array[string] | 청구항 목록 |
 | relatedBusiness | string | 관련 사업 |
 | targetCountries | string | 출원 예정 국가 |
-| status | string | `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
-| reportUrl | string | 보고서 URL. 완료 전에는 `null` |
-| completedAt | datetime | 완료 또는 실패 시각 |
-| createdAt | datetime | 생성 시각 |
-| updatedAt | datetime | 수정 시각 |
+| status | string | 평가 상태. `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
+| reportUrl | string | 결과 보고서 URL. 완료 전에는 `null` |
+| completedAt | datetime | 완료 시각 |
+| createdAt | datetime | 생성일시 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2683,8 +2684,8 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 | --- | --- | --- |
 | id | long | 사전 평가 ID |
 | status | string | `PROCESSING` / `REPORT_COMPLETED` / `EMBEDDING_COMPLETED` / `FAILED` |
-| completedAt | datetime | 완료 또는 실패 시각 |
-| updatedAt | datetime | 수정 시각 |
+| completedAt | datetime | 완료 시각 |
+| updatedAt | datetime | 수정일시 |
 
 **응답 예시**
 
@@ -2728,12 +2729,12 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 | Name | Type | Description |
 | --- | --- | --- |
-| id | long | 메시지 ID |
-| preEvaluationId | long | 사전 평가 ID |
-| role | string | `USER` / `ASSISTANT` |
+| id | long | 채팅 메시지 ID |
+| preEvaluationId | long | 대상 ID(사전 평가 ID) |
+| role | string | 메시지 역할. `USER` / `ASSISTANT` |
 | content | string | 메시지 내용 |
-| sourceCards | array | AI 응답 근거 카드. 사용자 메시지는 빈 배열 |
-| createdAt | datetime | 생성 시각 |
+| sourceCards | array | 답변 근거 카드. 사용자 메시지는 빈 배열 |
+| createdAt | datetime | 생성일시 |
 
 **응답 예시**
 
@@ -2888,6 +2889,28 @@ AI Worker가 보고서 생성 실패 후 호출합니다.
 
 ---
 
+#### `POST /api/v1/pre-evaluations/{preEvaluationId}/chat/messages/stream`
+
+**헤더**: `Authorization: Bearer {accessToken}`
+
+응답 Content-Type은 `text/event-stream`입니다. 사용자 메시지를 저장하고 AI 서버 SSE 스트리밍 응답을 클라이언트에 그대로 중계한 뒤, `done` 이벤트 수신 시 최종 AI 응답 메시지를 저장합니다.
+
+**요청**
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| message | string | * | 사용자 채팅 메시지. 빈 문자열 불가 |
+
+**요청 예시**
+
+```json
+{ "message": "등록 가능성을 높이려면 어떤 부분을 보완해야 하나요?" }
+```
+
+**에러**: 스트림 내부 에러 이벤트 또는 `UNAUTHORIZED`(401), `FORBIDDEN`(403), `NOT_FOUND`(404)
+
+---
+
 #### `DELETE /api/v1/pre-evaluations/{preEvaluationId}/chat/messages`
 
 **헤더**: `Authorization: Bearer {accessToken}`
@@ -2972,7 +2995,7 @@ AI 서버가 사전 평가 임베딩 완료 후 호출합니다.
 }
 ```
 
-**에러**: `INVALID_REQUEST`(400), `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
+**에러**: `UNAUTHORIZED`(401 — 내부 API Key 불일치), `NOT_FOUND`(404), `CONFLICT`(409 — 이미 완료 또는 실패 처리됨)
 
 ---
 
@@ -2981,6 +3004,8 @@ AI 서버가 사전 평가 임베딩 완료 후 호출합니다.
 AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 
 **헤더**: `X-Internal-Api-Key: {secret}`
+
+요청 Body는 선택 사항입니다.
 
 **요청**
 
@@ -3142,7 +3167,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 }
 ```
 
-**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `EXTERNAL_SERVICE_ERROR`(502 — AI 인사이트 생성 실패)
+**에러**: `UNAUTHORIZED`(401), `FORBIDDEN`(403), `AI_SERVER_ERROR`(500 — AI 인사이트 생성 실패)
 
 ---
 
@@ -3171,7 +3196,7 @@ AI 서버가 사전 평가 보고서 생성 실패 후 호출합니다.
 | byTechField[].name | string | 기술 분야명 |
 | byTechField[].count | long | 특허 수 |
 | byFilingCountry | array | 출원국별 특허 수 |
-| byFilingCountry[].country | string | 출원국 코드 |
+| byFilingCountry[].country | string | 출원국 |
 | byFilingCountry[].count | long | 특허 수 |
 | byDepartment | array | 담당 부서별 특허 수. 특허 수 내림차순, 최대 5개(상위 4개 + 기타) |
 | byDepartment[].departmentId | long | 부서 ID. `기타` 항목은 `null` |
