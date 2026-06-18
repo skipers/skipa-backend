@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClient;
 import java.time.Duration;
 
 @Component
-@Profile("!local")
+@Profile("!local & !local-postgres")
 public class RestReportChatClient implements ReportChatClient {
 
     private final RestClient restClient;

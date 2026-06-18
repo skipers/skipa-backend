@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
-@Profile("!local & !test")
+@Profile("!local & !local-postgres & !test")
 @RequiredArgsConstructor
 public class RedisPortfolioInsightCache implements PortfolioInsightCache {
 

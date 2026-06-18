@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-@Profile("local | test")
+@Profile("local | local-postgres | test")
 public class LocalPortfolioInsightClient implements PortfolioInsightClient {
 
     @Override

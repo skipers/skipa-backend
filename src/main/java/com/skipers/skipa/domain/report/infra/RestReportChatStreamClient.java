@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import java.util.function.Consumer;
 
 @Component
-@Profile("!local")
+@Profile("!local & !local-postgres")
 public class RestReportChatStreamClient extends AiChatStreamClientSupport<ReportChatClientRequest>
         implements ReportChatStreamClient {
 

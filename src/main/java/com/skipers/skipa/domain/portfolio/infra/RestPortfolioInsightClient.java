@@ -16,7 +16,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Component
-@Profile("!local & !test")
+@Profile("!local & !local-postgres & !test")
 public class RestPortfolioInsightClient implements PortfolioInsightClient {
 
     private final RestClient restClient;
