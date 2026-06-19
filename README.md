@@ -10,19 +10,19 @@ SKIPA는 사내 특허 데이터와 관련 업무를 통합 관리하기 위한 
 | --- | --- |
 | 인증 및 인가 | 회원가입, 로그인, 토큰 재발급, 로그아웃, 내 정보 조회 |
 | 사용자 및 부서 관리 | 관리자 승인, 부서 생성·조회·수정·비활성화 |
-| 특허 운영 관리 | 특허 생성, 조회, 수정, 삭제, 담당 부서 변경 |
-| 검토 및 평가 | 검토 주기 관리, 사업부 검토 요청·회신, 평가 보고서 생성·조회·채팅 |
+| 특허 운영 관리 | 특허 생성, 조회, 수정, 삭제, 담당 부서 변경, 원문 PDF 접근 URL 조회 |
+| 검토 및 평가 | 검토 주기 관리, 사업부 검토 요청·의견 제출, 평가 보고서 생성·조회·채팅 |
 | AI 연계 기능 | 특허 PDF 추출 작업, 사전 평가 생성, 포트폴리오 인사이트 생성 |
 
 ## 역할 정책
 
 | 역할 | 주요 권한 |
 | --- | --- |
-| `ADMIN` | 사용자 승인, 부서 및 특허 관리, 검토 주기 관리, 전체 조회 |
-| `LEGAL` | 특허 운영, 권리 상태 및 연차료 관리, 검토 요청, 평가 보고서 생성, 포트폴리오·대시보드 조회 |
-| `BUSINESS` | 승인 완료 특허 조회, 담당 특허 및 검토 현황 조회, 검토 의견 제출, 사전 평가 |
+| `ADMIN` | 사용자 승인, 검토 주기 생성·수정·삭제, 부서/특허 관리, 전사 범위 조회 |
+| `LEGAL` | 부서 관리, 특허 운영, 권리 상태 및 연차료 관리, 검토 요청·확인, 평가 보고서 생성, 포트폴리오·Legal 대시보드 조회 |
+| `BUSINESS` | 담당 특허 및 사업부 검토 현황 조회, 검토 의견 제출, 사전 평가, Business 대시보드 조회 |
 
-특허 생성 API(`POST /api/v1/patents`)는 `ADMIN`과 `LEGAL`에만 허용되며, 생성된 특허는 즉시 `APPROVED` 상태로 저장됩니다.
+부서 관리 API(`POST/GET/PUT/DELETE /api/v1/departments`)와 특허 생성 API(`POST /api/v1/patents`)는 `ADMIN`과 `LEGAL`에 허용됩니다. 특허 생성 시 생성된 특허는 즉시 `APPROVED` 상태로 저장되며, 사업부 특허 생성 기능과 별도의 특허 승인 API는 제공하지 않습니다.
 
 ## 주요 업무 정책
 
@@ -32,11 +32,11 @@ SKIPA는 사내 특허 데이터와 관련 업무를 통합 관리하기 위한 
 
 ### 사업부 접근 범위
 
-`BUSINESS` 사용자의 사업부 검토 화면과 일부 집계는 본인 소속 부서 범위로 제한됩니다.
+`BUSINESS` 사용자의 담당 특허 목록, 사업부 검토 화면, Business 대시보드는 본인 소속 부서 범위를 기준으로 조회됩니다.
 
 ### 관리자 조회 범위
 
-`ADMIN`은 전체 조회와 관리 기능에 접근하며, 검토 요청·권리 상태 관리·연차료 관리·평가 보고서 생성 등 실무 운영 기능은 `LEGAL`이 담당합니다.
+`ADMIN`은 전사 범위 조회와 관리자 기능에 접근합니다. 다만 검토 요청·검토 확인·권리 상태 관리·연차료 관리·평가 보고서 생성 등 실무 운영 기능은 `LEGAL`이 담당합니다.
 
 ## Tech Stack
 
@@ -60,9 +60,11 @@ SKIPA는 사내 특허 데이터와 관련 업무를 통합 관리하기 위한 
 | Profile | Database | Purpose |
 | --- | --- | --- |
 | `local` | H2 Database (TCP) | 로컬 개발 및 빠른 기능 검증 |
+| `local-postgres` | PostgreSQL | 로컬 PostgreSQL 연동 검증 |
 | `prod` | PostgreSQL | 운영 및 통합 검증 환경 |
 
 - `local`: H2 파일 DB, `ddl-auto: update`, Redis 자동 구성 제외, Flyway 비활성화, 샘플 데이터 자동 주입
+- `local-postgres`: PostgreSQL, `ddl-auto: validate`, Flyway 비활성화
 - `prod`: PostgreSQL, `ddl-auto: validate`, Flyway 기반 스키마 관리
 
 ## 아키텍처 개요
@@ -118,6 +120,7 @@ src/main/java/com/skipers/skipa
 ├── global                  # 공통 설정, 보안, 예외, 응답
 └── domain
     ├── auth                # 인증/토큰
+    ├── chat                # 공통 채팅 메시지/스트리밍
     ├── user                # 관리자 승인
     ├── department          # 부서 관리
     ├── patent              # 특허, 권리 상태, 연차료, 사업부 검토 화면
@@ -177,8 +180,15 @@ domain/report
 src/main/resources
 ├── application.yaml
 ├── application-local.yaml
+├── application-local-postgres.yaml
 ├── application-prod.yaml
 └── db/migration          # Flyway 마이그레이션
+```
+
+```text
+repository root
+├── load-tests/           # k6 기반 부하 테스트 스크립트
+└── .github/workflows/    # 배포 및 자동화 워크플로
 ```
 
 테스트 코드는 운영 코드의 패키지 구조를 기준으로 동일하게 구성합니다.
@@ -203,6 +213,7 @@ cp .env.example .env
 
 | 명령어 | 설명 |
 | --- | --- |
+| `./gradlew h2CreateLocalDb` | 로컬 H2 데이터베이스 파일 생성 |
 | `./gradlew bootRun` | 로컬 서버 실행 |
 | `./gradlew test` | 테스트 실행 |
 | `./gradlew clean bootJar` | 배포용 JAR 빌드 |
@@ -213,7 +224,7 @@ OpenAPI JSON은 `http://localhost:8080/v3/api-docs`에서 제공합니다.
 
 ## 인증 및 인가 방식
 
-- JWT 기반 인증을 사용합니다.
+- Access Token 기반 JWT 인증을 사용하며, Refresh Token은 `HttpOnly Cookie`로 관리합니다.
 - 컨트롤러 계층: `@PreAuthorize`를 통해 역할 기반 접근 제어 수행
 - 서비스 계층: 부서 범위, 승인 상태, 리소스 소유 여부 등 세부 업무 규칙 검증
 - 내부 콜백 API: `INTERNAL_API_KEY` 헤더 기반 보호
@@ -226,11 +237,14 @@ OpenAPI JSON은 `http://localhost:8080/v3/api-docs`에서 제공합니다.
 4. 발급받은 JWT를 Swagger `Authorize`에 입력합니다.
 5. 역할별 API를 호출하여 권한 및 응답 형식을 검증합니다.
 
+| 구분 | ID | PWD |
+| --- | --- | --- |
+| `ADMIN` | `admin` | `1234` |
+| `LEGAL` | `legal01` | `1234` |
+| `BUSINESS` | `biz01` | `1234` |
+
 | 항목 | 값 |
 | --- | --- |
-| `ADMIN` 계정 | ID: `admin`, PWD: `1234` |
-| `LEGAL` 계정 | ID: `legal01`, PWD: `1234` |
-| `BUSINESS` 계정 | ID: `biz01`, PWD: `1234` |
 | H2 웹 콘솔 URL | `http://localhost:8082` |
 
 H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니다.
@@ -268,14 +282,20 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 | Auth | `/api/v1/auth` | 회원가입, 로그인, 토큰 재발급, 로그아웃 |
 | Admin Users | `/api/v1/admin/users` | 관리자 승인 |
 | Departments | `/api/v1/departments` | 부서 생성·조회·수정·비활성화 |
-| Patents | `/api/v1/patents` | 특허 생성·조회·수정·삭제 및 담당 부서 변경 |
+| Patents | `/api/v1/patents` | 특허 생성·조회·수정·삭제, 담당 부서 변경, 원문 PDF URL 조회 |
+| Patent Annuities | `/api/v1/patents/{patentId}/annuities` | 연차료 이력 생성·조회·수정·삭제 |
+| Patent Legal Status | `/api/v1/patents/{patentId}/legal-status` | 권리 상태 이력 생성·조회 |
+| Expiring Patents | `/api/v1/patents/expiring` | 만료 예정 특허 요약, 목록, 캘린더 조회 |
 | Patent Extract Jobs | `/api/v1/patent-extract-jobs` | 특허 PDF 업로드 URL 발급 및 추출 작업 상태 관리 |
-| Reviews | `/api/v1/reviews`, `/api/v1/review-targets`, `/api/v1/patents/{patentId}/reviews` | 검토 요청 및 Legal 검토 현황 |
+| Review Cycles | `/api/v1/review-cycles` | 검토 주기 생성·조회·수정·마감일 변경·삭제 |
+| Reviews | `/api/v1/reviews`, `/api/v1/review-targets`, `/api/v1/patents/{patentId}/reviews` | 검토 요청, 대상 조회, Legal 검토 현황 |
 | Business Reviews | `/api/v1/business-reviews` | 사업부 검토 현황 조회 및 의견 제출 |
 | Reports | `/api/v1/patents/{patentId}/reports` | 평가 보고서 생성·조회 |
+| Report Chat | `/api/v1/patents/{patentId}/reports/{reportId}/chat/messages` | 평가 보고서 AI 채팅 조회·질의·스트리밍·초기화 |
 | Pre-Evaluations | `/api/v1/pre-evaluations` | 사전 평가 생성·조회·삭제 |
+| Pre-Evaluation Chat | `/api/v1/pre-evaluations/{preEvaluationId}/chat/messages` | 사전 평가 AI 채팅 조회·질의·스트리밍·초기화 |
 | Portfolio | `/api/v1/portfolio` | 포트폴리오 통계 및 AI 인사이트 |
-| Dashboard | `/api/v1/dashboard` | Legal 및 Business 대시보드 |
+| Dashboard | `/api/v1/dashboard` | Legal(`/legal`) 및 Business(`/business`) 대시보드 |
 
 ## 데이터 관리 및 마이그레이션 정책
 
@@ -283,6 +303,7 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 | --- | --- |
 | 스키마 변경 | Flyway 마이그레이션으로 관리 |
 | `local` 환경 | H2 기반 로컬 개발 환경, 샘플 데이터 자동 주입 |
+| `local-postgres` 환경 | PostgreSQL 기반 로컬 연동 검증 환경, `validate` 중심 확인 |
 | `prod` 환경 | PostgreSQL 기반 운영 환경, `validate` 중심 검증 |
 | 부서 삭제 | 물리 삭제보다 비활성화 상태 전환 우선 적용 |
 
@@ -291,6 +312,12 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 - 평가 보고서 생성: Backend → RabbitMQ → AI Worker → 내부 콜백 API
 - 특허 추출 작업: Presigned URL 업로드 → RabbitMQ → AI Worker → 내부 콜백 API
 - 사전 평가: 요청 저장 → RabbitMQ 또는 AI 서버 연동 → 상태 polling/채팅
+
+대표 내부 콜백 경로는 다음과 같습니다.
+
+- 평가 보고서: `/api/v1/internal/reports/{reportId}/complete`, `/api/v1/internal/reports/{reportId}/embedding-complete`, `/api/v1/internal/reports/{reportId}/fail`
+- 특허 추출 작업: `/api/v1/internal/patent-extract-jobs/{extractJobId}/complete`, `/api/v1/internal/patent-extract-jobs/{extractJobId}/fail`
+- 사전 평가: `/api/v1/internal/pre-evaluations/{preEvaluationId}/complete`, `/api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete`, `/api/v1/internal/pre-evaluations/{preEvaluationId}/fail`
 
 내부 콜백 API는 `INTERNAL_API_KEY`를 기반으로 보호합니다.
 
@@ -339,7 +366,7 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 
 - 평가 보고서 생성: 보고서 상태 저장 → RabbitMQ 발행 → AI Worker 처리 → 내부 완료 콜백
 - 특허 추출: 업로드 URL 발급 → MinIO 업로드 → RabbitMQ 발행 → AI 추출 결과 콜백
-- 사전 평가: 요청 저장 → 비동기 생성 처리 → 상태 조회 및 채팅 연계
+- 사전 평가: 요청 저장 → 비동기 생성 처리 → 내부 완료/실패 콜백 → 상태 조회 및 채팅 연계
 
 ### 평가 보고서 생성 흐름
 
@@ -351,6 +378,10 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 }
 ```
 
+- 외부 워커 완료 반영: `PATCH /api/v1/internal/reports/{reportId}/complete`
+- 임베딩 완료 반영: `PATCH /api/v1/internal/reports/{reportId}/embedding-complete`
+- 실패 반영: `PATCH /api/v1/internal/reports/{reportId}/fail`
+
 ### 특허 원문 PDF 추출 흐름
 
 ```json
@@ -361,6 +392,24 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 }
 ```
 
+- 업로드 완료 요청: `POST /api/v1/patent-extract-jobs/{extractJobId}/upload-complete`
+- 추출 완료 반영: `PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/complete`
+- 추출 실패 반영: `PATCH /api/v1/internal/patent-extract-jobs/{extractJobId}/fail`
+
+### 사전 평가 생성 흐름
+
+```json
+{
+  "type": "PRE_EVALUATION",
+  "preEvaluationId": 7001,
+  "title": "신규 기술 사전 평가"
+}
+```
+
+- 완료 반영: `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/complete`
+- 임베딩 완료 반영: `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/embedding-complete`
+- 실패 반영: `PATCH /api/v1/internal/pre-evaluations/{preEvaluationId}/fail`
+
 ## 보안 및 운영 유의사항
 
 | 항목 | 내용 |
@@ -370,7 +419,7 @@ H2 웹 콘솔 접속 시 사용하는 JDBC 연결 정보는 다음과 같습니�
 | Presigned URL | 한시적 접근을 전제로 사용하며 장기 고정 URL로 취급하지 않음 |
 | 외부 장애 대응 | API, 메시지 큐, 파일 저장소, AI 서버 연계 구간을 분리 운영 |
 
-## 상태값 및 Enum 원칙
+## 상태값 및 Enum 정의
 
 | 구분 | 값 |
 | --- | --- |
