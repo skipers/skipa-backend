@@ -4,14 +4,12 @@ import com.skipers.skipa.domain.user.domain.User;
 
 public record LoginResponse(
         String accessToken,
-        String refreshToken,
         UserInfo user
 ) {
 
-    public static LoginResponse of(String accessToken, String refreshToken, User user) {
+    public static LoginResponse of(String accessToken, User user) {
         return new LoginResponse(
                 accessToken,
-                refreshToken,
                 UserInfo.from(user)
         );
     }

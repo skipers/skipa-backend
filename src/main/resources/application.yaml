@@ -50,6 +50,9 @@ jwt:
     refresh: 604800000   # 7일
 
 app:
+  auth:
+    refresh-cookie:
+      secure: ${REFRESH_TOKEN_COOKIE_SECURE:true}
   internal:
     api-key: ${INTERNAL_API_KEY:}
   ai-server:

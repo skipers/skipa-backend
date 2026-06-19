@@ -58,13 +58,12 @@ class UserTest {
         ReflectionTestUtils.setField(user, "id", 1L);
 
         UserResponse userResponse = UserResponse.from(user);
-        LoginResponse loginResponse = LoginResponse.of("access", "refresh", user);
+        LoginResponse loginResponse = LoginResponse.of("access", user);
 
         assertThat(userResponse.departmentId()).isEqualTo(10L);
         assertThat(userResponse.departmentName()).isEqualTo("Manufacturing");
         assertThat(userResponse.status()).isEqualTo("ACTIVE");
         assertThat(loginResponse.accessToken()).isEqualTo("access");
-        assertThat(loginResponse.refreshToken()).isEqualTo("refresh");
         assertThat(loginResponse.user().loginId()).isEqualTo("business");
         assertThat(loginResponse.user().departmentId()).isEqualTo(10L);
     }
