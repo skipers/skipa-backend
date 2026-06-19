@@ -2,7 +2,6 @@ package com.skipers.skipa.domain.auth.application;
 
 import com.skipers.skipa.domain.auth.dto.request.LoginRequest;
 import com.skipers.skipa.domain.auth.dto.request.RegisterRequest;
-import com.skipers.skipa.domain.auth.dto.request.TokenRefreshRequest;
 import com.skipers.skipa.domain.auth.dto.response.LoginResponse;
 import com.skipers.skipa.domain.auth.dto.response.MeResponse;
 import com.skipers.skipa.domain.auth.dto.response.TokenRefreshResponse;
@@ -73,10 +72,11 @@ class AuthServiceTest {
         when(jwtProvider.createRefreshToken(1L))
                 .thenReturn(new JwtProvider.RefreshTokenResult("refresh-token", "refresh-jti"));
 
-        LoginResponse response = authService.login(new LoginRequest("user_01", "password"));
+        AuthService.LoginResult result = authService.login(new LoginRequest("user_01", "password"));
+        LoginResponse response = result.response();
 
         assertThat(response.accessToken()).isEqualTo("access-token");
-        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+        assertThat(result.refreshToken()).isEqualTo("refresh-token");
         assertThat(response.user().loginId()).isEqualTo("user_01");
         assertThat(response.user().role()).isEqualTo("BUSINESS");
         assertThat(response.user().departmentId()).isNull();
@@ -107,7 +107,7 @@ class AuthServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(jwtProvider.createAccessToken(1L, UserRole.BUSINESS)).thenReturn("new-access-token");
 
-        TokenRefreshResponse response = authService.refresh(new TokenRefreshRequest("refresh-token"));
+        TokenRefreshResponse response = authService.refresh("refresh-token");
 
         verify(jwtProvider).validateRefreshToken("refresh-token");
         assertThat(response.accessToken()).isEqualTo("new-access-token");
@@ -119,7 +119,7 @@ class AuthServiceTest {
         when(refreshTokenStore.matches(1L, "refresh-token")).thenReturn(false);
 
         assertErrorCode(
-                () -> authService.refresh(new TokenRefreshRequest("refresh-token")),
+                () -> authService.refresh("refresh-token"),
                 ErrorCode.INVALID_TOKEN
         );
 

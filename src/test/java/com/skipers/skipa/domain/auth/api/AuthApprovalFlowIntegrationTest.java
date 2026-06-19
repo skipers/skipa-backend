@@ -41,6 +41,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
+import jakarta.servlet.http.Cookie;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -253,7 +254,10 @@ class AuthApprovalFlowIntegrationTest {
                 .andReturn();
         JsonNode loginData = objectMapper.readTree(loginResult.getResponse().getContentAsString()).path("data");
         String accessToken = loginData.path("accessToken").textValue();
-        String refreshToken = loginData.path("refreshToken").textValue();
+        Cookie refreshCookie = loginResult.getResponse().getCookie("refreshToken");
+        assertThat(loginData.path("refreshToken").isMissingNode()).isTrue();
+        assertThat(refreshCookie).isNotNull();
+        assertThat(refreshCookie.isHttpOnly()).isTrue();
 
         mockMvc.perform(get("/api/v1/auth/me")
                         .header("Authorization", "Bearer " + accessToken))
@@ -265,12 +269,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.user.departmentName").value(department.getName()));
 
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "refreshToken": "%s"
-                                }
-                                """.formatted(refreshToken)))
+                        .cookie(refreshCookie))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.accessToken").isString())
                 .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
@@ -281,12 +280,7 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data").value(nullValue()));
 
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "refreshToken": "%s"
-                                }
-                                """.formatted(refreshToken)))
+                        .cookie(refreshCookie))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
     }
