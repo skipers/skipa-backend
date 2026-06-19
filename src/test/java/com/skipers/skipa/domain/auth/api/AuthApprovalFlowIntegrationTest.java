@@ -1755,6 +1755,7 @@ class AuthApprovalFlowIntegrationTest {
                 .applicationNumber("APP-REVIEW-FIRST")
                 .techField("Battery")
                 .businessField("Energy")
+                .initialDepartment("Initial Review Department")
                 .currentDepartment(department)
                 .build());
         Patent secondPatent = patentRepository.save(Patent.builder()
@@ -1766,7 +1767,7 @@ class AuthApprovalFlowIntegrationTest {
                 .build());
         Review firstReview = reviewRepository.save(Review.builder()
                 .patent(firstPatent)
-                .department(department)
+                .department(otherDepartment)
                 .reviewCycle(reviewCycle)
                 .build());
         Review secondReview = reviewRepository.save(Review.builder()
@@ -1790,6 +1791,8 @@ class AuthApprovalFlowIntegrationTest {
                 .andExpect(jsonPath("$.data.items[0].id").value(firstReview.getId()))
                 .andExpect(jsonPath("$.data.items[0].techField").value("Battery"))
                 .andExpect(jsonPath("$.data.items[0].businessField").value("Energy"))
+                .andExpect(jsonPath("$.data.items[0].departmentId").value(department.getId()))
+                .andExpect(jsonPath("$.data.items[0].departmentName").value(department.getName()))
                 .andExpect(jsonPath("$.data.items[1].id").value(secondReview.getId()));
 
         mockMvc.perform(get("/api/v1/review-targets")
@@ -1889,6 +1892,55 @@ class AuthApprovalFlowIntegrationTest {
                         .header("Authorization", "Bearer " + legalToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error.code").value("REVIEW_NOT_FOUND"));
+    }
+
+    @Test
+    void legalUserCanFilterReviewTargetsByOpinion() throws Exception {
+        Patent maintainPatent = patentRepository.save(Patent.builder()
+                .title("Maintain Review Patent")
+                .applicationNumber("APP-REV-OP-M")
+                .currentDepartment(department)
+                .build());
+        Patent abandonPatent = patentRepository.save(Patent.builder()
+                .title("Abandon Review Patent")
+                .applicationNumber("APP-REV-OP-A")
+                .currentDepartment(department)
+                .build());
+        Review maintainReview = reviewRepository.save(Review.builder()
+                .patent(maintainPatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.MAINTAIN)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now())
+                .build());
+        Review abandonReview = reviewRepository.save(Review.builder()
+                .patent(abandonPatent)
+                .department(department)
+                .reviewCycle(reviewCycle)
+                .opinion(BusinessOpinion.ABANDON)
+                .status(ReviewStatus.SUBMITTED)
+                .submittedAt(Instant.now())
+                .build());
+        String legalToken = createActiveUserToken("legal-review-opinion", "legal-review-opinion@example.com", UserRole.LEGAL);
+
+        mockMvc.perform(get("/api/v1/review-targets")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("opinion", "ABANDON"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(abandonReview.getId()))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("ABANDON"));
+
+        mockMvc.perform(get("/api/v1/review-targets")
+                        .header("Authorization", "Bearer " + legalToken)
+                        .param("status", "SUBMITTED")
+                        .param("opinion", "MAINTAIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].id").value(maintainReview.getId()))
+                .andExpect(jsonPath("$.data.items[0].opinion").value("MAINTAIN"));
     }
 
     @Test

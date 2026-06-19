@@ -35,8 +35,9 @@ import java.util.Map;
 public class PortfolioService {
 
     private static final int TREND_YEAR_COUNT = 7;
-    private static final int DISTRIBUTION_VISIBLE_LIMIT = 4;
+    private static final int DISTRIBUTION_VISIBLE_LIMIT = 5;
     private static final String OTHER_GROUP_NAME = "기타";
+    private static final String UNCATEGORIZED_GROUP_NAME = "미분류";
 
     private final PatentRepository patentRepository;
     private final PatentAnnuityRepository patentAnnuityRepository;
@@ -219,7 +220,10 @@ public class PortfolioService {
 
     private List<PortfolioDistributionResponse.CountryCount> countryCounts(Map<String, Long> counts) {
         return counts.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey())
+                .sorted(Comparator.comparingInt((Map.Entry<String, Long> entry) ->
+                                distributionGroupRank(entry.getKey()))
+                        .thenComparing(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+                        .thenComparing(Map.Entry.comparingByKey()))
                 .map(entry -> new PortfolioDistributionResponse.CountryCount(entry.getKey(), entry.getValue()))
                 .toList();
     }
@@ -243,7 +247,7 @@ public class PortfolioService {
             List<PortfolioDistributionResponse.NameCount> sortedCounts
     ) {
         if (sortedCounts.size() <= DISTRIBUTION_VISIBLE_LIMIT) {
-            return sortedCounts;
+            return sortNameCounts(sortedCounts);
         }
 
         List<PortfolioDistributionResponse.NameCount> limited = new ArrayList<>(
@@ -252,15 +256,15 @@ public class PortfolioService {
         long otherCount = sortedCounts.subList(DISTRIBUTION_VISIBLE_LIMIT, sortedCounts.size()).stream()
                 .mapToLong(PortfolioDistributionResponse.NameCount::count)
                 .sum();
-        limited.add(new PortfolioDistributionResponse.NameCount(OTHER_GROUP_NAME, otherCount));
-        return limited;
+        addOrMergeOtherNameCount(limited, otherCount);
+        return sortNameCounts(limited);
     }
 
     private List<PortfolioDistributionResponse.DepartmentCount> limitDepartmentCounts(
             List<PortfolioDistributionResponse.DepartmentCount> sortedCounts
     ) {
         if (sortedCounts.size() <= DISTRIBUTION_VISIBLE_LIMIT) {
-            return sortedCounts;
+            return sortDepartmentCounts(sortedCounts);
         }
 
         List<PortfolioDistributionResponse.DepartmentCount> limited = new ArrayList<>(
@@ -269,8 +273,75 @@ public class PortfolioService {
         long otherCount = sortedCounts.subList(DISTRIBUTION_VISIBLE_LIMIT, sortedCounts.size()).stream()
                 .mapToLong(PortfolioDistributionResponse.DepartmentCount::count)
                 .sum();
-        limited.add(new PortfolioDistributionResponse.DepartmentCount(null, OTHER_GROUP_NAME, otherCount));
-        return limited;
+        addOrMergeOtherDepartmentCount(limited, otherCount);
+        return sortDepartmentCounts(limited);
+    }
+
+    private void addOrMergeOtherNameCount(
+            List<PortfolioDistributionResponse.NameCount> counts,
+            long otherCount
+    ) {
+        for (int index = 0; index < counts.size(); index++) {
+            PortfolioDistributionResponse.NameCount count = counts.get(index);
+            if (OTHER_GROUP_NAME.equals(count.name())) {
+                counts.set(index, new PortfolioDistributionResponse.NameCount(
+                        count.name(),
+                        count.count() + otherCount
+                ));
+                return;
+            }
+        }
+        counts.add(new PortfolioDistributionResponse.NameCount(OTHER_GROUP_NAME, otherCount));
+    }
+
+    private void addOrMergeOtherDepartmentCount(
+            List<PortfolioDistributionResponse.DepartmentCount> counts,
+            long otherCount
+    ) {
+        for (int index = 0; index < counts.size(); index++) {
+            PortfolioDistributionResponse.DepartmentCount count = counts.get(index);
+            if (OTHER_GROUP_NAME.equals(count.departmentName())) {
+                counts.set(index, new PortfolioDistributionResponse.DepartmentCount(
+                        count.departmentId(),
+                        count.departmentName(),
+                        count.count() + otherCount
+                ));
+                return;
+            }
+        }
+        counts.add(new PortfolioDistributionResponse.DepartmentCount(null, OTHER_GROUP_NAME, otherCount));
+    }
+
+    private List<PortfolioDistributionResponse.NameCount> sortNameCounts(
+            List<PortfolioDistributionResponse.NameCount> counts
+    ) {
+        return counts.stream()
+                .sorted(Comparator.comparingInt((PortfolioDistributionResponse.NameCount count) ->
+                                distributionGroupRank(count.name()))
+                        .thenComparing(Comparator.comparingLong(PortfolioDistributionResponse.NameCount::count).reversed())
+                        .thenComparing(PortfolioDistributionResponse.NameCount::name))
+                .toList();
+    }
+
+    private List<PortfolioDistributionResponse.DepartmentCount> sortDepartmentCounts(
+            List<PortfolioDistributionResponse.DepartmentCount> counts
+    ) {
+        return counts.stream()
+                .sorted(Comparator.comparingInt((PortfolioDistributionResponse.DepartmentCount count) ->
+                                distributionGroupRank(count.departmentName()))
+                        .thenComparing(Comparator.comparingLong(PortfolioDistributionResponse.DepartmentCount::count).reversed())
+                        .thenComparing(PortfolioDistributionResponse.DepartmentCount::departmentName))
+                .toList();
+    }
+
+    private int distributionGroupRank(String name) {
+        if (UNCATEGORIZED_GROUP_NAME.equals(name)) {
+            return 1;
+        }
+        if (OTHER_GROUP_NAME.equals(name)) {
+            return 2;
+        }
+        return 0;
     }
 
     private Map<Long, Report> latestCompletedReportsByPatentId() {
@@ -337,7 +408,7 @@ public class PortfolioService {
     }
 
     private String normalizeGroupName(String value) {
-        return value == null || value.isBlank() ? "미분류" : value;
+        return value == null || value.isBlank() ? UNCATEGORIZED_GROUP_NAME : value;
     }
 
     private static class DepartmentAccumulator {

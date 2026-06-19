@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-@Profile({"local", "test"})
+@Profile({"local", "local-postgres", "test"})
 public class InMemoryRefreshTokenStore implements RefreshTokenStore {
 
     private final Map<Long, Entry> tokens = new ConcurrentHashMap<>();

@@ -49,24 +49,19 @@ public class DashboardService {
         ReviewCycle reviewCycle = resolveReviewCycle(reviewCycleId, today);
         List<Review> reviews = reviewRepository.findAllByReviewCycleId(reviewCycle.getId());
         List<Patent> patents = patentRepository.findAll();
-        Set<Long> reviewedPatentIds = reviews.stream()
-                .map(review -> review.getPatent().getId())
-                .collect(Collectors.toSet());
 
-        long reviewing = countPendingNotOverdue(reviews, today);
+        long requested = countPendingNotOverdue(reviews, today);
         long decided = countSubmitted(reviews);
         long overdue = countOverdue(reviews, today);
         long unread = reviews.stream()
                 .filter(review -> review.getStatus() == ReviewStatus.SUBMITTED)
                 .filter(review -> !review.isChecked())
                 .count();
-        long unrequested = patents.stream()
-                .filter(patent -> !reviewedPatentIds.contains(patent.getId()))
-                .count();
+        long unrequested = countScheduled(reviews);
 
         return new LegalDashboardResponse(
                 ReviewCycleSummary.from(reviewCycle),
-                new LegalDashboardResponse.Kpi(reviews.size(), reviewing, decided, overdue, unread, unrequested),
+                new LegalDashboardResponse.Kpi(requested, requested, decided, overdue, unread, unrequested),
                 cycleProgress(reviews),
                 departmentProgress(reviews, today),
                 nameCounts(patents.stream()
@@ -414,6 +409,12 @@ public class DashboardService {
         return reviews.stream()
                 .filter(review -> review.getStatus() == ReviewStatus.PENDING)
                 .filter(review -> !review.getDueDate().isBefore(today))
+                .count();
+    }
+
+    private long countScheduled(List<Review> reviews) {
+        return reviews.stream()
+                .filter(review -> review.getStatus() == ReviewStatus.SCHEDULED)
                 .count();
     }
 

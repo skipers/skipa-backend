@@ -124,6 +124,13 @@ class DashboardControllerIntegrationTest {
                 semiconductorDepartment,
                 LocalDate.now().plusMonths(7)
         );
+        Patent scheduledPatent = savePatent(
+                "Scheduled Patent",
+                "APP-DASH-LEGAL-6",
+                "반도체",
+                semiconductorDepartment,
+                LocalDate.now().plusMonths(9)
+        );
         Patent checkedReplyPatent = savePatent(
                 "Checked Reply Patent",
                 "APP-DASH-LEGAL-5",
@@ -160,6 +167,13 @@ class DashboardControllerIntegrationTest {
                 .dueDate(LocalDate.now().minusDays(1))
                 .build());
         reviewRepository.save(Review.builder()
+                .patent(scheduledPatent)
+                .department(semiconductorDepartment)
+                .reviewCycle(reviewCycle)
+                .status(ReviewStatus.SCHEDULED)
+                .dueDate(LocalDate.now().plusDays(5))
+                .build());
+        reviewRepository.save(Review.builder()
                 .patent(checkedReplyPatent)
                 .department(batteryDepartment)
                 .reviewCycle(reviewCycle)
@@ -175,18 +189,18 @@ class DashboardControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.reviewCycle.id").value(reviewCycle.getId()))
                 .andExpect(jsonPath("$.data.progressRate").doesNotExist())
-                .andExpect(jsonPath("$.data.kpi.requested").value(4))
+                .andExpect(jsonPath("$.data.kpi.requested").value(1))
                 .andExpect(jsonPath("$.data.kpi.reviewing").value(1))
                 .andExpect(jsonPath("$.data.kpi.decided").value(2))
                 .andExpect(jsonPath("$.data.kpi.overdue").value(1))
                 .andExpect(jsonPath("$.data.kpi.unread").value(1))
                 .andExpect(jsonPath("$.data.kpi.unrequested").value(1))
-                .andExpect(jsonPath("$.data.cycleProgress.targetPatentCount").value(4))
-                .andExpect(jsonPath("$.data.cycleProgress.reports.notStarted").value(4))
+                .andExpect(jsonPath("$.data.cycleProgress.targetPatentCount").value(5))
+                .andExpect(jsonPath("$.data.cycleProgress.reports.notStarted").value(5))
                 .andExpect(jsonPath("$.data.cycleProgress.reports.generating").value(0))
                 .andExpect(jsonPath("$.data.cycleProgress.reports.completed").value(0))
                 .andExpect(jsonPath("$.data.cycleProgress.reports.failed").value(0))
-                .andExpect(jsonPath("$.data.cycleProgress.reviews.scheduled").value(0))
+                .andExpect(jsonPath("$.data.cycleProgress.reviews.scheduled").value(1))
                 .andExpect(jsonPath("$.data.cycleProgress.reviews.inReview").value(2))
                 .andExpect(jsonPath("$.data.cycleProgress.reviews.submitted").value(2))
                 .andExpect(jsonPath("$.data.cycleProgress.statusLabel").value("REPORT_NOT_STARTED"))

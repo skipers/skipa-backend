@@ -1,5 +1,6 @@
 package com.skipers.skipa.domain.review.dto.response;
 
+import com.skipers.skipa.domain.department.domain.Department;
 import com.skipers.skipa.domain.review.domain.Review;
 
 import java.time.Instant;
@@ -29,6 +30,9 @@ public record ReviewResponse(
 ) {
 
     public static ReviewResponse from(Review review) {
+        Department displayDepartment = review.getPatent().getCurrentDepartment() != null
+                ? review.getPatent().getCurrentDepartment()
+                : review.getDepartment();
         return new ReviewResponse(
                 review.getId(),
                 review.getPatent().getId(),
@@ -37,8 +41,8 @@ public record ReviewResponse(
                 review.getPatent().getTechField(),
                 review.getPatent().getBusinessField(),
                 review.getReport() == null ? null : review.getReport().getId(),
-                review.getDepartment().getId(),
-                review.getDepartment().getName(),
+                displayDepartment == null ? null : displayDepartment.getId(),
+                displayDepartment == null ? null : displayDepartment.getName(),
                 review.getReviewCycle().getId(),
                 review.getReviewCycle().getYear(),
                 review.getReviewCycle().getQuarter(),

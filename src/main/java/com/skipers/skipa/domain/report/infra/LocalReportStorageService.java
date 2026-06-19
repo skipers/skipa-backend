@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("local")
+@Profile("local | local-postgres")
 public class LocalReportStorageService implements ReportStorageService {
 
     @Override

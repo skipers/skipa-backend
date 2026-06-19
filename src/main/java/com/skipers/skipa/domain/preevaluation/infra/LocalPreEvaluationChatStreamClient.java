@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 @Component
-@Profile("local")
+@Profile("local | local-postgres")
 public class LocalPreEvaluationChatStreamClient implements PreEvaluationChatStreamClient {
 
     private final ObjectMapper objectMapper;

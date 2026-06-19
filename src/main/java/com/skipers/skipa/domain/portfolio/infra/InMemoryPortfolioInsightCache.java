@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
-@Profile("local | test")
+@Profile("local | local-postgres | test")
 public class InMemoryPortfolioInsightCache implements PortfolioInsightCache {
 
     private List<String> insights;
